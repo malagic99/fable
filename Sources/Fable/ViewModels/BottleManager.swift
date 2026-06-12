@@ -130,6 +130,16 @@ final class BottleManager: ObservableObject {
         try save(bottles[index])
     }
 
+    func updateGame(_ game: Game, in id: Bottle.ID) throws {
+        guard let bottleIndex = bottles.firstIndex(where: { $0.id == id }),
+              let gameIndex = bottles[bottleIndex].games.firstIndex(where: { $0.id == game.id })
+        else {
+            throw BottleError.notFound
+        }
+        bottles[bottleIndex].games[gameIndex] = game
+        try save(bottles[bottleIndex])
+    }
+
     func removeGame(_ gameID: Game.ID, from id: Bottle.ID) throws {
         guard let index = bottles.firstIndex(where: { $0.id == id }) else {
             throw BottleError.notFound
@@ -147,6 +157,20 @@ final class BottleManager: ObservableObject {
             bottles[index].dxmtConfig = config
         }
         try save(bottles[index])
+    }
+
+    /// Re-reads the prefix's actual Windows version (winecfg may have
+    /// changed it) and updates metadata if it drifted.
+    func reconcileWindowsVersion(for id: Bottle.ID) {
+        guard let index = bottles.firstIndex(where: { $0.id == id }),
+              bottles[index].status == .ready,
+              let actual = WinePrefixInspector.windowsVersion(
+                ofPrefix: prefixDirectory(for: bottles[index])
+              ),
+              actual != bottles[index].windowsVersion
+        else { return }
+        bottles[index].windowsVersion = actual
+        try? save(bottles[index])
     }
 
     func setStatus(_ status: BottleStatus, for id: Bottle.ID) throws {

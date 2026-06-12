@@ -11,6 +11,9 @@ struct GameLauncherView: View {
     @EnvironmentObject private var gameLauncher: GameLauncher
 
     @State private var launchError: String?
+    @State private var isShowingSettings = false
+    @State private var logToView: URL?
+    @State private var icon: NSImage?
 
     private var isRunning: Bool {
         gameLauncher.isRunning(game.id)
@@ -24,8 +27,16 @@ struct GameLauncherView: View {
                     statusText
                 }
             } icon: {
-                Image(systemName: "gamecontroller")
-                    .foregroundStyle(isRunning ? .green : .secondary)
+                if let icon {
+                    Image(nsImage: icon)
+                        .resizable()
+                        .interpolation(.high)
+                        .frame(width: 20, height: 20)
+                        .clipShape(RoundedRectangle(cornerRadius: 4))
+                } else {
+                    Image(systemName: "gamecontroller")
+                        .foregroundStyle(isRunning ? .green : .secondary)
+                }
             }
 
             Spacer()
@@ -48,10 +59,9 @@ struct GameLauncherView: View {
             }
 
             Menu {
+                Button("Game Settings…") { isShowingSettings = true }
                 if let log = gameLauncher.lastLog[game.id] {
-                    Button("Show Last Log") {
-                        NSWorkspace.shared.activateFileViewerSelecting([log])
-                    }
+                    Button("View Last Log") { logToView = log }
                 }
                 Button("Reveal in Finder") {
                     let exe = bottleManager.driveCDirectory(for: bottle)
@@ -67,6 +77,29 @@ struct GameLauncherView: View {
             }
             .menuStyle(.borderlessButton)
             .frame(width: 28)
+        }
+        .contentShape(Rectangle())
+        .onTapGesture(count: 2) {
+            if !isRunning && bottle.status == .ready {
+                launch()
+            }
+        }
+        .sheet(isPresented: $isShowingSettings) {
+            GameSettingsView(game: game, bottle: bottle)
+        }
+        .sheet(item: $logToView) { log in
+            LogViewerView(logURL: log)
+        }
+        .task(id: game.executablePath) {
+            let exe = bottleManager.driveCDirectory(for: bottle)
+                .appending(path: game.executablePath)
+            let icoData = await Task.detached(priority: .utility) { () -> Data? in
+                guard let data = try? Data(contentsOf: exe, options: .alwaysMapped) else {
+                    return nil
+                }
+                return ExeIconExtractor.icoData(from: data)
+            }.value
+            icon = icoData.flatMap { NSImage(data: $0) }
         }
         .alert("Couldn't Launch Game", isPresented: .init(
             get: { launchError != nil },

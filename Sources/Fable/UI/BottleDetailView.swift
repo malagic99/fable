@@ -22,6 +22,7 @@ struct BottleDetailView: View {
     var body: some View {
         if let bottle = bottleManager.bottle(with: bottleID) {
             detailContent(for: bottle)
+                .onAppear { bottleManager.reconcileWindowsVersion(for: bottleID) }
         } else {
             // Deleted while visible (or stale link) — nothing to show.
             ContentUnavailableView("Bottle Not Found", systemImage: "questionmark.circle")

@@ -162,7 +162,7 @@ struct ImportGameView: View {
                 optionsContent
             }
         }
-        .frame(width: 440, height: 280)
+        .frame(width: 480, height: 330)
         .interactiveDismissDisabled(isCopying)
     }
 
@@ -176,15 +176,17 @@ struct ImportGameView: View {
                         .lineLimit(1)
                 }
 
-                Picker("Copy into bottle", selection: $mode) {
-                    Text("Entire folder “\(executable.deletingLastPathComponent().lastPathComponent)” (recommended)")
+                Picker("Add to bottle", selection: $mode) {
+                    Text("Copy folder “\(executable.deletingLastPathComponent().lastPathComponent)” (recommended)")
                         .tag(GameInstaller.ImportMode.wholeFolder)
-                    Text("Just \(executable.lastPathComponent)")
+                    Text("Link folder without copying — saves disk, game must stay where it is")
+                        .tag(GameInstaller.ImportMode.linkFolder)
+                    Text("Copy just \(executable.lastPathComponent)")
                         .tag(GameInstaller.ImportMode.executableOnly)
                 }
                 .pickerStyle(.radioGroup)
 
-                Text("The game is copied into C:\\Program Files inside this bottle. Most games need their whole folder.")
+                Text("Copying puts the game inside C:\\Program Files in this bottle; linking points there instead — ideal for big games already installed by another launcher.")
                     .font(.callout)
                     .foregroundStyle(.secondary)
 

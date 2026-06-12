@@ -58,9 +58,12 @@ final class GameLauncher: ObservableObject {
             baseOverrides: environment["WINEDLLOVERRIDES"] ?? "",
             logFile: log
         )) { _, new in new }
+
+        // Per-game environment overrides win over everything.
+        environment.merge(game.environment) { _, new in new }
         let process = try ProcessRunner.start(
             try wineManager.wineBinary(),
-            arguments: [executable.path],
+            arguments: [executable.path] + ArgumentTokenizer.tokenize(game.arguments),
             environment: environment,
             currentDirectory: executable.deletingLastPathComponent(),
             redirectingOutputTo: log

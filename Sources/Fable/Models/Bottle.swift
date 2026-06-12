@@ -23,11 +23,32 @@ struct Game: Codable, Identifiable, Hashable, Sendable {
     var name: String
     /// Path of the .exe relative to the bottle's C: drive.
     var executablePath: String
+    /// Extra command-line arguments, shell-style ("-windowed \"two words\"").
+    var arguments: String
+    /// Extra environment variables applied at launch.
+    var environment: [String: String]
 
-    init(id: UUID = UUID(), name: String, executablePath: String) {
+    init(
+        id: UUID = UUID(),
+        name: String,
+        executablePath: String,
+        arguments: String = "",
+        environment: [String: String] = [:]
+    ) {
         self.id = id
         self.name = name
         self.executablePath = executablePath
+        self.arguments = arguments
+        self.environment = environment
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        name = try container.decode(String.self, forKey: .name)
+        executablePath = try container.decode(String.self, forKey: .executablePath)
+        arguments = try container.decodeIfPresent(String.self, forKey: .arguments) ?? ""
+        environment = try container.decodeIfPresent([String: String].self, forKey: .environment) ?? [:]
     }
 }
 

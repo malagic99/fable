@@ -28,12 +28,15 @@ final class GameInstaller: ObservableObject {
     /// Log of the last installer run (debugging fallback).
     @Published private(set) var installerLog: URL?
 
-    /// How much to copy when importing an executable from outside the bottle.
+    /// How to bring an executable from outside the bottle into it.
     enum ImportMode {
         /// Just the .exe — fine for single-file programs.
         case executableOnly
         /// The .exe's entire enclosing folder — what most games need.
         case wholeFolder
+        /// Symlink the folder instead of copying — zero disk cost, ideal
+        /// for huge games already installed elsewhere (Heroic libraries).
+        case linkFolder
     }
 
     // MARK: Running Windows installers
@@ -145,33 +148,34 @@ final class GameInstaller: ObservableObject {
         case .executableOnly:
             source = executable
             destinationName = executable.deletingPathExtension().lastPathComponent
-        case .wholeFolder:
+        case .wholeFolder, .linkFolder:
             source = executable.deletingLastPathComponent()
             destinationName = source.lastPathComponent
         }
         let destination = programFiles.appending(path: destinationName, directoryHint: .isDirectory)
 
-        copyProgress = 0
-        defer { copyProgress = nil }
-        do {
-            try await DirectoryCopier.copy(source, to: destination) { [weak self] fraction in
-                Task { @MainActor in self?.copyProgress = fraction }
+        if mode == .linkFolder {
+            let fm = FileManager.default
+            try fm.createDirectory(at: programFiles, withIntermediateDirectories: true)
+            try? fm.removeItem(at: destination)
+            try fm.createSymbolicLink(at: destination, withDestinationURL: source)
+        } else {
+            copyProgress = 0
+            defer { copyProgress = nil }
+            do {
+                try await DirectoryCopier.copy(source, to: destination) { [weak self] fraction in
+                    Task { @MainActor in self?.copyProgress = fraction }
+                }
+            } catch is CancellationError {
+                try? FileManager.default.removeItem(at: destination)
+                throw CancellationError()
+            } catch {
+                try? FileManager.default.removeItem(at: destination)
+                throw GameInstallError.copyFailed(error.localizedDescription)
             }
-        } catch is CancellationError {
-            try? FileManager.default.removeItem(at: destination)
-            throw CancellationError()
-        } catch {
-            try? FileManager.default.removeItem(at: destination)
-            throw GameInstallError.copyFailed(error.localizedDescription)
         }
 
-        let installedExe: URL
-        switch mode {
-        case .executableOnly:
-            installedExe = destination.appending(path: executable.lastPathComponent)
-        case .wholeFolder:
-            installedExe = destination.appending(path: executable.lastPathComponent)
-        }
+        let installedExe = destination.appending(path: executable.lastPathComponent)
         return try registerGame(
             executable: installedExe,
             name: executable.deletingPathExtension().lastPathComponent,
