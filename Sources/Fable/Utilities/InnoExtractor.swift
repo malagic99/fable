@@ -114,6 +114,21 @@ enum InnoExtractor {
         try fm.moveItem(at: payload, to: destination)
     }
 
+    /// True when the installer packs its real payload with a custom
+    /// decompressor (ISDone/FreeArc repacks). innoextract can only pull
+    /// out the shell files — such installers must be *run*, not extracted.
+    static func usesCustomUnpacker(_ installer: URL) async -> Bool {
+        guard let tool = find() else { return false }
+        guard let result = try? await ProcessRunner.run(
+            tool,
+            arguments: ["--list", installer.path]
+        ), result.succeeded else { return false }
+        let listing = result.standardOutput.lowercased()
+        return listing.contains("isdone.dll")
+            || listing.contains("unarclib")
+            || listing.contains("unarc.dll")
+    }
+
     /// Companion data parts of a multi-file GOG backup
     /// (setup_game-1.bin, setup_game-2.bin, …) sitting next to the exe.
     /// innoextract picks them up automatically — this is for showing the

@@ -27,6 +27,7 @@ struct GOGInstallView: View {
 
     @State private var phase: Phase = .choice
     @State private var registrationError: String?
+    @State private var isRepack = false
 
     var body: some View {
         VStack(spacing: 16) {
@@ -45,10 +46,14 @@ struct GOGInstallView: View {
         switch phase {
         case .choice:
             SheetStatusView(
-                systemImage: "shippingbox.and.arrow.backward",
-                title: "GOG / Inno Setup Installer Detected",
+                systemImage: isRepack ? "exclamationmark.triangle" : "shippingbox.and.arrow.backward",
+                tint: isRepack ? .yellow : .accentColor,
+                title: isRepack ? "Custom-Packed Installer Detected" : "GOG / Inno Setup Installer Detected",
                 message: choiceMessage
             )
+            .task {
+                isRepack = await InnoExtractor.usesCustomUnpacker(installer)
+            }
 
         case .extracting:
             SheetStatusView(
@@ -115,13 +120,25 @@ struct GOGInstallView: View {
                 Button("Cancel", role: .cancel) { dismiss() }
                     .keyboardShortcut(.cancelAction)
                 Spacer()
-                Button("Run Installer in Wine") {
-                    dismiss()
-                    onRunInWine(installer)
-                }
-                Button("Extract Directly") { startExtraction() }
+                if isRepack {
+                    // Extraction can't unpack repacks — running is the
+                    // only viable path.
+                    Button("Extract Shell Only") { startExtraction() }
+                    Button("Run Installer") {
+                        dismiss()
+                        onRunInWine(installer)
+                    }
                     .buttonStyle(.borderedProminent)
                     .keyboardShortcut(.defaultAction)
+                } else {
+                    Button("Run Installer in Wine") {
+                        dismiss()
+                        onRunInWine(installer)
+                    }
+                    Button("Extract Directly") { startExtraction() }
+                        .buttonStyle(.borderedProminent)
+                        .keyboardShortcut(.defaultAction)
+                }
             }
         case .extracting, .installingRedists:
             HStack { Spacer() }
@@ -155,6 +172,9 @@ struct GOGInstallView: View {
     }
 
     private var choiceMessage: String {
+        if isRepack {
+            return "“\(installer.lastPathComponent)” packs its data with a custom decompressor (ISDone/FreeArc). Direct extraction can't unpack it — run the installer instead."
+        }
         var message = "“\(installer.lastPathComponent)” can be unpacked directly into the bottle — faster and more reliable than running the installer."
         let parts = InnoExtractor.companionParts(of: installer)
         if !parts.isEmpty {
