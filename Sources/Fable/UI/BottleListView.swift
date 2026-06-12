@@ -64,9 +64,18 @@ struct BottleCardView: View {
                 .frame(maxWidth: .infinity, alignment: .center)
                 .padding(.vertical, 8)
 
-            Text(bottle.name)
-                .font(.headline)
-                .lineLimit(1)
+            HStack(spacing: 6) {
+                Text(bottle.name)
+                    .font(.headline)
+                    .lineLimit(1)
+                if bottle.status == .provisioning {
+                    Text("Setting up")
+                        .font(.caption2)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(.yellow.opacity(0.25), in: Capsule())
+                }
+            }
 
             HStack {
                 Text(bottle.windowsVersion.displayName)

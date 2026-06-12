@@ -110,6 +110,14 @@ final class BottleManager: ObservableObject {
         bottles.first { $0.id == id }
     }
 
+    func setStatus(_ status: BottleStatus, for id: Bottle.ID) throws {
+        guard let index = bottles.firstIndex(where: { $0.id == id }) else {
+            throw BottleError.notFound
+        }
+        bottles[index].status = status
+        try save(bottles[index])
+    }
+
     private func save(_ bottle: Bottle) throws {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]

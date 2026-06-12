@@ -27,6 +27,16 @@ struct BottleDetailView: View {
             Section("Bottle") {
                 LabeledContent("Name", value: bottle.name)
                 LabeledContent("Windows Version", value: bottle.windowsVersion.displayName)
+                LabeledContent("Status") {
+                    switch bottle.status {
+                    case .ready:
+                        Label("Ready", systemImage: "checkmark.circle.fill")
+                            .foregroundStyle(.green)
+                    case .provisioning:
+                        Label("Setting up", systemImage: "clock")
+                            .foregroundStyle(.orange)
+                    }
+                }
                 LabeledContent("Created") {
                     Text(bottle.createdAt, format: .dateTime.day().month().year())
                 }

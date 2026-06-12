@@ -8,10 +8,12 @@ import Testing
         let catalog = try VersionCatalog.loadBundled()
 
         let wine = try #require(catalog.wine)
-        #expect(wine.version == "11.0")
+        #expect(wine.version == "11.0_1")
+        #expect(!wine.sha256.isEmpty, "Wine checksum must be pinned")
 
         let dxmt = try #require(catalog.dxmt)
         #expect(dxmt.version == "0.80")
+        #expect(!dxmt.sha256.isEmpty, "DXMT checksum must be pinned")
     }
 
     @Test

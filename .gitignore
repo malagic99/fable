@@ -1,5 +1,7 @@
 .build/
 Fable.app/
+*.tar.xz
+*.tar.gz
 .swiftpm/
 *.xcodeproj
 xcuserdata/

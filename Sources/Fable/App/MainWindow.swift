@@ -3,14 +3,30 @@ import SwiftUI
 @main
 struct FableApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
-    @StateObject private var appState = AppState()
-    @StateObject private var bottleManager = BottleManager()
+    @StateObject private var appState: AppState
+    @StateObject private var bottleManager: BottleManager
+    @StateObject private var componentManager: ComponentManager
+    @StateObject private var wineManager: WineManager
+
+    init() {
+        let appState = AppState()
+        let componentManager = ComponentManager()
+        _appState = StateObject(wrappedValue: appState)
+        _bottleManager = StateObject(wrappedValue: BottleManager())
+        _componentManager = StateObject(wrappedValue: componentManager)
+        _wineManager = StateObject(wrappedValue: WineManager(
+            componentManager: componentManager,
+            catalog: appState.versionCatalog
+        ))
+    }
 
     var body: some Scene {
         WindowGroup {
             MainWindow()
                 .environmentObject(appState)
                 .environmentObject(bottleManager)
+                .environmentObject(componentManager)
+                .environmentObject(wineManager)
         }
         .windowToolbarStyle(.unified)
         .commands {
