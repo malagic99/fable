@@ -7,7 +7,9 @@ struct MainContentView: View {
     var body: some View {
         switch appState.selectedSection {
         case .bottles:
-            BottlesPlaceholderView()
+            NavigationStack {
+                BottleListView()
+            }
         case .components:
             ComponentsPlaceholderView()
         case .settings:
@@ -17,18 +19,8 @@ struct MainContentView: View {
 }
 
 // MARK: - Section placeholders
-// Replaced by the real views as they land: BottleListView (Day 2),
-// ComponentsView (Day 6), SettingsView (Day 7).
-
-struct BottlesPlaceholderView: View {
-    var body: some View {
-        ContentUnavailableView(
-            "No Bottles Yet",
-            systemImage: "wineglass",
-            description: Text("Create a bottle to install and run Windows games.")
-        )
-    }
-}
+// Replaced by the real views as they land: ComponentsView (Day 6),
+// SettingsView (Day 7).
 
 struct ComponentsPlaceholderView: View {
     @EnvironmentObject private var appState: AppState

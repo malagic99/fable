@@ -4,11 +4,13 @@ import SwiftUI
 struct FableApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @StateObject private var appState = AppState()
+    @StateObject private var bottleManager = BottleManager()
 
     var body: some Scene {
         WindowGroup {
             MainWindow()
                 .environmentObject(appState)
+                .environmentObject(bottleManager)
         }
         .windowToolbarStyle(.unified)
         .commands {
