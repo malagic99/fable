@@ -9,6 +9,16 @@ import Testing
         guard InnoExtractor.find() != nil else { return }
         #expect(await !InnoExtractor.isInnoSetup(URL(filePath: "/bin/ls")))
     }
+
+    @Test
+    func redistClassification() {
+        #expect(RedistInstaller.classify(URL(filePath: "/x/oalinst.exe")) == .openAL)
+        #expect(RedistInstaller.classify(URL(filePath: "/x/vcredist_x86.exe")) == .vcRedist)
+        #expect(RedistInstaller.classify(URL(filePath: "/x/vc_redist.x64.exe")) == .vcRedist)
+        #expect(RedistInstaller.classify(URL(filePath: "/x/directx_Jun2010_redist.exe")) == .directX)
+        #expect(RedistInstaller.classify(URL(filePath: "/x/whatever.exe")) == .generic)
+        #expect(RedistInstaller.silentArguments(for: .vcRedist) == ["/q", "/norestart"])
+    }
 }
 
 /// End-to-end extraction against a real GOG installer. Runs only when

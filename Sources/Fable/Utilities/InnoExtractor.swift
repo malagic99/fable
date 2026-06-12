@@ -81,11 +81,30 @@ enum InnoExtractor {
             )
         }
 
-        // GOG layout: game files in app/, junk in tmp/. Other Inno
-        // installers may extract straight to the root.
+        // GOG layout: game files in app/, redistributables (OpenAL,
+        // VC++, DirectX) in tmp/. Other Inno installers may extract
+        // straight to the root.
         let appDir = staging.appending(path: "app", directoryHint: .isDirectory)
         let payload = fm.fileExists(atPath: appDir.path) ? appDir : staging
-        try? fm.removeItem(at: staging.appending(path: "tmp"))
+
+        // Keep bundled redist installers — games often need them (the
+        // real installer would have run these as post-install steps).
+        let redistSources = ["tmp", "commonappdata", "__redist"]
+            .map { staging.appending(path: $0, directoryHint: .isDirectory) }
+        var redists: [URL] = []
+        for dir in redistSources {
+            guard let files = try? fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil) else {
+                continue
+            }
+            redists += files.filter { $0.pathExtension.lowercased() == "exe" }
+        }
+        if !redists.isEmpty {
+            let redistDir = payload.appending(path: "_redist", directoryHint: .isDirectory)
+            try fm.createDirectory(at: redistDir, withIntermediateDirectories: true)
+            for redist in redists {
+                try? fm.moveItem(at: redist, to: redistDir.appending(path: redist.lastPathComponent))
+            }
+        }
 
         try? fm.removeItem(at: destination)
         try fm.createDirectory(
@@ -93,5 +112,16 @@ enum InnoExtractor {
             withIntermediateDirectories: true
         )
         try fm.moveItem(at: payload, to: destination)
+    }
+
+    /// Redist installers preserved from extraction, if any.
+    static func bundledRedists(in gameDirectory: URL) -> [URL] {
+        let redistDir = gameDirectory.appending(path: "_redist", directoryHint: .isDirectory)
+        let files = (try? FileManager.default.contentsOfDirectory(
+            at: redistDir, includingPropertiesForKeys: nil
+        )) ?? []
+        return files
+            .filter { $0.pathExtension.lowercased() == "exe" }
+            .sorted { $0.lastPathComponent < $1.lastPathComponent }
     }
 }

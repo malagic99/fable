@@ -10,13 +10,17 @@ struct GOGInstallView: View {
     let onRunInWine: (URL) -> Void
 
     @EnvironmentObject private var bottleManager: BottleManager
+    @EnvironmentObject private var wineManager: WineManager
     @Environment(\.dismiss) private var dismiss
 
     @StateObject private var gameInstaller = GameInstaller()
+    @StateObject private var redistInstaller = RedistInstaller()
 
     private enum Phase: Equatable {
         case choice
         case extracting
+        case redists(gameDir: URL, redists: [URL])
+        case installingRedists
         case done(URL)
         case failed(String)
     }
@@ -56,6 +60,35 @@ struct GOGInstallView: View {
             Text("Extracting…")
                 .font(.headline)
             Text("Unpacking the game into C:\\Program Files.")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+
+        case .redists(_, let redists):
+            Image(systemName: "puzzlepiece.extension")
+                .font(.system(size: 32))
+                .foregroundStyle(.tint)
+            Text("Bundled Dependencies Found")
+                .font(.headline)
+            Text("This game ships runtimes it expects to be installed:")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 4) {
+                ForEach(redists, id: \.absoluteString) { redist in
+                    Label(
+                        RedistInstaller.classify(redist) == .generic
+                            ? redist.lastPathComponent
+                            : RedistInstaller.classify(redist).displayName,
+                        systemImage: "shippingbox"
+                    )
+                    .font(.callout)
+                }
+            }
+
+        case .installingRedists:
+            ProgressView()
+            Text("Installing Dependencies…")
+                .font(.headline)
+            Text(redistInstaller.currentInstall ?? "")
                 .font(.callout)
                 .foregroundStyle(.secondary)
 
@@ -106,8 +139,19 @@ struct GOGInstallView: View {
                     .buttonStyle(.borderedProminent)
                     .keyboardShortcut(.defaultAction)
             }
-        case .extracting:
+        case .extracting, .installingRedists:
             HStack { Spacer() }
+        case .redists(let gameDir, let redists):
+            HStack {
+                Button("Skip") { phase = .done(gameDir) }
+                    .keyboardShortcut(.cancelAction)
+                Spacer()
+                Button("Install Dependencies") {
+                    installRedists(redists, thenContinueTo: gameDir)
+                }
+                .buttonStyle(.borderedProminent)
+                .keyboardShortcut(.defaultAction)
+            }
         case .done(let directory):
             HStack {
                 Button("Close") { dismiss() }
@@ -135,9 +179,32 @@ struct GOGInstallView: View {
                     bottle: bottle,
                     bottleManager: bottleManager
                 )
-                phase = .done(directory)
+                let redists = InnoExtractor.bundledRedists(in: directory)
+                phase = redists.isEmpty
+                    ? .done(directory)
+                    : .redists(gameDir: directory, redists: redists)
             } catch {
                 phase = .failed(error.localizedDescription)
+            }
+        }
+    }
+
+    private func installRedists(_ redists: [URL], thenContinueTo gameDir: URL) {
+        phase = .installingRedists
+        Task {
+            do {
+                try await redistInstaller.install(
+                    redists,
+                    bottle: bottle,
+                    bottleManager: bottleManager,
+                    wineManager: wineManager
+                )
+                phase = .done(gameDir)
+            } catch {
+                // The game is extracted and playable; dependencies can
+                // be retried later. Report but continue.
+                registrationError = "Some dependencies failed: \(error.localizedDescription)"
+                phase = .done(gameDir)
             }
         }
     }
