@@ -27,28 +27,21 @@ struct GameInstallerView: View {
 
             switch phase {
             case .running:
-                ProgressView()
-                Text("Installer Running")
-                    .font(.headline)
-                Text("Complete the “\(installerExe.lastPathComponent)” installer in its own window. Fable will continue when it finishes.")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal)
+                SheetStatusView(
+                    systemImage: nil,
+                    title: "Installer Running",
+                    message: "Complete the “\(installerExe.lastPathComponent)” installer in its own window. Fable will continue when it finishes."
+                )
 
             case .finished(let exitCode):
-                Image(systemName: exitCode == 0 ? "checkmark.circle.fill" : "exclamationmark.triangle")
-                    .font(.system(size: 32))
-                    .foregroundStyle(exitCode == 0 ? .green : .yellow)
-                Text(exitCode == 0 ? "Installer Finished" : "Installer Failed (exit code \(exitCode))")
-                    .font(.headline)
-                Text(exitCode == 0
-                    ? "Pick the installed game's .exe (usually in C:\\Program Files) to add it to this bottle."
-                    : "The installer crashed or was stopped before finishing. Check the log for details — and if this is a GOG offline installer, use Extract Directly instead.")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal)
+                SheetStatusView(
+                    systemImage: exitCode == 0 ? "checkmark.circle.fill" : "exclamationmark.triangle",
+                    tint: exitCode == 0 ? .green : .yellow,
+                    title: exitCode == 0 ? "Installer Finished" : "Installer Failed (exit code \(exitCode))",
+                    message: exitCode == 0
+                        ? "Pick the installed game's .exe (usually in C:\\Program Files) to add it to this bottle."
+                        : "The installer crashed or was stopped before finishing. Check the log for details — and if this is a GOG offline installer, use Extract Directly instead."
+                )
                 if let registrationError {
                     Text(registrationError)
                         .font(.callout)
@@ -58,16 +51,12 @@ struct GameInstallerView: View {
                 }
 
             case .failed(let message):
-                Image(systemName: "exclamationmark.triangle")
-                    .font(.system(size: 32))
-                    .foregroundStyle(.yellow)
-                Text("Couldn't Run Installer")
-                    .font(.headline)
-                Text(message)
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal)
+                SheetStatusView(
+                    systemImage: "exclamationmark.triangle",
+                    tint: .yellow,
+                    title: "Couldn't Run Installer",
+                    message: message
+                )
             }
 
             Spacer()
@@ -109,7 +98,7 @@ struct GameInstallerView: View {
             }
             .padding(16)
         }
-        .frame(width: 420, height: 240)
+        .frame(width: 440, height: 260)
         .interactiveDismissDisabled(phase == .running)
         .task { await runInstaller() }
     }
@@ -229,14 +218,14 @@ struct ImportGameView: View {
             Text("Copying into bottle…")
                 .font(.headline)
             Spacer()
-            HStack {
+            SheetActionBar {
                 Button("Cancel", role: .cancel) {
                     importTask?.cancel()
                 }
                 .keyboardShortcut(.cancelAction)
-                Spacer()
+            } trailing: {
+                EmptyView()
             }
-            .padding(16)
         }
     }
 

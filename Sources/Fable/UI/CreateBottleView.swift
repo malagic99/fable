@@ -102,12 +102,11 @@ struct CreateBottleView: View {
             case .installingWine:
                 wineInstallProgress
             case .creatingPrefix:
-                ProgressView()
-                Text("Creating Wine prefix…")
-                    .font(.headline)
-                Text("Setting up “\(trimmedName)” — this takes a minute.")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
+                SheetStatusView(
+                    systemImage: nil,
+                    title: "Creating Wine prefix…",
+                    message: "Setting up “\(trimmedName)” — this takes a minute."
+                )
             default:
                 EmptyView()
             }
@@ -160,26 +159,21 @@ struct CreateBottleView: View {
     private func failureContent(_ message: String) -> some View {
         VStack(spacing: 12) {
             Spacer()
-            Image(systemName: "exclamationmark.triangle")
-                .font(.system(size: 32))
-                .foregroundStyle(.yellow)
-            Text("Couldn't Create Bottle")
-                .font(.headline)
-            Text(message)
-                .font(.callout)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal)
+            SheetStatusView(
+                systemImage: "exclamationmark.triangle",
+                tint: .yellow,
+                title: "Couldn't Create Bottle",
+                message: message
+            )
             Spacer()
-            HStack {
+            SheetActionBar {
                 Button("Close", role: .cancel) { dismiss() }
                     .keyboardShortcut(.cancelAction)
-                Spacer()
+            } trailing: {
                 Button("Try Again") { phase = .form }
                     .buttonStyle(.borderedProminent)
                     .keyboardShortcut(.defaultAction)
             }
-            .padding(16)
         }
     }
 

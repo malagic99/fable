@@ -23,7 +23,7 @@ struct BottleListView: View {
                     LazyVGrid(columns: columns, spacing: 16) {
                         ForEach(bottleManager.bottles) { bottle in
                             NavigationLink(value: bottle.id) {
-                                BottleCardView(bottle: bottle)
+                                BottleCard(bottle: bottle)
                             }
                             .buttonStyle(.plain)
                         }
@@ -51,54 +51,3 @@ struct BottleListView: View {
     }
 }
 
-/// Compact bottle card for the grid. (Promoted to a richer reusable
-/// component during the Day 9 polish pass.)
-struct BottleCardView: View {
-    let bottle: Bottle
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Image(systemName: "wineglass")
-                .font(.system(size: 28))
-                .foregroundStyle(.tint)
-                .frame(maxWidth: .infinity, alignment: .center)
-                .padding(.vertical, 8)
-
-            HStack(spacing: 6) {
-                Text(bottle.name)
-                    .font(.headline)
-                    .lineLimit(1)
-                switch bottle.status {
-                case .provisioning:
-                    Text("Setting up")
-                        .font(.caption2)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(.yellow.opacity(0.25), in: Capsule())
-                case .broken:
-                    Text("Needs repair")
-                        .font(.caption2)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(.red.opacity(0.25), in: Capsule())
-                case .ready:
-                    EmptyView()
-                }
-            }
-
-            HStack {
-                Text(bottle.windowsVersion.displayName)
-                Spacer()
-                Text(bottle.createdAt, format: .dateTime.day().month())
-            }
-            .font(.caption)
-            .foregroundStyle(.secondary)
-        }
-        .padding(12)
-        .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 10))
-        .overlay(
-            RoundedRectangle(cornerRadius: 10)
-                .strokeBorder(.quaternary, lineWidth: 1)
-        )
-    }
-}

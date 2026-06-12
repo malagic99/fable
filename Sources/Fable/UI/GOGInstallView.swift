@@ -36,7 +36,7 @@ struct GOGInstallView: View {
             buttons
                 .padding(16)
         }
-        .frame(width: 460, height: 280)
+        .frame(width: 460, height: 320)
         .interactiveDismissDisabled(phase == .extracting)
     }
 
@@ -44,34 +44,25 @@ struct GOGInstallView: View {
     private var content: some View {
         switch phase {
         case .choice:
-            Image(systemName: "shippingbox.and.arrow.backward")
-                .font(.system(size: 32))
-                .foregroundStyle(.tint)
-            Text("GOG / Inno Setup Installer Detected")
-                .font(.headline)
-            Text("“\(installer.lastPathComponent)” can be unpacked directly into the bottle — faster and more reliable than running the installer, which crashes under Wine for older GOG releases.")
-                .font(.callout)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal)
+            SheetStatusView(
+                systemImage: "shippingbox.and.arrow.backward",
+                title: "GOG / Inno Setup Installer Detected",
+                message: "“\(installer.lastPathComponent)” can be unpacked directly into the bottle — faster and more reliable than running the installer, which crashes under Wine for older GOG releases."
+            )
 
         case .extracting:
-            ProgressView()
-            Text("Extracting…")
-                .font(.headline)
-            Text("Unpacking the game into C:\\Program Files.")
-                .font(.callout)
-                .foregroundStyle(.secondary)
+            SheetStatusView(
+                systemImage: nil,
+                title: "Extracting…",
+                message: "Unpacking the game into C:\\Program Files."
+            )
 
         case .redists(_, let redists):
-            Image(systemName: "puzzlepiece.extension")
-                .font(.system(size: 32))
-                .foregroundStyle(.tint)
-            Text("Bundled Dependencies Found")
-                .font(.headline)
-            Text("This game ships runtimes it expects to be installed:")
-                .font(.callout)
-                .foregroundStyle(.secondary)
+            SheetStatusView(
+                systemImage: "puzzlepiece.extension",
+                title: "Bundled Dependencies Found",
+                message: "This game ships runtimes it expects to be installed:"
+            )
             VStack(alignment: .leading, spacing: 4) {
                 ForEach(redists, id: \.absoluteString) { redist in
                     Label(
@@ -85,22 +76,19 @@ struct GOGInstallView: View {
             }
 
         case .installingRedists:
-            ProgressView()
-            Text("Installing Dependencies…")
-                .font(.headline)
-            Text(redistInstaller.currentInstall ?? "")
-                .font(.callout)
-                .foregroundStyle(.secondary)
+            SheetStatusView(
+                systemImage: nil,
+                title: "Installing Dependencies…",
+                message: redistInstaller.currentInstall
+            )
 
         case .done:
-            Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 32))
-                .foregroundStyle(.green)
-            Text("Extracted")
-                .font(.headline)
-            Text("Pick the game's .exe to add it to this bottle.")
-                .font(.callout)
-                .foregroundStyle(.secondary)
+            SheetStatusView(
+                systemImage: "checkmark.circle.fill",
+                tint: .green,
+                title: "Extracted",
+                message: "Pick the game's .exe to add it to this bottle."
+            )
             if let registrationError {
                 Text(registrationError)
                     .font(.callout)
@@ -110,16 +98,12 @@ struct GOGInstallView: View {
             }
 
         case .failed(let message):
-            Image(systemName: "exclamationmark.triangle")
-                .font(.system(size: 32))
-                .foregroundStyle(.yellow)
-            Text("Extraction Failed")
-                .font(.headline)
-            Text(message)
-                .font(.callout)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal)
+            SheetStatusView(
+                systemImage: "exclamationmark.triangle",
+                tint: .yellow,
+                title: "Extraction Failed",
+                message: message
+            )
         }
     }
 
