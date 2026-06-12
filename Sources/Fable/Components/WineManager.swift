@@ -75,6 +75,22 @@ final class WineManager: ObservableObject {
         ]
     }
 
+    /// Launches a Wine GUI tool (winecfg, regedit, taskmgr, …) in a
+    /// prefix without waiting for it.
+    @discardableResult
+    func openTool(_ tool: String, inPrefix prefix: URL) throws -> LaunchedProcess {
+        var env = environment(forPrefix: prefix)
+        env["WINEDEBUG"] = "fixme-all"
+        return try ProcessRunner.start(
+            try wineBinary(),
+            arguments: [tool],
+            environment: env,
+            redirectingOutputTo: AppPaths.logs.appending(
+                path: "tool-\(tool)-\(GameInstaller.timestamp()).log"
+            )
+        )
+    }
+
     /// Initializes a fresh Wine prefix and pins its Windows version.
     func createPrefix(at prefix: URL, windowsVersion: WindowsVersion) async throws {
         let wine = try wineBinary()

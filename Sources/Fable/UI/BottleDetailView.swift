@@ -58,6 +58,17 @@ struct BottleDetailView: View {
                         .controlSize(.small)
                     }
                 }
+                LabeledContent("Wine Tools") {
+                    HStack {
+                        Button("Wine Settings…") { openTool("winecfg") }
+                            .controlSize(.small)
+                            .help("Audio, graphics, drive mappings, Windows version (winecfg)")
+                        Button("Registry Editor…") { openTool("regedit") }
+                            .controlSize(.small)
+                            .help("Edit this bottle's Windows registry (regedit)")
+                    }
+                }
+                .disabled(bottle.status != .ready)
             }
 
             Section {
@@ -178,6 +189,18 @@ struct BottleDetailView: View {
             }
         } message: {
             Text("This permanently removes the bottle and everything installed in it.")
+        }
+    }
+
+    // MARK: Wine tools
+
+    private func openTool(_ tool: String) {
+        guard let bottle = bottleManager.bottle(with: bottleID) else { return }
+        do {
+            try wineManager.openTool(tool, inPrefix: bottleManager.prefixDirectory(for: bottle))
+            errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
         }
     }
 
