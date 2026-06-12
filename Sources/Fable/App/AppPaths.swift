@@ -24,8 +24,14 @@ enum AppPaths {
         applicationSupport.appending(path: "Downloads", directoryHint: .isDirectory)
     }
 
+    /// Per-launch Wine output logs (the debugging fallback when a game
+    /// won't start).
+    static var logs: URL {
+        applicationSupport.appending(path: "Logs", directoryHint: .isDirectory)
+    }
+
     static func ensureDirectoriesExist() throws {
-        for url in [applicationSupport, bottles, components, downloads] {
+        for url in [applicationSupport, bottles, components, downloads, logs] {
             try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
         }
     }

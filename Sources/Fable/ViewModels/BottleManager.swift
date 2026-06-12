@@ -110,6 +110,27 @@ final class BottleManager: ObservableObject {
         bottles.first { $0.id == id }
     }
 
+    /// The bottle's Windows C: drive on disk.
+    func driveCDirectory(for bottle: Bottle) -> URL {
+        prefixDirectory(for: bottle).appending(path: "drive_c", directoryHint: .isDirectory)
+    }
+
+    func addGame(_ game: Game, to id: Bottle.ID) throws {
+        guard let index = bottles.firstIndex(where: { $0.id == id }) else {
+            throw BottleError.notFound
+        }
+        bottles[index].games.append(game)
+        try save(bottles[index])
+    }
+
+    func removeGame(_ gameID: Game.ID, from id: Bottle.ID) throws {
+        guard let index = bottles.firstIndex(where: { $0.id == id }) else {
+            throw BottleError.notFound
+        }
+        bottles[index].games.removeAll { $0.id == gameID }
+        try save(bottles[index])
+    }
+
     func setStatus(_ status: BottleStatus, for id: Bottle.ID) throws {
         guard let index = bottles.firstIndex(where: { $0.id == id }) else {
             throw BottleError.notFound

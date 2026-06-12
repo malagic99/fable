@@ -11,6 +11,8 @@ struct BottleDetailView: View {
     @State private var renameText = ""
     @State private var isShowingDeleteConfirmation = false
     @State private var errorMessage: String?
+    @State private var installerExe: URL?
+    @State private var importExe: URL?
 
     var body: some View {
         if let bottle = bottleManager.bottle(with: bottleID) {
@@ -55,14 +57,27 @@ struct BottleDetailView: View {
                 }
             }
 
-            Section("Games") {
+            Section {
                 if bottle.games.isEmpty {
-                    Text("No games installed. Game installation arrives with Wine integration.")
+                    Text("No games yet. Run a Windows installer, or add a game's .exe directly.")
                         .foregroundStyle(.secondary)
                 } else {
                     ForEach(bottle.games) { game in
-                        Label(game.name, systemImage: "gamecontroller")
+                        GameLauncherView(game: game, bottle: bottle)
                     }
+                }
+            } header: {
+                HStack {
+                    Text("Games")
+                    Spacer()
+                    Button("Run Installer…") { pickInstaller(for: bottle) }
+                        .controlSize(.small)
+                        .disabled(bottle.status != .ready)
+                        .help("Run a Windows setup.exe inside this bottle")
+                    Button("Add Game…") { pickGame(for: bottle) }
+                        .controlSize(.small)
+                        .disabled(bottle.status != .ready)
+                        .help("Add a game's .exe to this bottle")
                 }
             }
 
@@ -106,6 +121,12 @@ struct BottleDetailView: View {
                 }
             }
         }
+        .sheet(item: $installerExe) { exe in
+            GameInstallerView(bottle: bottle, installerExe: exe)
+        }
+        .sheet(item: $importExe) { exe in
+            ImportGameView(bottle: bottle, executable: exe)
+        }
         .confirmationDialog(
             "Delete “\(bottle.name)”?",
             isPresented: $isShowingDeleteConfirmation
@@ -122,4 +143,37 @@ struct BottleDetailView: View {
             Text("This permanently removes the bottle and everything installed in it.")
         }
     }
+
+    // MARK: Game actions
+
+    private func pickInstaller(for bottle: Bottle) {
+        guard let exe = FilePicker.chooseExecutable(title: "Choose a Windows installer (.exe)") else {
+            return
+        }
+        installerExe = exe
+    }
+
+    private func pickGame(for bottle: Bottle) {
+        guard let exe = FilePicker.chooseExecutable(title: "Choose a game executable (.exe)") else {
+            return
+        }
+        // Already inside the bottle: register directly. Outside: offer to
+        // copy it in.
+        let driveC = bottleManager.driveCDirectory(for: bottle)
+        if GameInstaller.pathInDriveC(of: exe, driveC: driveC) != nil {
+            do {
+                try GameInstaller().registerGame(executable: exe, bottle: bottle, bottleManager: bottleManager)
+                errorMessage = nil
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+        } else {
+            importExe = exe
+        }
+    }
+}
+
+// Lets URL drive `.sheet(item:)` for the installer/import flows.
+extension URL: @retroactive Identifiable {
+    public var id: String { absoluteString }
 }

@@ -19,9 +19,89 @@ enum ProcessRunnerError: LocalizedError {
     }
 }
 
+/// A started, possibly long-lived process (a running game or installer).
+/// Output goes to a log file rather than memory.
+final class LaunchedProcess: @unchecked Sendable {
+    private let process: Process
+    private let exitCodes: AsyncStream<Int32>
+
+    fileprivate init(process: Process, exitCodes: AsyncStream<Int32>) {
+        self.process = process
+        self.exitCodes = exitCodes
+    }
+
+    var isRunning: Bool { process.isRunning }
+
+    func terminate() {
+        process.terminate()
+    }
+
+    /// Waits for the process to exit. Single consumer; the exit code is
+    /// buffered, so calling after exit returns immediately.
+    func waitForExit() async -> Int32 {
+        var code: Int32 = -1
+        for await value in exitCodes { code = value }
+        return code
+    }
+}
+
 /// Runs external executables (wine, wineserver, tar, …) asynchronously,
 /// capturing output. The workhorse behind WineManager and GameLauncher.
 enum ProcessRunner {
+    /// Starts a process without waiting for it, redirecting stdout/stderr
+    /// to `logFile` (created, parent directories included).
+    static func start(
+        _ executable: URL,
+        arguments: [String] = [],
+        environment: [String: String]? = nil,
+        currentDirectory: URL? = nil,
+        redirectingOutputTo logFile: URL? = nil
+    ) throws -> LaunchedProcess {
+        let process = Process()
+        process.executableURL = executable
+        process.arguments = arguments
+        if let environment {
+            process.environment = ProcessInfo.processInfo.environment
+                .merging(environment) { _, override in override }
+        }
+        if let currentDirectory {
+            process.currentDirectoryURL = currentDirectory
+        }
+
+        let logHandle: FileHandle? = try logFile.map { logFile in
+            try FileManager.default.createDirectory(
+                at: logFile.deletingLastPathComponent(),
+                withIntermediateDirectories: true
+            )
+            FileManager.default.createFile(atPath: logFile.path, contents: nil)
+            return try FileHandle(forWritingTo: logFile)
+        }
+        if let logHandle {
+            process.standardOutput = logHandle
+            process.standardError = logHandle
+        }
+
+        let exitCodes = AsyncStream<Int32> { continuation in
+            process.terminationHandler = { finished in
+                try? logHandle?.close()
+                continuation.yield(finished.terminationStatus)
+                continuation.finish()
+            }
+        }
+
+        do {
+            try process.run()
+        } catch {
+            try? logHandle?.close()
+            throw ProcessRunnerError.launchFailed(
+                executable: executable.lastPathComponent,
+                underlying: error.localizedDescription
+            )
+        }
+
+        return LaunchedProcess(process: process, exitCodes: exitCodes)
+    }
+
     static func run(
         _ executable: URL,
         arguments: [String] = [],

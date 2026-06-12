@@ -7,6 +7,7 @@ struct FableApp: App {
     @StateObject private var bottleManager: BottleManager
     @StateObject private var componentManager: ComponentManager
     @StateObject private var wineManager: WineManager
+    @StateObject private var gameLauncher = GameLauncher()
 
     init() {
         let appState = AppState()
@@ -27,6 +28,7 @@ struct FableApp: App {
                 .environmentObject(bottleManager)
                 .environmentObject(componentManager)
                 .environmentObject(wineManager)
+                .environmentObject(gameLauncher)
         }
         .windowToolbarStyle(.unified)
         .commands {
