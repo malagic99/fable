@@ -13,20 +13,7 @@ struct MainContentView: View {
         case .components:
             ComponentsView()
         case .settings:
-            SettingsPlaceholderView()
+            SettingsView()
         }
-    }
-}
-
-// MARK: - Section placeholders
-// Replaced by the real views as they land: SettingsView (Day 7).
-
-struct SettingsPlaceholderView: View {
-    var body: some View {
-        ContentUnavailableView(
-            "Settings",
-            systemImage: "gearshape",
-            description: Text("Global configuration arrives on Day 7.")
-        )
     }
 }

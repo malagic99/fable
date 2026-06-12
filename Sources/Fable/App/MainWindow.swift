@@ -11,6 +11,7 @@ struct FableApp: App {
     @StateObject private var updateManager: UpdateManager
     @StateObject private var gameLauncher = GameLauncher()
     @StateObject private var toastCenter = ToastCenter()
+    @StateObject private var settingsManager = SettingsManager()
 
     init() {
         let appState = AppState()
@@ -43,6 +44,7 @@ struct FableApp: App {
                 .environmentObject(updateManager)
                 .environmentObject(gameLauncher)
                 .environmentObject(toastCenter)
+                .environmentObject(settingsManager)
         }
         .windowToolbarStyle(.unified)
         .commands {

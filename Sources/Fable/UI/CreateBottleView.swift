@@ -6,6 +6,8 @@ struct CreateBottleView: View {
     @EnvironmentObject private var bottleManager: BottleManager
     @EnvironmentObject private var componentManager: ComponentManager
     @EnvironmentObject private var wineManager: WineManager
+    @EnvironmentObject private var dxmtManager: DXMTManager
+    @EnvironmentObject private var settingsManager: SettingsManager
     @Environment(\.dismiss) private var dismiss
 
     private enum Phase: Equatable {
@@ -42,6 +44,9 @@ struct CreateBottleView: View {
         }
         .frame(width: 400, height: 260)
         .interactiveDismissDisabled(isWorking)
+        .onAppear {
+            windowsVersion = settingsManager.settings.defaultWindowsVersion
+        }
     }
 
     // MARK: Form
@@ -200,6 +205,19 @@ struct CreateBottleView: View {
                     at: bottleManager.prefixDirectory(for: bottle),
                     windowsVersion: windowsVersion
                 )
+
+                // Apply global DXMT defaults to the fresh bottle.
+                let defaults = settingsManager.settings
+                if defaults.defaultDXMTEnabled {
+                    try await dxmtManager.ensureInstalled()
+                    try dxmtManager.enable(
+                        in: bottle, bottleManager: bottleManager, wineManager: wineManager
+                    )
+                    try bottleManager.setDXMT(
+                        enabled: true, config: defaults.defaultDXMTConfig, for: bottle.id
+                    )
+                }
+
                 try bottleManager.setStatus(.ready, for: bottle.id)
                 dismiss()
             } catch is CancellationError {
