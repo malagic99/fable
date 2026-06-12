@@ -5,6 +5,8 @@ struct BottleDetailView: View {
     let bottleID: Bottle.ID
 
     @EnvironmentObject private var bottleManager: BottleManager
+    @EnvironmentObject private var wineManager: WineManager
+    @EnvironmentObject private var dxmtManager: DXMTManager
     @Environment(\.dismiss) private var dismiss
 
     @State private var isShowingRename = false
@@ -81,6 +83,33 @@ struct BottleDetailView: View {
                 }
             }
 
+            Section("Graphics") {
+                Toggle(isOn: Binding(
+                    get: { bottle.dxmtEnabled },
+                    set: { setDXMT(enabled: $0, bottle: bottle) }
+                )) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("DirectX 11 via Metal (DXMT)")
+                        Text("Translates D3D11 to Metal for much better performance in most games.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .disabled(bottle.status != .ready)
+
+                if bottle.dxmtEnabled {
+                    Picker("Frame Rate Cap", selection: Binding(
+                        get: { bottle.dxmtConfig.maxFrameRate ?? 0 },
+                        set: { setFrameRateCap($0 == 0 ? nil : $0, bottle: bottle) }
+                    )) {
+                        Text("Uncapped").tag(0)
+                        Text("120 fps").tag(120)
+                        Text("60 fps").tag(60)
+                        Text("30 fps").tag(30)
+                    }
+                }
+            }
+
             if let errorMessage {
                 Section {
                     Text(errorMessage)
@@ -142,6 +171,34 @@ struct BottleDetailView: View {
         } message: {
             Text("This permanently removes the bottle and everything installed in it.")
         }
+    }
+
+    // MARK: DXMT
+
+    private func setDXMT(enabled: Bool, bottle: Bottle) {
+        Task {
+            do {
+                if enabled {
+                    try await dxmtManager.ensureInstalled()
+                    try dxmtManager.enable(
+                        in: bottle,
+                        bottleManager: bottleManager,
+                        wineManager: wineManager
+                    )
+                }
+                // Disabling keeps the DLLs but launches route around them.
+                try bottleManager.setDXMT(enabled: enabled, for: bottle.id)
+                errorMessage = nil
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+
+    private func setFrameRateCap(_ cap: Int?, bottle: Bottle) {
+        var config = bottle.dxmtConfig
+        config.maxFrameRate = cap
+        try? bottleManager.setDXMT(enabled: bottle.dxmtEnabled, config: config, for: bottle.id)
     }
 
     // MARK: Game actions

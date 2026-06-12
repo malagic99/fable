@@ -7,6 +7,7 @@ struct FableApp: App {
     @StateObject private var bottleManager: BottleManager
     @StateObject private var componentManager: ComponentManager
     @StateObject private var wineManager: WineManager
+    @StateObject private var dxmtManager: DXMTManager
     @StateObject private var gameLauncher = GameLauncher()
 
     init() {
@@ -19,6 +20,10 @@ struct FableApp: App {
             componentManager: componentManager,
             catalog: appState.versionCatalog
         ))
+        _dxmtManager = StateObject(wrappedValue: DXMTManager(
+            componentManager: componentManager,
+            catalog: appState.versionCatalog
+        ))
     }
 
     var body: some Scene {
@@ -28,6 +33,7 @@ struct FableApp: App {
                 .environmentObject(bottleManager)
                 .environmentObject(componentManager)
                 .environmentObject(wineManager)
+                .environmentObject(dxmtManager)
                 .environmentObject(gameLauncher)
         }
         .windowToolbarStyle(.unified)

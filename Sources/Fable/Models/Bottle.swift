@@ -48,6 +48,8 @@ struct Bottle: Codable, Identifiable, Hashable, Sendable {
     var createdAt: Date
     var status: BottleStatus
     var games: [Game]
+    var dxmtEnabled: Bool
+    var dxmtConfig: DXMTConfig
 
     init(
         id: UUID = UUID(),
@@ -55,7 +57,9 @@ struct Bottle: Codable, Identifiable, Hashable, Sendable {
         windowsVersion: WindowsVersion = .win10,
         createdAt: Date = .now,
         status: BottleStatus = .provisioning,
-        games: [Game] = []
+        games: [Game] = [],
+        dxmtEnabled: Bool = false,
+        dxmtConfig: DXMTConfig = DXMTConfig()
     ) {
         self.id = id
         self.name = name
@@ -63,6 +67,8 @@ struct Bottle: Codable, Identifiable, Hashable, Sendable {
         self.createdAt = createdAt
         self.status = status
         self.games = games
+        self.dxmtEnabled = dxmtEnabled
+        self.dxmtConfig = dxmtConfig
     }
 
     init(from decoder: Decoder) throws {
@@ -71,8 +77,10 @@ struct Bottle: Codable, Identifiable, Hashable, Sendable {
         name = try container.decode(String.self, forKey: .name)
         windowsVersion = try container.decode(WindowsVersion.self, forKey: .windowsVersion)
         createdAt = try container.decode(Date.self, forKey: .createdAt)
-        // Bottles written before status existed are usable as-is.
+        // Fields added after Day 2 get defaults so older bottles keep working.
         status = try container.decodeIfPresent(BottleStatus.self, forKey: .status) ?? .ready
         games = try container.decodeIfPresent([Game].self, forKey: .games) ?? []
+        dxmtEnabled = try container.decodeIfPresent(Bool.self, forKey: .dxmtEnabled) ?? false
+        dxmtConfig = try container.decodeIfPresent(DXMTConfig.self, forKey: .dxmtConfig) ?? DXMTConfig()
     }
 }

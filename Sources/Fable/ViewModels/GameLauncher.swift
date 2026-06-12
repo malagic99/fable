@@ -47,6 +47,15 @@ final class GameLauncher: ObservableObject {
         let log = AppPaths.logs.appending(
             path: "\(bottle.name)-\(game.name)-\(GameInstaller.timestamp()).log"
         )
+
+        // DXMT: route d3d11/dxgi to Metal when the bottle has it enabled,
+        // and explicitly back to Wine's builtins when it doesn't.
+        environment.merge(DXMTManager.launchEnvironment(
+            enabled: bottle.dxmtEnabled,
+            config: bottle.dxmtConfig,
+            baseOverrides: environment["WINEDLLOVERRIDES"] ?? "",
+            logFile: log
+        )) { _, new in new }
         let process = try ProcessRunner.start(
             try wineManager.wineBinary(),
             arguments: [executable.path],
