@@ -1,0 +1,16 @@
+{
+    "components": {
+        "wine": {
+            "name": "Wine",
+            "version": "11.0",
+            "url": "https://github.com/Gcenx/macOS_Wine_builds/releases/download/11.0/wine-stable-11.0-osx64.tar.xz",
+            "sha256": ""
+        },
+        "dxmt": {
+            "name": "DXMT",
+            "version": "0.80",
+            "url": "https://github.com/3Shain/dxmt/releases/download/v0.80/dxmt-v0.80.tar.gz",
+            "sha256": ""
+        }
+    }
+}
