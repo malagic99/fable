@@ -114,6 +114,24 @@ enum InnoExtractor {
         try fm.moveItem(at: payload, to: destination)
     }
 
+    /// Companion data parts of a multi-file GOG backup
+    /// (setup_game-1.bin, setup_game-2.bin, …) sitting next to the exe.
+    /// innoextract picks them up automatically — this is for showing the
+    /// user what was detected, and warning when parts look missing.
+    static func companionParts(of installer: URL) -> [URL] {
+        let base = installer.deletingPathExtension().lastPathComponent.lowercased()
+        let directory = installer.deletingLastPathComponent()
+        let siblings = (try? FileManager.default.contentsOfDirectory(
+            at: directory, includingPropertiesForKeys: nil
+        )) ?? []
+        return siblings
+            .filter {
+                $0.pathExtension.lowercased() == "bin"
+                    && $0.deletingPathExtension().lastPathComponent.lowercased().hasPrefix(base)
+            }
+            .sorted { $0.lastPathComponent < $1.lastPathComponent }
+    }
+
     /// Redist installers preserved from extraction, if any.
     static func bundledRedists(in gameDirectory: URL) -> [URL] {
         let redistDir = gameDirectory.appending(path: "_redist", directoryHint: .isDirectory)

@@ -31,6 +31,7 @@ struct GameInstallerView: View {
                     systemImage: nil,
                     title: "Installer Running",
                     message: "Complete the “\(installerExe.lastPathComponent)” installer in its own window. Fable will continue when it finishes."
+                        + (installer.compatibilityRuntimeName.map { " Running via \($0) for 32-bit compatibility." } ?? "")
                 )
 
             case .finished(let exitCode):
@@ -40,7 +41,7 @@ struct GameInstallerView: View {
                     title: exitCode == 0 ? "Installer Finished" : "Installer Failed (exit code \(exitCode))",
                     message: exitCode == 0
                         ? "Pick the installed game's .exe (usually in C:\\Program Files) to add it to this bottle."
-                        : "The installer crashed or was stopped before finishing. Check the log for details — and if this is a GOG offline installer, use Extract Directly instead."
+                        : failureAdvice
                 )
                 if let registrationError {
                     Text(registrationError)
@@ -101,6 +102,16 @@ struct GameInstallerView: View {
         .frame(width: 440, height: 260)
         .interactiveDismissDisabled(phase == .running)
         .task { await runInstaller() }
+    }
+
+    private var failureAdvice: String {
+        var advice = "The installer crashed or was stopped before finishing. Check the log for details."
+        if PEInfo.architecture(of: installerExe) == .pe32,
+           CompatibilityRuntime.discover() == nil {
+            advice += " This is a 32-bit installer, which can crash Wine — installing Heroic's Game Porting Toolkit (or CrossOver/Whisky) gives Fable a compatibility runtime that fixes most of these."
+        }
+        advice += " GOG offline installers can use Extract Directly instead."
+        return advice
     }
 
     private func runInstaller() async {

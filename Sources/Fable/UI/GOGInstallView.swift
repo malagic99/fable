@@ -47,7 +47,7 @@ struct GOGInstallView: View {
             SheetStatusView(
                 systemImage: "shippingbox.and.arrow.backward",
                 title: "GOG / Inno Setup Installer Detected",
-                message: "“\(installer.lastPathComponent)” can be unpacked directly into the bottle — faster and more reliable than running the installer, which crashes under Wine for older GOG releases."
+                message: choiceMessage
             )
 
         case .extracting:
@@ -152,6 +152,15 @@ struct GOGInstallView: View {
                     .keyboardShortcut(.cancelAction)
             }
         }
+    }
+
+    private var choiceMessage: String {
+        var message = "“\(installer.lastPathComponent)” can be unpacked directly into the bottle — faster and more reliable than running the installer."
+        let parts = InnoExtractor.companionParts(of: installer)
+        if !parts.isEmpty {
+            message += " Multi-part backup detected: \(parts.count) companion .bin file\(parts.count == 1 ? "" : "s") will be included."
+        }
+        return message
     }
 
     private func startExtraction() {

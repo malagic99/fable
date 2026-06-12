@@ -27,6 +27,9 @@ final class GameInstaller: ObservableObject {
     @Published private(set) var copyProgress: Double?
     /// Log of the last installer run (debugging fallback).
     @Published private(set) var installerLog: URL?
+    /// Name of the compatibility runtime used for the current installer
+    /// run, when one was (32-bit installers crash WoW64 Wine).
+    @Published private(set) var compatibilityRuntimeName: String?
 
     /// How to bring an executable from outside the bottle into it.
     enum ImportMode {
@@ -43,8 +46,13 @@ final class GameInstaller: ObservableObject {
 
     /// Runs an installer .exe under Wine and waits for it to finish.
     /// The installer shows its own windows; we babysit the process.
+    ///
+    /// 32-bit installers are routed through a discovered CrossOver-based
+    /// compatibility runtime when available — several InnoSetup-era
+    /// unpackers crash mainline Wine's WoW64 layer.
     func runInstaller(
         _ installerExe: URL,
+        arguments: [String] = [],
         bottle: Bottle,
         bottleManager: BottleManager,
         wineManager: WineManager
@@ -53,10 +61,17 @@ final class GameInstaller: ObservableObject {
         var environment = wineManager.environment(forPrefix: prefix)
         environment["WINEDEBUG"] = "fixme-all"
 
+        let compat: CompatibilityRuntime? =
+            PEInfo.architecture(of: installerExe) == .pe32
+                ? CompatibilityRuntime.discover()
+                : nil
+        let wine = try compat?.wineBinary ?? wineManager.wineBinary()
+        compatibilityRuntimeName = compat?.name
+
         let log = AppPaths.logs.appending(path: Self.logName("installer", bottle.name))
         let process = try ProcessRunner.start(
-            try wineManager.wineBinary(),
-            arguments: [installerExe.path],
+            wine,
+            arguments: [installerExe.path] + arguments,
             environment: environment,
             currentDirectory: installerExe.deletingLastPathComponent(),
             redirectingOutputTo: log
@@ -64,7 +79,19 @@ final class GameInstaller: ObservableObject {
         installerProcess = process
         installerLog = log
         defer { installerProcess = nil }
-        return await process.waitForExit()
+        let exitCode = await process.waitForExit()
+
+        // The compat runtime's wineserver must release the prefix before
+        // our main Wine touches it again (version-mismatched wineservers
+        // can't share a prefix).
+        if let compat {
+            _ = try? await ProcessRunner.run(
+                compat.wineserverBinary,
+                arguments: ["-w"],
+                environment: ["WINEPREFIX": prefix.path]
+            )
+        }
+        return exitCode
     }
 
     func cancelInstaller() {
