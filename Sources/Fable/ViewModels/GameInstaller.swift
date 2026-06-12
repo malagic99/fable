@@ -70,6 +70,24 @@ final class GameInstaller: ObservableObject {
         installerProcess?.terminate()
     }
 
+    // MARK: GOG / Inno Setup direct extraction
+
+    /// Unpacks a GOG offline installer straight into C:\Program Files,
+    /// bypassing Wine entirely. Returns the installed game directory.
+    func extractInnoInstaller(
+        _ installer: URL,
+        bottle: Bottle,
+        bottleManager: BottleManager
+    ) async throws -> URL {
+        let title = await InnoExtractor.gameTitle(of: installer)
+            ?? installer.deletingPathExtension().lastPathComponent
+        let destination = bottleManager.driveCDirectory(for: bottle)
+            .appending(path: "Program Files", directoryHint: .isDirectory)
+            .appending(path: title, directoryHint: .isDirectory)
+        try await InnoExtractor.extract(installer, to: destination)
+        return destination
+    }
+
     // MARK: Registering and importing games
 
     /// Path of `executable` relative to the bottle's C: drive, or nil if

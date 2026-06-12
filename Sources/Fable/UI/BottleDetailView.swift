@@ -15,6 +15,7 @@ struct BottleDetailView: View {
     @State private var errorMessage: String?
     @State private var installerExe: URL?
     @State private var importExe: URL?
+    @State private var gogInstallerExe: URL?
 
     var body: some View {
         if let bottle = bottleManager.bottle(with: bottleID) {
@@ -156,6 +157,11 @@ struct BottleDetailView: View {
         .sheet(item: $importExe) { exe in
             ImportGameView(bottle: bottle, executable: exe)
         }
+        .sheet(item: $gogInstallerExe) { exe in
+            GOGInstallView(bottle: bottle, installer: exe) { installer in
+                installerExe = installer
+            }
+        }
         .confirmationDialog(
             "Delete “\(bottle.name)”?",
             isPresented: $isShowingDeleteConfirmation
@@ -207,7 +213,15 @@ struct BottleDetailView: View {
         guard let exe = FilePicker.chooseExecutable(title: "Choose a Windows installer (.exe)") else {
             return
         }
-        installerExe = exe
+        // GOG/Inno Setup installers get the direct-extraction offer; old
+        // ones crash Wine's WoW64. Detection needs innoextract installed.
+        Task {
+            if await InnoExtractor.isInnoSetup(exe) {
+                gogInstallerExe = exe
+            } else {
+                installerExe = exe
+            }
+        }
     }
 
     private func pickGame(for bottle: Bottle) {

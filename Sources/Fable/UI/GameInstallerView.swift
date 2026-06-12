@@ -40,9 +40,11 @@ struct GameInstallerView: View {
                 Image(systemName: exitCode == 0 ? "checkmark.circle.fill" : "exclamationmark.triangle")
                     .font(.system(size: 32))
                     .foregroundStyle(exitCode == 0 ? .green : .yellow)
-                Text(exitCode == 0 ? "Installer Finished" : "Installer Exited (code \(exitCode))")
+                Text(exitCode == 0 ? "Installer Finished" : "Installer Failed (exit code \(exitCode))")
                     .font(.headline)
-                Text("Pick the installed game's .exe (usually in C:\\Program Files) to add it to this bottle.")
+                Text(exitCode == 0
+                    ? "Pick the installed game's .exe (usually in C:\\Program Files) to add it to this bottle."
+                    : "The installer crashed or was stopped before finishing. Check the log for details — and if this is a GOG offline installer, use Extract Directly instead.")
                     .font(.callout)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -77,7 +79,7 @@ struct GameInstallerView: View {
                         installer.cancelInstaller()
                     }
                     Spacer()
-                case .finished, .failed:
+                case .finished(let exitCode):
                     if let log = installer.installerLog {
                         Button("Show Log") {
                             NSWorkspace.shared.activateFileViewerSelecting([log])
@@ -86,11 +88,23 @@ struct GameInstallerView: View {
                     Spacer()
                     Button("Close") { dismiss() }
                         .keyboardShortcut(.cancelAction)
-                    if case .finished = phase {
+                    if exitCode == 0 {
                         Button("Add Installed Game…") { addInstalledGame() }
                             .buttonStyle(.borderedProminent)
                             .keyboardShortcut(.defaultAction)
+                    } else {
+                        // Some installers exit non-zero even on success.
+                        Button("Add Game Anyway…") { addInstalledGame() }
                     }
+                case .failed:
+                    if let log = installer.installerLog {
+                        Button("Show Log") {
+                            NSWorkspace.shared.activateFileViewerSelecting([log])
+                        }
+                    }
+                    Spacer()
+                    Button("Close") { dismiss() }
+                        .keyboardShortcut(.cancelAction)
                 }
             }
             .padding(16)

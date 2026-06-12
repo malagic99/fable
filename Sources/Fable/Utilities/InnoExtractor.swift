@@ -1,0 +1,97 @@
+import Foundation
+
+enum InnoExtractError: LocalizedError {
+    case toolMissing
+    case extractionFailed(String)
+
+    var errorDescription: String? {
+        switch self {
+        case .toolMissing:
+            "innoextract isn't installed. Install it with Homebrew: brew install innoextract"
+        case .extractionFailed(let detail):
+            "Couldn't extract the installer: \(detail)"
+        }
+    }
+}
+
+/// Unpacks Inno Setup installers (GOG offline backups) directly, without
+/// running them under Wine. Old GOG installers crash Wine's WoW64 layer,
+/// so direct extraction is the reliable path.
+enum InnoExtractor {
+    /// Locates innoextract: bundled with the app, or Homebrew/MacPorts.
+    static func find() -> URL? {
+        var candidates = [
+            URL(filePath: "/opt/homebrew/bin/innoextract"),
+            URL(filePath: "/usr/local/bin/innoextract"),
+            URL(filePath: "/opt/local/bin/innoextract"),
+        ]
+        if let bundled = Bundle.main.url(forAuxiliaryExecutable: "innoextract") {
+            candidates.insert(bundled, at: 0)
+        }
+        return candidates.first { FileManager.default.isExecutableFile(atPath: $0.path) }
+    }
+
+    /// True if the file is an Inno Setup installer innoextract can read.
+    static func isInnoSetup(_ installer: URL) async -> Bool {
+        guard let tool = find() else { return false }
+        let result = try? await ProcessRunner.run(
+            tool,
+            arguments: ["--info", "--silent", installer.path]
+        )
+        return result?.succeeded ?? false
+    }
+
+    /// The game title embedded in the installer ("System Shock 2"), if any.
+    static func gameTitle(of installer: URL) async -> String? {
+        guard let tool = find() else { return nil }
+        guard let result = try? await ProcessRunner.run(
+            tool,
+            arguments: ["--info", installer.path]
+        ), result.succeeded else { return nil }
+
+        // First line: Inspecting "System Shock 2" - setup data version 5.5.0
+        for line in result.standardOutput.split(separator: "\n") {
+            if let start = line.firstIndex(of: "\""),
+               let end = line[line.index(after: start)...].firstIndex(of: "\"") {
+                let title = String(line[line.index(after: start)..<end])
+                if !title.isEmpty { return title }
+            }
+        }
+        return nil
+    }
+
+    /// Extracts the installer into `destination`. GOG payloads put game
+    /// files under app/; that subfolder's contents become `destination`.
+    static func extract(_ installer: URL, to destination: URL) async throws {
+        guard let tool = find() else { throw InnoExtractError.toolMissing }
+        let fm = FileManager.default
+
+        let staging = destination.deletingLastPathComponent()
+            .appending(path: ".extracting-\(UUID().uuidString)", directoryHint: .isDirectory)
+        try fm.createDirectory(at: staging, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: staging) }
+
+        let result = try await ProcessRunner.run(
+            tool,
+            arguments: ["--extract", "--silent", "--output-dir", staging.path, installer.path]
+        )
+        guard result.succeeded else {
+            throw InnoExtractError.extractionFailed(
+                result.standardError.isEmpty ? "innoextract exited with \(result.exitCode)" : result.standardError
+            )
+        }
+
+        // GOG layout: game files in app/, junk in tmp/. Other Inno
+        // installers may extract straight to the root.
+        let appDir = staging.appending(path: "app", directoryHint: .isDirectory)
+        let payload = fm.fileExists(atPath: appDir.path) ? appDir : staging
+        try? fm.removeItem(at: staging.appending(path: "tmp"))
+
+        try? fm.removeItem(at: destination)
+        try fm.createDirectory(
+            at: destination.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+        try fm.moveItem(at: payload, to: destination)
+    }
+}
