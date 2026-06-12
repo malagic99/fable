@@ -36,6 +36,11 @@ struct FableApp: App {
     var body: some Scene {
         WindowGroup {
             MainWindow()
+                .onAppear {
+                    gameLauncher.onAbnormalExit = { [weak toastCenter] message in
+                        toastCenter?.error(message)
+                    }
+                }
                 .environmentObject(appState)
                 .environmentObject(bottleManager)
                 .environmentObject(componentManager)

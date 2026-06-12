@@ -76,26 +76,47 @@ final class ComponentManager: ObservableObject {
             let archive = downloadsDirectory.appending(path: component.url.lastPathComponent)
             defer { try? FileManager.default.removeItem(at: archive) }
 
-            states[id] = .downloading(DownloadProgress(bytesReceived: 0, totalBytes: nil))
-            try await DownloadManager.download(from: component.url, to: archive) { [weak self] progress in
-                Task { @MainActor in self?.states[id] = .downloading(progress) }
-            }
-
-            if !component.sha256.isEmpty {
-                states[id] = .verifying
-                let expected = component.sha256
-                try await Task.detached {
-                    try ChecksumVerifier.verify(archive, sha256: expected)
-                }.value
+            // A checksum mismatch means a corrupted download — one fresh
+            // attempt is worthwhile before giving up.
+            do {
+                try await downloadAndVerify(component, id: id, to: archive)
+            } catch is ChecksumError {
+                try? FileManager.default.removeItem(at: archive)
+                try await downloadAndVerify(component, id: id, to: archive)
             }
 
             states[id] = .extracting
             let installed = try await extract(archive, id: id, version: component.version)
             states[id] = .installed
             return installed
+        } catch is CancellationError {
+            states[id] = .notInstalled
+            throw CancellationError()
+        } catch let error as URLError where error.code == .cancelled {
+            states[id] = .notInstalled
+            throw CancellationError()
         } catch {
             states[id] = .failed(error.localizedDescription)
             throw error
+        }
+    }
+
+    private func downloadAndVerify(
+        _ component: VersionCatalog.Component,
+        id: String,
+        to archive: URL
+    ) async throws {
+        states[id] = .downloading(DownloadProgress(bytesReceived: 0, totalBytes: nil))
+        try await DownloadManager.download(from: component.url, to: archive) { [weak self] progress in
+            Task { @MainActor in self?.states[id] = .downloading(progress) }
+        }
+
+        if !component.sha256.isEmpty {
+            states[id] = .verifying
+            let expected = component.sha256
+            try await Task.detached {
+                try ChecksumVerifier.verify(archive, sha256: expected)
+            }.value
         }
     }
 

@@ -21,6 +21,10 @@ final class GameLauncher: ObservableObject {
     /// Wine log of each game's most recent run (debugging fallback).
     @Published private(set) var lastLog: [Game.ID: URL] = [:]
 
+    /// Hook for surfacing crashes after the user has navigated away
+    /// (wired to ToastCenter at app startup).
+    var onAbnormalExit: ((String) -> Void)?
+
     func isRunning(_ gameID: Game.ID) -> Bool {
         running[gameID] != nil
     }
@@ -44,9 +48,7 @@ final class GameLauncher: ObservableObject {
         // Keep real errors in the log without drowning it in fixmes.
         environment["WINEDEBUG"] = "fixme-all"
 
-        let log = AppPaths.logs.appending(
-            path: "\(bottle.name)-\(game.name)-\(GameInstaller.timestamp()).log"
-        )
+        let log = AppPaths.logs.appending(path: GameInstaller.logName(bottle.name, game.name))
 
         // DXMT: route d3d11/dxgi to Metal when the bottle has it enabled,
         // and explicitly back to Wine's builtins when it doesn't.
@@ -68,10 +70,15 @@ final class GameLauncher: ObservableObject {
         lastLog[game.id] = log
         lastExitCode[game.id] = nil
 
+        let gameName = game.name
         Task { [weak self] in
             let code = await process.waitForExit()
             self?.running[game.id] = nil
             self?.lastExitCode[game.id] = code
+            // SIGTERM (user pressed Stop) isn't a crash worth announcing.
+            if code != 0 && code != 15 {
+                self?.onAbnormalExit?("“\(gameName)” exited with code \(code) — check its log")
+            }
         }
     }
 

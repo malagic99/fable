@@ -23,12 +23,41 @@ enum DownloadError: LocalizedError {
 }
 
 /// Streams a URL to a local file, reporting progress. Cancellable via
-/// regular task cancellation.
+/// regular task cancellation. Transient network failures are retried
+/// with backoff.
 enum DownloadManager {
     static func download(
         from url: URL,
         to destination: URL,
+        retries: Int = 2,
         progress: @escaping @Sendable (DownloadProgress) -> Void = { _ in }
+    ) async throws {
+        var attempt = 0
+        while true {
+            do {
+                try await downloadOnce(from: url, to: destination, progress: progress)
+                return
+            } catch let error as URLError where attempt < retries && isTransient(error) {
+                attempt += 1
+                try await Task.sleep(for: .seconds(Double(attempt) * 2))
+            }
+        }
+    }
+
+    private static func isTransient(_ error: URLError) -> Bool {
+        switch error.code {
+        case .timedOut, .networkConnectionLost, .cannotConnectToHost,
+             .dnsLookupFailed, .resourceUnavailable, .notConnectedToInternet:
+            true
+        default:
+            false
+        }
+    }
+
+    private static func downloadOnce(
+        from url: URL,
+        to destination: URL,
+        progress: @escaping @Sendable (DownloadProgress) -> Void
     ) async throws {
         let (bytes, response) = try await URLSession.shared.bytes(from: url)
         if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {

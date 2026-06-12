@@ -7,6 +7,7 @@ struct BottleDetailView: View {
     @EnvironmentObject private var bottleManager: BottleManager
     @EnvironmentObject private var wineManager: WineManager
     @EnvironmentObject private var dxmtManager: DXMTManager
+    @EnvironmentObject private var toastCenter: ToastCenter
     @Environment(\.dismiss) private var dismiss
 
     @State private var isShowingRename = false
@@ -16,6 +17,7 @@ struct BottleDetailView: View {
     @State private var installerExe: URL?
     @State private var importExe: URL?
     @State private var gogInstallerExe: URL?
+    @State private var isRepairing = false
 
     var body: some View {
         if let bottle = bottleManager.bottle(with: bottleID) {
@@ -40,6 +42,17 @@ struct BottleDetailView: View {
                     case .provisioning:
                         Label("Setting up", systemImage: "clock")
                             .foregroundStyle(.orange)
+                    case .broken:
+                        HStack {
+                            Label("Setup was interrupted", systemImage: "exclamationmark.triangle.fill")
+                                .foregroundStyle(.orange)
+                            if isRepairing {
+                                ProgressView().controlSize(.small)
+                            } else {
+                                Button("Repair") { repair(bottle) }
+                                    .controlSize(.small)
+                            }
+                        }
                     }
                 }
                 LabeledContent("Created") {
@@ -189,6 +202,28 @@ struct BottleDetailView: View {
             }
         } message: {
             Text("This permanently removes the bottle and everything installed in it.")
+        }
+    }
+
+    // MARK: Repair
+
+    private func repair(_ bottle: Bottle) {
+        isRepairing = true
+        Task {
+            defer { isRepairing = false }
+            do {
+                try await wineManager.ensureWineInstalled()
+                // wineboot completes/repairs a partial prefix in place.
+                try await wineManager.createPrefix(
+                    at: bottleManager.prefixDirectory(for: bottle),
+                    windowsVersion: bottle.windowsVersion
+                )
+                try bottleManager.setStatus(.ready, for: bottle.id)
+                toastCenter.success("“\(bottle.name)” repaired")
+                errorMessage = nil
+            } catch {
+                errorMessage = error.localizedDescription
+            }
         }
     }
 

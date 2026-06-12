@@ -60,6 +60,13 @@ final class BottleManager: ObservableObject {
                 return try? JSONDecoder().decode(Bottle.self, from: data)
             }
             .sorted { $0.createdAt < $1.createdAt }
+
+        // A bottle still marked "provisioning" at load time was orphaned
+        // by an app quit mid-setup — surface it as repairable.
+        for index in bottles.indices where bottles[index].status == .provisioning {
+            bottles[index].status = .broken
+            try? save(bottles[index])
+        }
     }
 
     // MARK: Mutations

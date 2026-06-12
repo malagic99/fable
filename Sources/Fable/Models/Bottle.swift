@@ -37,6 +37,8 @@ enum BottleStatus: String, Codable, Sendable {
     case provisioning
     /// Prefix exists and is usable.
     case ready
+    /// Provisioning was interrupted (app quit mid-setup). Repairable.
+    case broken
 }
 
 /// A Wine prefix and its metadata. Stored on disk as

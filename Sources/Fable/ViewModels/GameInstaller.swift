@@ -50,9 +50,7 @@ final class GameInstaller: ObservableObject {
         var environment = wineManager.environment(forPrefix: prefix)
         environment["WINEDEBUG"] = "fixme-all"
 
-        let log = AppPaths.logs.appending(
-            path: "installer-\(bottle.name)-\(Self.timestamp()).log"
-        )
+        let log = AppPaths.logs.appending(path: Self.logName("installer", bottle.name))
         let process = try ProcessRunner.start(
             try wineManager.wineBinary(),
             arguments: [installerExe.path],
@@ -186,5 +184,15 @@ final class GameInstaller: ObservableObject {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyyMMdd-HHmmss"
         return formatter.string(from: .now)
+    }
+
+    /// Builds a safe log filename from user-controlled names (bottle and
+    /// game names may contain path separators).
+    nonisolated static func logName(_ parts: String...) -> String {
+        let sanitized = parts.map {
+            $0.components(separatedBy: CharacterSet(charactersIn: "/\\:"))
+                .joined(separator: "-")
+        }
+        return (sanitized + [timestamp()]).joined(separator: "-") + ".log"
     }
 }

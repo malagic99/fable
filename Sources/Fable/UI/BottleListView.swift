@@ -68,12 +68,21 @@ struct BottleCardView: View {
                 Text(bottle.name)
                     .font(.headline)
                     .lineLimit(1)
-                if bottle.status == .provisioning {
+                switch bottle.status {
+                case .provisioning:
                     Text("Setting up")
                         .font(.caption2)
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
                         .background(.yellow.opacity(0.25), in: Capsule())
+                case .broken:
+                    Text("Needs repair")
+                        .font(.caption2)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(.red.opacity(0.25), in: Capsule())
+                case .ready:
+                    EmptyView()
                 }
             }
 

@@ -85,9 +85,7 @@ final class WineManager: ObservableObject {
             try wineBinary(),
             arguments: [tool],
             environment: env,
-            redirectingOutputTo: AppPaths.logs.appending(
-                path: "tool-\(tool)-\(GameInstaller.timestamp()).log"
-            )
+            redirectingOutputTo: AppPaths.logs.appending(path: GameInstaller.logName("tool", tool))
         )
     }
 
