@@ -11,7 +11,7 @@ struct MainContentView: View {
                 BottleListView()
             }
         case .components:
-            ComponentsPlaceholderView()
+            ComponentsView()
         case .settings:
             SettingsPlaceholderView()
         }
@@ -19,22 +19,7 @@ struct MainContentView: View {
 }
 
 // MARK: - Section placeholders
-// Replaced by the real views as they land: ComponentsView (Day 6),
-// SettingsView (Day 7).
-
-struct ComponentsPlaceholderView: View {
-    @EnvironmentObject private var appState: AppState
-
-    var body: some View {
-        List {
-            Section("Pinned Versions") {
-                ForEach(appState.versionCatalog.components.sorted(by: { $0.key < $1.key }), id: \.key) { _, component in
-                    LabeledContent(component.name, value: component.version)
-                }
-            }
-        }
-    }
-}
+// Replaced by the real views as they land: SettingsView (Day 7).
 
 struct SettingsPlaceholderView: View {
     var body: some View {

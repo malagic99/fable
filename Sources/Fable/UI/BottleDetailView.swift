@@ -111,6 +111,8 @@ struct BottleDetailView: View {
                 }
             }
 
+            DependenciesSection(bottle: bottle)
+
             if let errorMessage {
                 Section {
                     Text(errorMessage)

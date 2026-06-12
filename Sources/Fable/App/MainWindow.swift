@@ -8,7 +8,9 @@ struct FableApp: App {
     @StateObject private var componentManager: ComponentManager
     @StateObject private var wineManager: WineManager
     @StateObject private var dxmtManager: DXMTManager
+    @StateObject private var updateManager: UpdateManager
     @StateObject private var gameLauncher = GameLauncher()
+    @StateObject private var toastCenter = ToastCenter()
 
     init() {
         let appState = AppState()
@@ -24,6 +26,10 @@ struct FableApp: App {
             componentManager: componentManager,
             catalog: appState.versionCatalog
         ))
+        _updateManager = StateObject(wrappedValue: UpdateManager(
+            componentManager: componentManager,
+            catalog: appState.versionCatalog
+        ))
     }
 
     var body: some Scene {
@@ -34,7 +40,9 @@ struct FableApp: App {
                 .environmentObject(componentManager)
                 .environmentObject(wineManager)
                 .environmentObject(dxmtManager)
+                .environmentObject(updateManager)
                 .environmentObject(gameLauncher)
+                .environmentObject(toastCenter)
         }
         .windowToolbarStyle(.unified)
         .commands {
@@ -53,6 +61,7 @@ struct MainWindow: View {
         } detail: {
             MainContentView()
         }
+        .toastOverlay()
         .frame(minWidth: 800, minHeight: 520)
         .navigationTitle(appState.selectedSection.title)
     }
