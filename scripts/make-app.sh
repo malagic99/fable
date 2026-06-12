@@ -21,6 +21,9 @@ cp Resources/Fable.icns "$APP/Contents/Resources/Fable.icns"
 # via Bundle.main.resourceURL when placed in Contents/Resources.
 cp -R "$RESOURCE_BUNDLE" "$APP/Contents/Resources/"
 
+# Embed innoextract for GOG installer extraction (no-op if not installed).
+"$(dirname "$0")/bundle-innoextract.sh" "$APP"
+
 # Ad-hoc signature so macOS will launch it locally without a developer cert.
 codesign --force --sign - "$APP"
 
