@@ -16,6 +16,7 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 
 cp "$BIN" "$APP/Contents/MacOS/Fable"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
+cp Resources/Fable.icns "$APP/Contents/Resources/Fable.icns"
 # SwiftPM resource bundle (versions.json etc.) — Bundle.module finds it
 # via Bundle.main.resourceURL when placed in Contents/Resources.
 cp -R "$RESOURCE_BUNDLE" "$APP/Contents/Resources/"
