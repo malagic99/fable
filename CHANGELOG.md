@@ -1,5 +1,68 @@
 # Changelog
 
+## v0.3.0 — 2026-06-13
+
+First-launch experience + foundations for bottle export/import +
+critical localization fix. Test build cut off `dev` HEAD so users can
+exercise the new wizard + Steam install flow in the real world.
+
+### Headline
+
+- **First-launch wizard.** Four-step flow on first open: Welcome →
+  Where are your games? (Steam / Heroic-GOG-Epic / Manual) → Create
+  your first bottle (pre-fills the template based on your source) →
+  You're all set. Localized in English + Spanish; re-runnable from
+  Settings → About.
+- **CrossOver wins for 32-bit installers** by default now. The
+  `CompatibilityRuntime.discover()` order was backwards in v0.2.0 —
+  preferred Fable's bundled GPTK (wine 7.7 base, no WoW64 patches)
+  over CrossOver (which has years of macOS-specific patches). Reordered:
+  CrossOver → WhiskyWine → Heroic GPTK → Fable GPTK. Substantially
+  improves the success rate on ISDone/FreeArc-packed installers.
+- **Localization actually works now.** SwiftUI's `Text("foo")` /
+  `Label("foo", systemImage:)` / `Button("foo", action:)` auto-resolve
+  via `Bundle.main`, but v0.2.0 only put the .strings files in the
+  SwiftPM resource bundle — every key rendered raw (you'd see
+  "sidebar.bottles" instead of "Bottles"). `make-app.sh` now mirrors
+  `.lproj` dirs into the app's main Resources and stamps
+  CFBundleLocalizations. Affects every translated string in the app.
+
+### Foundations
+
+- **`BottleArchive` utility** — packs a bottle + prefix + manifest
+  into a tar+zstd `.fbottle` archive; `inspect()` reads just the
+  manifest; `unpack()` validates schema version and prefix SHA-256.
+  No UI yet — that lands in v0.3.1 (export button) and v0.3.2
+  (drop-to-import). Use case: install in CrossOver where WoW64 works,
+  export, import into Fable for everyday play.
+- **Roadmap docs** — `docs/roadmap-tier-1-3.md` (Days 21–58 day-by-day,
+  three planned releases v0.3 → v0.5) and `docs/roadmap-tier-4-plus.md`
+  (gate-driven stages A–F up to v1.0.0). Both include a model-swap
+  protocol so session changes don't lose context.
+
+### Bug fixes
+
+- Onboarding **Done step never showed** — `advance()` to `.done`
+  flipped `hasCompleted`, which dismissed the sheet before the user
+  saw "You're all set". Now only the Start Playing button completes
+  the flow.
+- Runtime-built `LocalizedStringKey("foo.\(x)")` strings rendered raw
+  (only literal-built keys auto-resolved). Routed through `L10n.string()`
+  for the source-picker cards specifically.
+
+### Tests
+
+129 tests across 39 suites, all passing.
+
+### Known limitations
+
+- BottleArchive is utility-only; no Export/Import UI yet (Day 23/24).
+- Update flow still points users at the release page — no in-place
+  install until an Apple Developer ID lands.
+- Apple GPTK fallback (when no CrossOver installed) still hits the
+  WoW64 bug on certain installer classes — a Wine-upstream issue, not
+  fixable from Fable.
+
 ## v0.2.0 — 2026-06-13
 
 The "post-sprint roadmap" release. Closes items 7–15 of the original
