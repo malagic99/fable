@@ -25,7 +25,7 @@ final class AppUpdateChecker: ObservableObject {
     /// a newer one ships. Backed by UserDefaults so it survives relaunch.
     @AppStorage("appUpdateSkippedVersion") private var skippedVersion: String = ""
 
-    static let repo = "markoalagic/fable"
+    static let repo = "malagic99/fable"
 
     /// `CFBundleShortVersionString`. Falls back to "0" so the comparator
     /// always treats released builds as newer in dev builds.
