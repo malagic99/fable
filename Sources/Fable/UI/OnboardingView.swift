@@ -149,9 +149,9 @@ private struct SourceCard: View {
                     .foregroundStyle(.tint)
                     .frame(width: 32)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(source.titleKey)
+                    Text(verbatim: source.title)
                         .font(.headline)
-                    Text(source.subtitleKey)
+                    Text(verbatim: source.subtitle)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -272,17 +272,11 @@ private struct DoneStep: View {
                 Spacer()
                 Button("onboarding.done.start") {
                     onboardingState.hasCompleted = true
-                    dismiss()
                 }
                 .buttonStyle(.borderedProminent)
                 .keyboardShortcut(.defaultAction)
             }
             .padding(24)
-        }
-        .onAppear {
-            // Belt + suspenders — advance() set this, but ensure it's
-            // committed even if the user lands here some other way.
-            onboardingState.hasCompleted = true
         }
     }
 }

@@ -47,12 +47,20 @@ import Testing
     }
 
     @Test
-    func reachingDoneMarksCompleted() {
+    func reachingDoneDoesNotAutoComplete() {
+        // Bug from the first build: advance() to .done flipped
+        // hasCompleted, which dismissed the sheet before the user saw
+        // the "You're all set" confirmation. The Start Playing button
+        // is now the sole place that completes the flow.
         let state = freshState()
         #expect(!state.hasCompleted)
         state.advance(); state.advance(); state.advance()
         #expect(state.currentStep == .done)
-        #expect(state.hasCompleted)
+        #expect(!state.hasCompleted, "Reaching .done must not auto-complete")
+        #expect(state.isShowingWizard, "Wizard must remain visible on .done")
+
+        // Simulate the Start Playing button.
+        state.hasCompleted = true
         #expect(!state.isShowingWizard)
     }
 
@@ -79,10 +87,10 @@ import Testing
     func resetReturnsToInitialState() {
         let state = freshState()
         state.source = .heroic
-        state.advance(); state.advance()
-        #expect(state.hasCompleted == false)
-        state.advance()
-        #expect(state.hasCompleted == true)
+        state.advance(); state.advance(); state.advance()
+        #expect(state.currentStep == .done)
+        state.hasCompleted = true  // simulate Start Playing
+        #expect(!state.isShowingWizard)
 
         state.reset()
         #expect(state.currentStep == .welcome)

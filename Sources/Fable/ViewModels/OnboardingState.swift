@@ -23,15 +23,12 @@ final class OnboardingState: ObservableObject {
 
         var id: String { rawValue }
 
-        /// LocalizedStringKey used to render the card title.
-        var titleKey: LocalizedStringKey {
-            LocalizedStringKey("onboarding.source.\(rawValue).title")
-        }
-
-        /// LocalizedStringKey for the subtitle / description.
-        var subtitleKey: LocalizedStringKey {
-            LocalizedStringKey("onboarding.source.\(rawValue).subtitle")
-        }
+        /// Resolved title for the card. Goes through L10n (Bundle.module)
+        /// rather than LocalizedStringKey — SwiftUI's Text(LocalizedStringKey)
+        /// only auto-resolves string LITERALS reliably; a runtime-built
+        /// key like "onboarding.source.\(rawValue).title" renders raw.
+        var title: String { L10n.string("onboarding.source.\(rawValue).title") }
+        var subtitle: String { L10n.string("onboarding.source.\(rawValue).subtitle") }
 
         var systemImage: String {
             switch self {
@@ -76,9 +73,11 @@ final class OnboardingState: ObservableObject {
     func advance() {
         guard let next = Step(rawValue: currentStep.rawValue + 1) else { return }
         currentStep = next
-        if next == .done {
-            hasCompleted = true
-        }
+        // NOTE: do NOT flip hasCompleted here. The sheet's isShowingWizard
+        // binding watches hasCompleted, so flipping it on entry to .done
+        // would dismiss the sheet before the user ever sees the "You're
+        // all set" confirmation. DoneStep's "Start Playing" button is
+        // the only place that completes the flow.
     }
 
     func goBack() {
