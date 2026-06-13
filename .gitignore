@@ -12,6 +12,3 @@ Fable-*.zip
 *.pdf
 *.xlsx
 
-# Game artifacts MUST NOT be committed (the v0.3.0 history rewrite was caused by this)
-Outlast.zip
-*.iso
