@@ -7,6 +7,7 @@ struct BottleDetailView: View {
     @EnvironmentObject private var bottleManager: BottleManager
     @EnvironmentObject private var wineManager: WineManager
     @EnvironmentObject private var dxmtManager: DXMTManager
+    @EnvironmentObject private var gptkManager: GPTKManager
     @EnvironmentObject private var toastCenter: ToastCenter
     @Environment(\.dismiss) private var dismiss
 
@@ -109,21 +110,18 @@ struct BottleDetailView: View {
                 }
             }
 
-            Section("Graphics") {
-                Toggle(isOn: Binding(
-                    get: { bottle.dxmtEnabled },
-                    set: { setDXMT(enabled: $0, bottle: bottle) }
+            Section {
+                Picker("Backend", selection: Binding(
+                    get: { bottle.graphicsBackend },
+                    set: { setGraphicsBackend($0, bottle: bottle) }
                 )) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("DirectX 11 via Metal (DXMT)")
-                        Text("Translates D3D11 to Metal for much better performance in most games.")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                    ForEach(GraphicsBackend.allCases) { backend in
+                        Text(backend.displayName).tag(backend)
                     }
                 }
                 .disabled(bottle.status != .ready)
 
-                if bottle.dxmtEnabled {
+                if bottle.graphicsBackend == .dxmt {
                     Picker("Frame Rate Cap", selection: Binding(
                         get: { bottle.dxmtConfig.maxFrameRate ?? 0 },
                         set: { setFrameRateCap($0 == 0 ? nil : $0, bottle: bottle) }
@@ -134,6 +132,12 @@ struct BottleDetailView: View {
                         Text("30 fps").tag(30)
                     }
                 }
+            } header: {
+                Text("Graphics")
+            } footer: {
+                Text(graphicsFooter(for: bottle.graphicsBackend))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
 
             DependenciesSection(bottle: bottle)
@@ -240,21 +244,37 @@ struct BottleDetailView: View {
         }
     }
 
-    // MARK: DXMT
+    // MARK: Graphics
 
-    private func setDXMT(enabled: Bool, bottle: Bottle) {
+    private func graphicsFooter(for backend: GraphicsBackend) -> String {
+        switch backend {
+        case .off:
+            "Best for D3D9-era games. DirectX renders through Wine's built-in path."
+        case .dxmt:
+            "Best for DirectX 11/10 games. D3D12-only games need Game Porting Toolkit."
+        case .gptk:
+            "Runs games on Apple's Game Porting Toolkit Wine with D3DMetal (D3D9–12). Downloads ~240 MB on first use."
+        }
+    }
+
+    private func setGraphicsBackend(_ backend: GraphicsBackend, bottle: Bottle) {
         Task {
             do {
-                if enabled {
+                switch backend {
+                case .dxmt:
                     try await dxmtManager.ensureInstalled()
                     try dxmtManager.enable(
                         in: bottle,
                         bottleManager: bottleManager,
                         wineManager: wineManager
                     )
+                case .gptk:
+                    try await gptkManager.ensureInstalled()
+                case .off:
+                    // Launches route around any installed DLLs.
+                    break
                 }
-                // Disabling keeps the DLLs but launches route around them.
-                try bottleManager.setDXMT(enabled: enabled, for: bottle.id)
+                try bottleManager.setGraphics(backend: backend, for: bottle.id)
                 errorMessage = nil
             } catch {
                 errorMessage = error.localizedDescription
@@ -265,7 +285,7 @@ struct BottleDetailView: View {
     private func setFrameRateCap(_ cap: Int?, bottle: Bottle) {
         var config = bottle.dxmtConfig
         config.maxFrameRate = cap
-        try? bottleManager.setDXMT(enabled: bottle.dxmtEnabled, config: config, for: bottle.id)
+        try? bottleManager.setGraphics(backend: bottle.graphicsBackend, config: config, for: bottle.id)
     }
 
     // MARK: Game actions

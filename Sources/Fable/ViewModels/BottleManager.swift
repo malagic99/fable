@@ -148,11 +148,11 @@ final class BottleManager: ObservableObject {
         try save(bottles[index])
     }
 
-    func setDXMT(enabled: Bool, config: DXMTConfig? = nil, for id: Bottle.ID) throws {
+    func setGraphics(backend: GraphicsBackend, config: DXMTConfig? = nil, for id: Bottle.ID) throws {
         guard let index = bottles.firstIndex(where: { $0.id == id }) else {
             throw BottleError.notFound
         }
-        bottles[index].dxmtEnabled = enabled
+        bottles[index].graphicsBackend = backend
         if let config {
             bottles[index].dxmtConfig = config
         }

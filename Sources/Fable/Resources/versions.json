@@ -6,6 +6,12 @@
             "url": "https://github.com/Gcenx/macOS_Wine_builds/releases/download/11.0_1/wine-stable-11.0_1-osx64.tar.xz",
             "sha256": "b50dc50ec7f41d58b115a6b685d4d1315ba3c797bd3aa0f49213f2703cb82388"
         },
+        "gptk": {
+            "name": "Game Porting Toolkit",
+            "version": "3.0-3",
+            "url": "https://github.com/Gcenx/game-porting-toolkit/releases/download/Game-Porting-Toolkit-3.0-3/game-porting-toolkit-3.0-3.tar.xz",
+            "sha256": "d377683937340f914823dbb2e1252b329cbf834ff58907d0293db8cebf0e392e"
+        },
         "dxmt": {
             "name": "DXMT",
             "version": "0.80",

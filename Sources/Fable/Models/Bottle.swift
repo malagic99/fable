@@ -52,6 +52,27 @@ struct Game: Codable, Identifiable, Hashable, Sendable {
     }
 }
 
+/// Which translation layer renders a bottle's games.
+enum GraphicsBackend: String, Codable, CaseIterable, Identifiable, Sendable {
+    /// Wine's built-in rendering (D3D9-era games, safest).
+    case off
+    /// DXMT: D3D11/10 → Metal.
+    case dxmt
+    /// Game Porting Toolkit: D3D9–12 → Metal via Apple's D3DMetal,
+    /// running on the GPTK Wine.
+    case gptk
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .off: "Wine built-in (D3D9 era)"
+        case .dxmt: "DXMT — DirectX 11 via Metal"
+        case .gptk: "Game Porting Toolkit — DirectX 12 via Metal"
+        }
+    }
+}
+
 /// Lifecycle of a bottle's Wine prefix.
 enum BottleStatus: String, Codable, Sendable {
     /// Created, but Wine prefix initialization hasn't finished.
@@ -71,7 +92,7 @@ struct Bottle: Codable, Identifiable, Hashable, Sendable {
     var createdAt: Date
     var status: BottleStatus
     var games: [Game]
-    var dxmtEnabled: Bool
+    var graphicsBackend: GraphicsBackend
     var dxmtConfig: DXMTConfig
 
     init(
@@ -81,7 +102,7 @@ struct Bottle: Codable, Identifiable, Hashable, Sendable {
         createdAt: Date = .now,
         status: BottleStatus = .provisioning,
         games: [Game] = [],
-        dxmtEnabled: Bool = false,
+        graphicsBackend: GraphicsBackend = .off,
         dxmtConfig: DXMTConfig = DXMTConfig()
     ) {
         self.id = id
@@ -90,8 +111,12 @@ struct Bottle: Codable, Identifiable, Hashable, Sendable {
         self.createdAt = createdAt
         self.status = status
         self.games = games
-        self.dxmtEnabled = dxmtEnabled
+        self.graphicsBackend = graphicsBackend
         self.dxmtConfig = dxmtConfig
+    }
+
+    private enum LegacyKeys: String, CodingKey {
+        case dxmtEnabled
     }
 
     init(from decoder: Decoder) throws {
@@ -103,7 +128,14 @@ struct Bottle: Codable, Identifiable, Hashable, Sendable {
         // Fields added after Day 2 get defaults so older bottles keep working.
         status = try container.decodeIfPresent(BottleStatus.self, forKey: .status) ?? .ready
         games = try container.decodeIfPresent([Game].self, forKey: .games) ?? []
-        dxmtEnabled = try container.decodeIfPresent(Bool.self, forKey: .dxmtEnabled) ?? false
+        if let backend = try container.decodeIfPresent(GraphicsBackend.self, forKey: .graphicsBackend) {
+            graphicsBackend = backend
+        } else {
+            // Pre-GPTK bottles stored a DXMT boolean.
+            let legacy = try decoder.container(keyedBy: LegacyKeys.self)
+            let dxmtEnabled = try legacy.decodeIfPresent(Bool.self, forKey: .dxmtEnabled) ?? false
+            graphicsBackend = dxmtEnabled ? .dxmt : .off
+        }
         dxmtConfig = try container.decodeIfPresent(DXMTConfig.self, forKey: .dxmtConfig) ?? DXMTConfig()
     }
 }

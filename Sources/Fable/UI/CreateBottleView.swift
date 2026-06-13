@@ -207,8 +207,8 @@ struct CreateBottleView: View {
                     try dxmtManager.enable(
                         in: bottle, bottleManager: bottleManager, wineManager: wineManager
                     )
-                    try bottleManager.setDXMT(
-                        enabled: true, config: defaults.defaultDXMTConfig, for: bottle.id
+                    try bottleManager.setGraphics(
+                        backend: .dxmt, config: defaults.defaultDXMTConfig, for: bottle.id
                     )
                 }
 

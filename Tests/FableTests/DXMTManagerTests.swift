@@ -104,15 +104,29 @@ import Testing
     }
 
     @Test
-    func bottleDXMTSettingsPersist() throws {
+    func bottleGraphicsSettingsPersist() throws {
         let (_, _, bottles, bottle, root) = try makeFixture()
         defer { try? FileManager.default.removeItem(at: root) }
 
-        try bottles.setDXMT(enabled: true, config: DXMTConfig(maxFrameRate: 120), for: bottle.id)
+        try bottles.setGraphics(backend: .dxmt, config: DXMTConfig(maxFrameRate: 120), for: bottle.id)
 
         let reloaded = BottleManager(bottlesDirectory: bottles.bottlesDirectory)
         let persisted = try #require(reloaded.bottle(with: bottle.id))
-        #expect(persisted.dxmtEnabled)
+        #expect(persisted.graphicsBackend == .dxmt)
         #expect(persisted.dxmtConfig.maxFrameRate == 120)
+    }
+
+    @Test
+    func legacyDXMTBooleanMigratesToBackend() throws {
+        let legacyJSON = """
+        {"id": "\(UUID().uuidString)", "name": "Old", "windowsVersion": "win10",
+         "createdAt": 700000000, "status": "ready", "games": [], "dxmtEnabled": true}
+        """
+        let bottle = try JSONDecoder().decode(Bottle.self, from: Data(legacyJSON.utf8))
+        #expect(bottle.graphicsBackend == .dxmt)
+
+        let legacyOff = legacyJSON.replacingOccurrences(of: "true", with: "false")
+        let off = try JSONDecoder().decode(Bottle.self, from: Data(legacyOff.utf8))
+        #expect(off.graphicsBackend == .off)
     }
 }

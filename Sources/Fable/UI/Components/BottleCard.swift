@@ -64,8 +64,13 @@ struct BottleCard: View {
         case .broken:
             StatusBadge(text: "Needs repair", color: .red)
         case .ready:
-            if bottle.dxmtEnabled {
+            switch bottle.graphicsBackend {
+            case .dxmt:
                 StatusBadge(text: "DXMT", color: .blue)
+            case .gptk:
+                StatusBadge(text: "GPTK", color: .purple)
+            case .off:
+                EmptyView()
             }
         }
     }

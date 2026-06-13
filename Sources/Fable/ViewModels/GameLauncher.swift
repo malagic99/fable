@@ -2,11 +2,14 @@ import Foundation
 
 enum GameLaunchError: LocalizedError {
     case executableMissing(String)
+    case runtimeConflict(String)
 
     var errorDescription: String? {
         switch self {
         case .executableMissing(let path):
             "The game's executable is missing from the bottle (C:\\\(path.replacingOccurrences(of: "/", with: "\\")))."
+        case .runtimeConflict(let bottle):
+            "Another game in “\(bottle)” is running on a different Wine runtime. Stop it first — one bottle can't run two Wine versions at once."
         }
     }
 }
@@ -29,11 +32,17 @@ final class GameLauncher: ObservableObject {
         running[gameID] != nil
     }
 
+    /// Which Wine runtime each running game uses — one bottle must stay
+    /// on one wineserver at a time.
+    private var runningRuntime: [Game.ID: String] = [:]
+    private var runningBottle: [Game.ID: Bottle.ID] = [:]
+
     func launch(
         _ game: Game,
         in bottle: Bottle,
         bottleManager: BottleManager,
-        wineManager: WineManager
+        wineManager: WineManager,
+        gptkManager: GPTKManager
     ) throws {
         guard running[game.id] == nil else { return }
 
@@ -49,20 +58,44 @@ final class GameLauncher: ObservableObject {
         environment["WINEDEBUG"] = "fixme-all"
 
         let log = AppPaths.logs.appending(path: GameInstaller.logName(bottle.name, game.name))
+        let baseOverrides = environment["WINEDLLOVERRIDES"] ?? ""
 
-        // DXMT: route d3d11/dxgi to Metal when the bottle has it enabled,
-        // and explicitly back to Wine's builtins when it doesn't.
-        environment.merge(DXMTManager.launchEnvironment(
-            enabled: bottle.dxmtEnabled,
-            config: bottle.dxmtConfig,
-            baseOverrides: environment["WINEDLLOVERRIDES"] ?? "",
-            logFile: log
-        )) { _, new in new }
+        // Pick the Wine binary and graphics routing per backend.
+        let wine: URL
+        let runtimeKey: String
+        var releaseWineserver: URL?
+        switch bottle.graphicsBackend {
+        case .gptk:
+            wine = try gptkManager.wineBinary()
+            runtimeKey = "gptk"
+            releaseWineserver = try? gptkManager.wineserverBinary()
+            environment.merge(
+                GPTKManager.launchEnvironment(baseOverrides: baseOverrides)
+            ) { _, new in new }
+        case .dxmt, .off:
+            wine = try wineManager.wineBinary()
+            runtimeKey = "wine"
+            environment.merge(DXMTManager.launchEnvironment(
+                enabled: bottle.graphicsBackend == .dxmt,
+                config: bottle.dxmtConfig,
+                baseOverrides: baseOverrides,
+                logFile: log
+            )) { _, new in new }
+        }
+
+        // Version-mismatched wineservers can't share a prefix: refuse
+        // to mix runtimes within one bottle while games are running.
+        let conflicting = runningBottle.contains { gameID, bottleID in
+            bottleID == bottle.id && runningRuntime[gameID] != runtimeKey
+        }
+        if conflicting {
+            throw GameLaunchError.runtimeConflict(bottle.name)
+        }
 
         // Per-game environment overrides win over everything.
         environment.merge(game.environment) { _, new in new }
         let process = try ProcessRunner.start(
-            try wineManager.wineBinary(),
+            wine,
             arguments: [executable.path] + ArgumentTokenizer.tokenize(game.arguments),
             environment: environment,
             currentDirectory: executable.deletingLastPathComponent(),
@@ -70,13 +103,27 @@ final class GameLauncher: ObservableObject {
         )
 
         running[game.id] = process
+        runningRuntime[game.id] = runtimeKey
+        runningBottle[game.id] = bottle.id
         lastLog[game.id] = log
         lastExitCode[game.id] = nil
 
         let gameName = game.name
+        let prefixPath = prefix.path
         Task { [weak self] in
             let code = await process.waitForExit()
+            // Let an alternate runtime's wineserver release the prefix
+            // before the bottle is considered free again.
+            if let releaseWineserver {
+                _ = try? await ProcessRunner.run(
+                    releaseWineserver,
+                    arguments: ["-w"],
+                    environment: ["WINEPREFIX": prefixPath]
+                )
+            }
             self?.running[game.id] = nil
+            self?.runningRuntime[game.id] = nil
+            self?.runningBottle[game.id] = nil
             self?.lastExitCode[game.id] = code
             // SIGTERM (user pressed Stop) isn't a crash worth announcing.
             if code != 0 && code != 15 {

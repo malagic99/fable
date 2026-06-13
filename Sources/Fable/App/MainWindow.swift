@@ -8,6 +8,7 @@ struct FableApp: App {
     @StateObject private var componentManager: ComponentManager
     @StateObject private var wineManager: WineManager
     @StateObject private var dxmtManager: DXMTManager
+    @StateObject private var gptkManager: GPTKManager
     @StateObject private var updateManager: UpdateManager
     @StateObject private var gameLauncher = GameLauncher()
     @StateObject private var toastCenter = ToastCenter()
@@ -24,6 +25,10 @@ struct FableApp: App {
             catalog: appState.versionCatalog
         ))
         _dxmtManager = StateObject(wrappedValue: DXMTManager(
+            componentManager: componentManager,
+            catalog: appState.versionCatalog
+        ))
+        _gptkManager = StateObject(wrappedValue: GPTKManager(
             componentManager: componentManager,
             catalog: appState.versionCatalog
         ))
@@ -46,6 +51,7 @@ struct FableApp: App {
                 .environmentObject(componentManager)
                 .environmentObject(wineManager)
                 .environmentObject(dxmtManager)
+                .environmentObject(gptkManager)
                 .environmentObject(updateManager)
                 .environmentObject(gameLauncher)
                 .environmentObject(toastCenter)

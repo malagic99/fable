@@ -7,6 +7,7 @@ struct ComponentsView: View {
     @EnvironmentObject private var componentManager: ComponentManager
     @EnvironmentObject private var updateManager: UpdateManager
     @EnvironmentObject private var dxmtManager: DXMTManager
+    @EnvironmentObject private var gptkManager: GPTKManager
     @EnvironmentObject private var wineManager: WineManager
     @EnvironmentObject private var bottleManager: BottleManager
     @EnvironmentObject private var toastCenter: ToastCenter
@@ -22,6 +23,13 @@ struct ComponentsView: View {
                     id: DXMTManager.componentID,
                     fallback: appState.versionCatalog.dxmt
                 )
+                ComponentRow(
+                    id: GPTKManager.componentID,
+                    fallback: appState.versionCatalog.components[GPTKManager.componentID]
+                )
+                if gptkManager.isInstalled {
+                    GPTKOverlayRow()
+                }
             } header: {
                 Text("Runtime Components")
             } footer: {
@@ -54,6 +62,56 @@ struct ComponentsView: View {
                 }
                 .disabled(updateManager.isChecking)
                 .help("Check GitHub for newer component releases")
+            }
+        }
+    }
+}
+
+/// Sub-row under the GPTK component: shows the active D3DMetal build and
+/// imports a newer one from Apple's Game Porting Toolkit dmg.
+private struct GPTKOverlayRow: View {
+    @EnvironmentObject private var gptkManager: GPTKManager
+    @EnvironmentObject private var toastCenter: ToastCenter
+
+    @State private var isImporting = false
+
+    var body: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("D3DMetal")
+                    .font(.callout)
+                Text(gptkManager.d3dMetalVersionNote ?? "as shipped with the environment")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+            if isImporting {
+                ProgressView().controlSize(.small)
+            } else {
+                Button("Update from Apple GPTK dmg…") { importFromDMG() }
+                    .controlSize(.small)
+                    .help("Overlay newer D3DMetal libraries from a downloaded Game Porting Toolkit disk image")
+            }
+        }
+        .padding(.leading, 16)
+    }
+
+    private func importFromDMG() {
+        let panel = NSOpenPanel()
+        panel.title = "Choose Apple's Game Porting Toolkit disk image"
+        panel.allowedContentTypes = [.diskImage]
+        panel.allowsMultipleSelection = false
+        guard panel.runModal() == .OK, let dmg = panel.url else { return }
+
+        isImporting = true
+        Task {
+            defer { isImporting = false }
+            do {
+                let label = dmg.deletingPathExtension().lastPathComponent
+                try await gptkManager.overlayEvaluationLibraries(fromDMG: dmg, versionLabel: label)
+                toastCenter.success("D3DMetal updated from \(dmg.lastPathComponent)")
+            } catch {
+                toastCenter.error(error.localizedDescription)
             }
         }
     }
@@ -138,9 +196,9 @@ private struct ComponentRow: View {
             do {
                 try await updateManager.install(component, id: id)
                 // Updated DXMT DLLs must be re-copied into bottles that
-                // have it enabled.
+                // use it.
                 if id == DXMTManager.componentID {
-                    for bottle in bottleManager.bottles where bottle.dxmtEnabled {
+                    for bottle in bottleManager.bottles where bottle.graphicsBackend == .dxmt {
                         try dxmtManager.enable(
                             in: bottle, bottleManager: bottleManager, wineManager: wineManager
                         )

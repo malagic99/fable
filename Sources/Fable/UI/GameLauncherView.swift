@@ -8,6 +8,7 @@ struct GameLauncherView: View {
 
     @EnvironmentObject private var bottleManager: BottleManager
     @EnvironmentObject private var wineManager: WineManager
+    @EnvironmentObject private var gptkManager: GPTKManager
     @EnvironmentObject private var gameLauncher: GameLauncher
 
     @State private var launchError: String?
@@ -130,7 +131,8 @@ struct GameLauncherView: View {
                 game,
                 in: bottle,
                 bottleManager: bottleManager,
-                wineManager: wineManager
+                wineManager: wineManager,
+                gptkManager: gptkManager
             )
         } catch {
             launchError = error.localizedDescription
