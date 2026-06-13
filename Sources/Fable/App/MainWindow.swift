@@ -11,6 +11,7 @@ struct FableApp: App {
     @StateObject private var gptkManager: GPTKManager
     @StateObject private var winetricksManager: WinetricksManager
     @StateObject private var updateManager: UpdateManager
+    @StateObject private var appUpdateChecker = AppUpdateChecker()
     @StateObject private var gameLauncher = GameLauncher()
     @StateObject private var toastCenter = ToastCenter()
     @StateObject private var settingsManager = SettingsManager()
@@ -50,6 +51,7 @@ struct FableApp: App {
                     gameLauncher.onAbnormalExit = { [weak toastCenter] message in
                         toastCenter?.error(message)
                     }
+                    Task { await appUpdateChecker.checkIfDue() }
                 }
                 .environmentObject(appState)
                 .environmentObject(bottleManager)
@@ -59,6 +61,7 @@ struct FableApp: App {
                 .environmentObject(gptkManager)
                 .environmentObject(winetricksManager)
                 .environmentObject(updateManager)
+                .environmentObject(appUpdateChecker)
                 .environmentObject(gameLauncher)
                 .environmentObject(toastCenter)
                 .environmentObject(settingsManager)
@@ -74,11 +77,14 @@ struct MainWindow: View {
     @EnvironmentObject private var appState: AppState
 
     var body: some View {
-        NavigationSplitView {
-            SidebarView()
-                .navigationSplitViewColumnWidth(min: 180, ideal: 210, max: 280)
-        } detail: {
-            MainContentView()
+        VStack(spacing: 0) {
+            AppUpdateBanner()
+            NavigationSplitView {
+                SidebarView()
+                    .navigationSplitViewColumnWidth(min: 180, ideal: 210, max: 280)
+            } detail: {
+                MainContentView()
+            }
         }
         .toastOverlay()
         .frame(minWidth: 800, minHeight: 520)

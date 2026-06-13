@@ -89,6 +89,7 @@ private struct PerformanceSettingsTab: View {
 
 private struct AboutTab: View {
     @EnvironmentObject private var updateManager: UpdateManager
+    @EnvironmentObject private var appUpdateChecker: AppUpdateChecker
     @EnvironmentObject private var appState: AppState
 
     private var appVersion: String {
@@ -98,7 +99,35 @@ private struct AboutTab: View {
     var body: some View {
         Form {
             Section {
-                LabeledContent("Fable", value: appVersion)
+                HStack {
+                    LabeledContent("Fable", value: appVersion)
+                    Spacer()
+                    if appUpdateChecker.isChecking {
+                        ProgressView().controlSize(.small)
+                    } else {
+                        Button("Check for Updates") {
+                            Task { await appUpdateChecker.checkIfDue(force: true) }
+                        }
+                        .controlSize(.small)
+                    }
+                }
+                if let release = appUpdateChecker.available {
+                    HStack {
+                        Label("Fable \(release.version) is available", systemImage: "arrow.up.circle")
+                            .foregroundStyle(.tint)
+                        Spacer()
+                        Button("Open Release Page") { appUpdateChecker.openInBrowser() }
+                            .controlSize(.small)
+                    }
+                } else if let lastChecked = appUpdateChecker.lastChecked, appUpdateChecker.lastError == nil {
+                    Text("Last checked \(lastChecked.formatted(date: .abbreviated, time: .shortened)) — up to date.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                } else if let lastError = appUpdateChecker.lastError {
+                    Text(lastError)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                }
                 LabeledContent("Wine", value: updateManager.installedVersion(of: WineManager.componentID) ?? "not installed")
                 LabeledContent("DXMT", value: updateManager.installedVersion(of: DXMTManager.componentID) ?? "not installed")
             } header: {
