@@ -45,12 +45,12 @@ Independent of Stage A — can run in parallel or before.
 
 | Stage | Scope | Est. days |
 |-------|-------|-----------|
-| B1 | First-launch wizard: 3 screens (Welcome → "where are your games?" with Steam/Heroic/Manual options → create first bottle from a template). `@AppStorage("hasCompletedOnboarding")` gate | 2 |
+| B1 | ✅ **Shipped Day 21** (`3b3f134`). First-launch wizard: 4 steps (welcome → source picker → first bottle from template → done). OnboardingState + OnboardingView, en/es localized, "Reset First-Launch Wizard" in Settings. 9 new tests | — |
 | B2 | Sample bottle: a small free Windows game (open source — `Hedgewars`, `OpenRA`, `0 A.D. Windows binary`) that demonstrates the full pipeline on first launch | 2 |
 | B3 | Tutorial overlays for new users: tooltip coachmarks on first visit to Bottles / Library / Components | 1 |
 | B4 | **Buffer.** | 1 |
 
-**Stage B total: ~6 days.**
+**Stage B remaining: ~4 days.**
 
 ---
 
