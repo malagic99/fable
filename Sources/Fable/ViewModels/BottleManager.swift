@@ -113,6 +113,47 @@ final class BottleManager: ObservableObject {
         bottles.remove(at: index)
     }
 
+    /// Recursive copy of an existing bottle: same prefix, same backend,
+    /// same installed games and verbs — only the id, name, and createdAt
+    /// change. Callers must ensure no games are running in the source.
+    @discardableResult
+    func cloneBottle(_ id: Bottle.ID, newName: String) throws -> Bottle {
+        let trimmed = newName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { throw BottleError.emptyName }
+        guard let source = bottle(with: id) else { throw BottleError.notFound }
+        guard !bottles.contains(where: {
+            $0.name.caseInsensitiveCompare(trimmed) == .orderedSame
+        }) else {
+            throw BottleError.duplicateName(trimmed)
+        }
+
+        var clone = source
+        clone.id = UUID()
+        clone.name = trimmed
+        clone.createdAt = .now
+        clone.status = .ready
+
+        let fm = FileManager.default
+        try fm.createDirectory(
+            at: directory(for: clone),
+            withIntermediateDirectories: true
+        )
+        let sourcePrefix = prefixDirectory(for: source)
+        let destPrefix = prefixDirectory(for: clone)
+        if fm.fileExists(atPath: sourcePrefix.path) {
+            try fm.copyItem(at: sourcePrefix, to: destPrefix)
+            // Stale wineserver lock files from the moment of copy would
+            // confuse a future launch — drop them.
+            for stale in [".update-timestamp"] {
+                try? fm.removeItem(at: destPrefix.appending(path: stale))
+            }
+        }
+
+        try save(clone)
+        bottles.append(clone)
+        return clone
+    }
+
     func bottle(with id: Bottle.ID) -> Bottle? {
         bottles.first { $0.id == id }
     }

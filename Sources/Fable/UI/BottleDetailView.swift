@@ -8,6 +8,7 @@ struct BottleDetailView: View {
     @EnvironmentObject private var wineManager: WineManager
     @EnvironmentObject private var dxmtManager: DXMTManager
     @EnvironmentObject private var gptkManager: GPTKManager
+    @EnvironmentObject private var gameLauncher: GameLauncher
     @EnvironmentObject private var toastCenter: ToastCenter
     @Environment(\.dismiss) private var dismiss
 
@@ -183,6 +184,16 @@ struct BottleDetailView: View {
                 }
                 .help("Rename this bottle")
 
+                Button {
+                    duplicate(bottle)
+                } label: {
+                    Label("Duplicate", systemImage: "doc.on.doc")
+                }
+                .disabled(bottle.status != .ready || isAnyGameRunning(in: bottle))
+                .help(isAnyGameRunning(in: bottle)
+                      ? "Stop running games before duplicating"
+                      : "Clone this bottle and its installed games")
+
                 Button(role: .destructive) {
                     isShowingDeleteConfirmation = true
                 } label: {
@@ -228,6 +239,31 @@ struct BottleDetailView: View {
             }
         } message: {
             Text("This permanently removes the bottle and everything installed in it.")
+        }
+    }
+
+    // MARK: Duplicate
+
+    private func isAnyGameRunning(in bottle: Bottle) -> Bool {
+        bottle.games.contains { gameLauncher.isRunning($0.id) }
+    }
+
+    private func duplicate(_ bottle: Bottle) {
+        // Find a non-clashing "<name> Copy"/"Copy 2"/… name.
+        let base = "\(bottle.name) Copy"
+        var candidate = base
+        var counter = 2
+        while bottleManager.bottles.contains(where: {
+            $0.name.caseInsensitiveCompare(candidate) == .orderedSame
+        }) {
+            candidate = "\(base) \(counter)"
+            counter += 1
+        }
+        do {
+            let clone = try bottleManager.cloneBottle(bottle.id, newName: candidate)
+            toastCenter.success("Duplicated as “\(clone.name)”")
+        } catch {
+            errorMessage = error.localizedDescription
         }
     }
 

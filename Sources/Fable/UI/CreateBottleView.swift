@@ -7,6 +7,8 @@ struct CreateBottleView: View {
     @EnvironmentObject private var componentManager: ComponentManager
     @EnvironmentObject private var wineManager: WineManager
     @EnvironmentObject private var dxmtManager: DXMTManager
+    @EnvironmentObject private var gptkManager: GPTKManager
+    @EnvironmentObject private var winetricksManager: WinetricksManager
     @EnvironmentObject private var settingsManager: SettingsManager
     @Environment(\.dismiss) private var dismiss
 
@@ -14,11 +16,13 @@ struct CreateBottleView: View {
         case form
         case installingWine
         case creatingPrefix
+        case installingDependencies(String)
         case failed(String)
     }
 
     @State private var name = ""
     @State private var windowsVersion: WindowsVersion = .win10
+    @State private var template: BottleTemplate = BottleTemplateCatalog.default
     @State private var errorMessage: String?
     @State private var phase: Phase = .form
     @State private var provisionTask: Task<Void, Never>?
@@ -28,7 +32,10 @@ struct CreateBottleView: View {
     }
 
     private var isWorking: Bool {
-        phase == .installingWine || phase == .creatingPrefix
+        switch phase {
+        case .installingWine, .creatingPrefix, .installingDependencies: true
+        default: false
+        }
     }
 
     var body: some View {
@@ -36,13 +43,13 @@ struct CreateBottleView: View {
             switch phase {
             case .form:
                 formContent
-            case .installingWine, .creatingPrefix:
+            case .installingWine, .creatingPrefix, .installingDependencies:
                 progressContent
             case .failed(let message):
                 failureContent(message)
             }
         }
-        .frame(width: 400, height: 260)
+        .frame(width: 440, height: 340)
         .interactiveDismissDisabled(isWorking)
         .onAppear {
             windowsVersion = settingsManager.settings.defaultWindowsVersion
@@ -62,6 +69,15 @@ struct CreateBottleView: View {
                         Text(version.displayName).tag(version)
                     }
                 }
+
+                Picker("Template", selection: $template) {
+                    ForEach(BottleTemplateCatalog.all) { tmpl in
+                        Text(tmpl.name).tag(tmpl)
+                    }
+                }
+                Text(template.summary)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
 
                 if !wineManager.isWineInstalled {
                     Text("Wine isn't installed yet — it will be downloaded (~190 MB) when you create your first bottle.")
@@ -106,6 +122,12 @@ struct CreateBottleView: View {
                     systemImage: nil,
                     title: "Creating Wine prefix…",
                     message: "Setting up “\(trimmedName)” — this takes a minute."
+                )
+            case .installingDependencies(let label):
+                SheetStatusView(
+                    systemImage: nil,
+                    title: "Installing \(label)…",
+                    message: "Applying the “\(template.name)” template to “\(trimmedName)”."
                 )
             default:
                 EmptyView()
@@ -191,6 +213,7 @@ struct CreateBottleView: View {
         }
 
         phase = .installingWine
+        let chosenTemplate = template
         provisionTask = Task {
             do {
                 try await wineManager.ensureWineInstalled()
@@ -200,17 +223,7 @@ struct CreateBottleView: View {
                     windowsVersion: windowsVersion
                 )
 
-                // Apply global DXMT defaults to the fresh bottle.
-                let defaults = settingsManager.settings
-                if defaults.defaultDXMTEnabled {
-                    try await dxmtManager.ensureInstalled()
-                    try dxmtManager.enable(
-                        in: bottle, bottleManager: bottleManager, wineManager: wineManager
-                    )
-                    try bottleManager.setGraphics(
-                        backend: .dxmt, config: defaults.defaultDXMTConfig, for: bottle.id
-                    )
-                }
+                try await applyTemplate(chosenTemplate, to: bottle)
 
                 try bottleManager.setStatus(.ready, for: bottle.id)
                 dismiss()
@@ -219,6 +232,62 @@ struct CreateBottleView: View {
             } catch {
                 try? bottleManager.deleteBottle(bottle.id)
                 phase = .failed(error.localizedDescription)
+            }
+        }
+    }
+
+    /// Backend + dependencies + winetricks verbs, run sequentially with
+    /// progress updates. The template's backend wins over the global
+    /// DXMT default since the user picked it deliberately.
+    private func applyTemplate(_ template: BottleTemplate, to bottle: Bottle) async throws {
+        switch template.graphicsBackend {
+        case .dxmt:
+            try await dxmtManager.ensureInstalled()
+            try dxmtManager.enable(
+                in: bottle, bottleManager: bottleManager, wineManager: wineManager
+            )
+            try bottleManager.setGraphics(
+                backend: .dxmt,
+                config: settingsManager.settings.defaultDXMTConfig,
+                for: bottle.id
+            )
+        case .gptk:
+            try await gptkManager.ensureInstalled()
+            try bottleManager.setGraphics(backend: .gptk, for: bottle.id)
+        case .off:
+            // Vanilla / classic preset honors the global default if user
+            // had defaultDXMTEnabled on. Otherwise keep .off.
+            let defaults = settingsManager.settings
+            if template.isVanilla && defaults.defaultDXMTEnabled {
+                try await dxmtManager.ensureInstalled()
+                try dxmtManager.enable(
+                    in: bottle, bottleManager: bottleManager, wineManager: wineManager
+                )
+                try bottleManager.setGraphics(
+                    backend: .dxmt, config: defaults.defaultDXMTConfig, for: bottle.id
+                )
+            }
+        }
+
+        let installer = DependencyInstaller()
+        for depID in template.dependencyIDs {
+            guard let dep = DependencyCatalog.all.first(where: { $0.id == depID }) else { continue }
+            phase = .installingDependencies(dep.name)
+            try await installer.install(
+                dep, bottle: bottle, bottleManager: bottleManager, wineManager: wineManager
+            )
+        }
+
+        if !template.winetricksVerbs.isEmpty {
+            try await winetricksManager.ensureInstalled()
+            let updated = bottleManager.bottle(with: bottle.id) ?? bottle
+            for slug in template.winetricksVerbs {
+                guard let verb = winetricksManager.verbs.first(where: { $0.id == slug }) else { continue }
+                phase = .installingDependencies("Winetricks \(verb.id)")
+                try await winetricksManager.install(
+                    verb: verb, in: updated,
+                    bottleManager: bottleManager, wineManager: wineManager
+                )
             }
         }
     }
