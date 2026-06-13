@@ -31,10 +31,8 @@ done
 
 # Tell macOS which locales we ship so it picks the right one at launch.
 # Without CFBundleLocalizations the app falls back to development region only.
-plutil -insert CFBundleLocalizations -array "$APP/Contents/Info.plist" 2>/dev/null || true
-for lang in $(ls "$RESOURCE_BUNDLE" | grep '\.lproj$' | sed 's/\.lproj$//'); do
-    plutil -insert "CFBundleLocalizations.0" -string "$lang" -append "$APP/Contents/Info.plist" 2>/dev/null || true
-done
+LANGS=$(ls "$RESOURCE_BUNDLE" | grep '\.lproj$' | sed 's/\.lproj$//' | paste -sd ',' - | sed 's/\([^,]*\)/"\1"/g')
+plutil -replace CFBundleLocalizations -json "[${LANGS}]" "$APP/Contents/Info.plist"
 
 # Embed innoextract for GOG installer extraction (no-op if not installed).
 "$(dirname "$0")/bundle-innoextract.sh" "$APP"
