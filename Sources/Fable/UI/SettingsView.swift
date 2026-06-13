@@ -90,6 +90,7 @@ private struct PerformanceSettingsTab: View {
 private struct AboutTab: View {
     @EnvironmentObject private var updateManager: UpdateManager
     @EnvironmentObject private var appUpdateChecker: AppUpdateChecker
+    @EnvironmentObject private var onboardingState: OnboardingState
     @EnvironmentObject private var appState: AppState
 
     private var appVersion: String {
@@ -132,6 +133,15 @@ private struct AboutTab: View {
                 LabeledContent("DXMT", value: updateManager.installedVersion(of: DXMTManager.componentID) ?? "not installed")
             } header: {
                 Text("Versions")
+            }
+
+            Section {
+                Button("settings.reset_onboarding") {
+                    onboardingState.reset()
+                }
+                .help("Show the first-launch wizard again next time the app opens")
+            } header: {
+                Text("Onboarding")
             }
 
             Section {

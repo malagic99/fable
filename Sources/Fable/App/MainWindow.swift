@@ -14,6 +14,7 @@ struct FableApp: App {
     @StateObject private var appUpdateChecker = AppUpdateChecker()
     @StateObject private var diskUsageStore = BottleDiskUsageStore()
     @StateObject private var metricsStore = RunningGameMetricsStore()
+    @StateObject private var onboardingState = OnboardingState()
     @StateObject private var gameLauncher = GameLauncher()
     @StateObject private var toastCenter = ToastCenter()
     @StateObject private var settingsManager = SettingsManager()
@@ -73,6 +74,7 @@ struct FableApp: App {
                 .environmentObject(appUpdateChecker)
                 .environmentObject(diskUsageStore)
                 .environmentObject(metricsStore)
+                .environmentObject(onboardingState)
                 .environmentObject(gameLauncher)
                 .environmentObject(toastCenter)
                 .environmentObject(settingsManager)
@@ -86,6 +88,7 @@ struct FableApp: App {
 
 struct MainWindow: View {
     @EnvironmentObject private var appState: AppState
+    @EnvironmentObject private var onboardingState: OnboardingState
 
     var body: some View {
         VStack(spacing: 0) {
@@ -100,5 +103,13 @@ struct MainWindow: View {
         .toastOverlay()
         .frame(minWidth: 800, minHeight: 520)
         .navigationTitle(appState.selectedSection.title)
+        .sheet(isPresented: Binding(
+            get: { onboardingState.isShowingWizard },
+            set: { newValue in
+                if !newValue { onboardingState.hasCompleted = true }
+            }
+        )) {
+            OnboardingView()
+        }
     }
 }

@@ -37,6 +37,36 @@
 "action.install"              = "Install";
 "action.cancel"               = "Cancel";
 
+// MARK: Onboarding wizard
+"onboarding.welcome.title"    = "Welcome to Fable";
+"onboarding.welcome.subtitle" = "A Wine bottle launcher for Windows games on macOS. Let's set up your first bottle — it takes under a minute.";
+"onboarding.get_started"      = "Get Started";
+"onboarding.skip"             = "Skip Setup";
+"onboarding.back"             = "Back";
+"onboarding.continue"         = "Continue";
+"onboarding.skip_for_now"     = "Skip for now";
+
+"onboarding.source.title"     = "Where are your games?";
+"onboarding.source.subtitle"  = "Pick the source you use most. You can add others later.";
+"onboarding.source.steam.title"    = "Steam";
+"onboarding.source.steam.subtitle" = "Install the Steam client and pull your library through it.";
+"onboarding.source.heroic.title"   = "Heroic / GOG / Epic";
+"onboarding.source.heroic.subtitle" = "Bring your own installers or DRM-free copies into a DXMT-ready bottle.";
+"onboarding.source.manual.title"   = "Manual installers";
+"onboarding.source.manual.subtitle" = "Start with an empty bottle and add Windows installers yourself.";
+
+"onboarding.first_bottle.title" = "Create your first bottle";
+"onboarding.first_bottle.subtitle.steam"  = "We'll create a Steam-Ready bottle: DXMT graphics, Visual C++, and the Steam client pre-installed.";
+"onboarding.first_bottle.subtitle.heroic" = "We'll create a Modern Games bottle with DXMT for DirectX 11 + Visual C++.";
+"onboarding.first_bottle.subtitle.manual" = "We'll create a vanilla bottle. Add dependencies and games from its detail page.";
+"onboarding.create_bottle"    = "Create Bottle…";
+
+"onboarding.done.title"       = "You're all set";
+"onboarding.done.subtitle"    = "You can rerun this wizard anytime from Settings → About.";
+"onboarding.done.start"       = "Start Playing";
+
+"settings.reset_onboarding"   = "Reset First-Launch Wizard";
+
 // MARK: Toasts (passed through L10n helper, not SwiftUI Text)
 "toast.bottle.duplicated"     = "Duplicated as “%@”";
 "toast.bottle.repaired"       = "“%@” repaired";

@@ -38,6 +38,36 @@
 "action.install"              = "Instalar";
 "action.cancel"               = "Cancelar";
 
+// MARK: Onboarding wizard
+"onboarding.welcome.title"    = "Bienvenido a Fable";
+"onboarding.welcome.subtitle" = "Un lanzador de botellas Wine para juegos de Windows en macOS. Configuremos tu primera botella — toma menos de un minuto.";
+"onboarding.get_started"      = "Empezar";
+"onboarding.skip"             = "Omitir configuración";
+"onboarding.back"             = "Atrás";
+"onboarding.continue"         = "Continuar";
+"onboarding.skip_for_now"     = "Omitir por ahora";
+
+"onboarding.source.title"     = "¿Dónde están tus juegos?";
+"onboarding.source.subtitle"  = "Elige la fuente que usas más. Puedes añadir otras después.";
+"onboarding.source.steam.title"    = "Steam";
+"onboarding.source.steam.subtitle" = "Instala el cliente Steam y trae tu biblioteca a través de él.";
+"onboarding.source.heroic.title"   = "Heroic / GOG / Epic";
+"onboarding.source.heroic.subtitle" = "Trae tus propios instaladores o copias sin DRM a una botella lista para DXMT.";
+"onboarding.source.manual.title"   = "Instaladores manuales";
+"onboarding.source.manual.subtitle" = "Empieza con una botella vacía y añade instaladores de Windows tú mismo.";
+
+"onboarding.first_bottle.title" = "Crea tu primera botella";
+"onboarding.first_bottle.subtitle.steam"  = "Crearemos una botella Steam-Ready: gráficos DXMT, Visual C++ y el cliente Steam preinstalado.";
+"onboarding.first_bottle.subtitle.heroic" = "Crearemos una botella Modern Games con DXMT para DirectX 11 + Visual C++.";
+"onboarding.first_bottle.subtitle.manual" = "Crearemos una botella vacía. Añade dependencias y juegos desde su página de detalles.";
+"onboarding.create_bottle"    = "Crear botella…";
+
+"onboarding.done.title"       = "Todo listo";
+"onboarding.done.subtitle"    = "Puedes volver a ejecutar este asistente en cualquier momento desde Ajustes → Acerca de.";
+"onboarding.done.start"       = "Empezar a jugar";
+
+"settings.reset_onboarding"   = "Restablecer asistente de primera ejecución";
+
 // MARK: Toasts
 "toast.bottle.duplicated"     = "Duplicada como «%@»";
 "toast.bottle.repaired"       = "«%@» reparada";
