@@ -64,6 +64,16 @@ final class WineManager: ObservableObject {
         try wineBinary().deletingLastPathComponent().appending(path: "wineserver")
     }
 
+    /// `wineserver -k` against a prefix: hard-kills every process in
+    /// the prefix's session. The escape hatch for hung games.
+    func forceKillPrefix(_ prefix: URL) async throws {
+        _ = try await ProcessRunner.run(
+            try wineserverBinary(),
+            arguments: ["-k"],
+            environment: environment(forPrefix: prefix)
+        )
+    }
+
     func environment(forPrefix prefix: URL) -> [String: String] {
         [
             "WINEPREFIX": prefix.path,

@@ -32,6 +32,10 @@ final class LaunchedProcess: @unchecked Sendable {
 
     var isRunning: Bool { process.isRunning }
 
+    /// PID of the launched root process. Children (wineserver, the game
+    /// itself) live under this PID — discoverable via ProcessMetrics.
+    var processIdentifier: Int32 { process.processIdentifier }
+
     func terminate() {
         process.terminate()
     }

@@ -28,6 +28,10 @@ final class GameLauncher: ObservableObject {
     /// (wired to ToastCenter at app startup).
     var onAbnormalExit: ((String) -> Void)?
 
+    /// Called when a game starts (pid non-nil) and when it exits (pid
+    /// nil). Used by RunningGameMetricsStore to drive its polling.
+    var onProcessLifecycle: ((Game.ID, Int32?) -> Void)?
+
     func isRunning(_ gameID: Game.ID) -> Bool {
         running[gameID] != nil
     }
@@ -116,6 +120,7 @@ final class GameLauncher: ObservableObject {
         runningBottle[game.id] = bottle.id
         lastLog[game.id] = log
         lastExitCode[game.id] = nil
+        onProcessLifecycle?(game.id, process.processIdentifier)
 
         let gameName = game.name
         let prefixPath = prefix.path
@@ -134,6 +139,7 @@ final class GameLauncher: ObservableObject {
             self?.runningRuntime[game.id] = nil
             self?.runningBottle[game.id] = nil
             self?.lastExitCode[game.id] = code
+            self?.onProcessLifecycle?(game.id, nil)
             // SIGTERM (user pressed Stop) isn't a crash worth announcing.
             if code != 0 && code != 15 {
                 self?.onAbnormalExit?("“\(gameName)” exited with code \(code) — check its log")

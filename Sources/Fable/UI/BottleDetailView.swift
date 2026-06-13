@@ -197,6 +197,19 @@ struct BottleDetailView: View {
                     .foregroundStyle(.secondary)
             }
 
+            Section {
+                Button("Force Kill Wine Processes…", role: .destructive) {
+                    forceKill(bottle)
+                }
+                .disabled(bottle.status != .ready)
+            } header: {
+                Text("Troubleshooting")
+            } footer: {
+                Text("Runs wineserver -k against this bottle's prefix — the escape hatch when a hung game ignores Stop.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
             if let errorMessage {
                 Section {
                     Text(errorMessage)
@@ -272,6 +285,22 @@ struct BottleDetailView: View {
             }
         } message: {
             Text("This permanently removes the bottle and everything installed in it.")
+        }
+    }
+
+    // MARK: Troubleshooting
+
+    private func forceKill(_ bottle: Bottle) {
+        Task {
+            do {
+                try await wineManager.forceKillPrefix(
+                    bottleManager.prefixDirectory(for: bottle)
+                )
+                toastCenter.success("Wine processes in “\(bottle.name)” killed")
+                errorMessage = nil
+            } catch {
+                errorMessage = error.localizedDescription
+            }
         }
     }
 

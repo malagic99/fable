@@ -10,6 +10,7 @@ struct GameLauncherView: View {
     @EnvironmentObject private var wineManager: WineManager
     @EnvironmentObject private var gptkManager: GPTKManager
     @EnvironmentObject private var gameLauncher: GameLauncher
+    @EnvironmentObject private var metricsStore: RunningGameMetricsStore
 
     @State private var launchError: String?
     @State private var isShowingSettings = false
@@ -115,9 +116,17 @@ struct GameLauncherView: View {
     @ViewBuilder
     private var statusText: some View {
         if isRunning {
-            Text("Running")
-                .font(.caption)
-                .foregroundStyle(.green)
+            HStack(spacing: 6) {
+                Text("Running")
+                    .foregroundStyle(.green)
+                if let metric = metricsStore.metrics[game.id], metric.residentBytes > 0 {
+                    Text("·").foregroundStyle(.tertiary)
+                    Text(formattedMetric(metric))
+                        .monospacedDigit()
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .font(.caption)
         } else if let code = gameLauncher.lastExitCode[game.id], code != 0 {
             Text("Last run exited with code \(code)")
                 .font(.caption)
@@ -127,6 +136,14 @@ struct GameLauncherView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
+    }
+
+    private func formattedMetric(_ metric: ProcessMetrics) -> String {
+        let mem = ByteCountFormatter.string(
+            fromByteCount: metric.residentBytes, countStyle: .memory
+        )
+        let cpu = String(format: "%.0f%%", metric.cpuPercent)
+        return "\(mem) · \(cpu) CPU"
     }
 
     private func launch() {

@@ -13,6 +13,7 @@ struct FableApp: App {
     @StateObject private var updateManager: UpdateManager
     @StateObject private var appUpdateChecker = AppUpdateChecker()
     @StateObject private var diskUsageStore = BottleDiskUsageStore()
+    @StateObject private var metricsStore = RunningGameMetricsStore()
     @StateObject private var gameLauncher = GameLauncher()
     @StateObject private var toastCenter = ToastCenter()
     @StateObject private var settingsManager = SettingsManager()
@@ -52,6 +53,13 @@ struct FableApp: App {
                     gameLauncher.onAbnormalExit = { [weak toastCenter] message in
                         toastCenter?.error(message)
                     }
+                    gameLauncher.onProcessLifecycle = { [weak metricsStore] id, pid in
+                        if let pid {
+                            metricsStore?.startTracking(id, rootPID: pid)
+                        } else {
+                            metricsStore?.stopTracking(id)
+                        }
+                    }
                     Task { await appUpdateChecker.checkIfDue() }
                 }
                 .environmentObject(appState)
@@ -64,6 +72,7 @@ struct FableApp: App {
                 .environmentObject(updateManager)
                 .environmentObject(appUpdateChecker)
                 .environmentObject(diskUsageStore)
+                .environmentObject(metricsStore)
                 .environmentObject(gameLauncher)
                 .environmentObject(toastCenter)
                 .environmentObject(settingsManager)
