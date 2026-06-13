@@ -12,6 +12,7 @@ struct FableApp: App {
     @StateObject private var winetricksManager: WinetricksManager
     @StateObject private var updateManager: UpdateManager
     @StateObject private var appUpdateChecker = AppUpdateChecker()
+    @StateObject private var diskUsageStore = BottleDiskUsageStore()
     @StateObject private var gameLauncher = GameLauncher()
     @StateObject private var toastCenter = ToastCenter()
     @StateObject private var settingsManager = SettingsManager()
@@ -62,6 +63,7 @@ struct FableApp: App {
                 .environmentObject(winetricksManager)
                 .environmentObject(updateManager)
                 .environmentObject(appUpdateChecker)
+                .environmentObject(diskUsageStore)
                 .environmentObject(gameLauncher)
                 .environmentObject(toastCenter)
                 .environmentObject(settingsManager)

@@ -5,6 +5,8 @@ import SwiftUI
 struct BottleCard: View {
     let bottle: Bottle
 
+    @EnvironmentObject private var diskUsageStore: BottleDiskUsageStore
+    @EnvironmentObject private var bottleManager: BottleManager
     @State private var isHovering = false
 
     var body: some View {
@@ -35,7 +37,12 @@ struct BottleCard: View {
                     .help("\(bottle.games.count) game(s)")
                 Text(bottle.windowsVersion.displayName)
                 Spacer()
-                Text(bottle.createdAt, format: .dateTime.day().month())
+                if let bytes = diskUsageStore.size(for: bottle.id) {
+                    Label(BottleDiskUsage.formatted(bytes), systemImage: "internaldrive")
+                        .help("Prefix size on disk")
+                } else {
+                    Text(bottle.createdAt, format: .dateTime.day().month())
+                }
             }
             .font(.caption)
             .foregroundStyle(.secondary)
@@ -54,6 +61,13 @@ struct BottleCard: View {
         .scaleEffect(isHovering ? 1.02 : 1)
         .animation(.spring(duration: 0.2), value: isHovering)
         .onHover { isHovering = $0 }
+        .task {
+            // First-visit scan. The store coalesces concurrent requests,
+            // and the walk runs at utility priority off the main actor.
+            if diskUsageStore.size(for: bottle.id) == nil {
+                diskUsageStore.scan(bottle, manager: bottleManager)
+            }
+        }
     }
 
     @ViewBuilder

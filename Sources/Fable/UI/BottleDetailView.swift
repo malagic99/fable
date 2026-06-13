@@ -9,6 +9,7 @@ struct BottleDetailView: View {
     @EnvironmentObject private var dxmtManager: DXMTManager
     @EnvironmentObject private var gptkManager: GPTKManager
     @EnvironmentObject private var gameLauncher: GameLauncher
+    @EnvironmentObject private var diskUsageStore: BottleDiskUsageStore
     @EnvironmentObject private var toastCenter: ToastCenter
     @Environment(\.dismiss) private var dismiss
 
@@ -24,7 +25,10 @@ struct BottleDetailView: View {
     var body: some View {
         if let bottle = bottleManager.bottle(with: bottleID) {
             detailContent(for: bottle)
-                .onAppear { bottleManager.reconcileWindowsVersion(for: bottleID) }
+                .onAppear {
+                    bottleManager.reconcileWindowsVersion(for: bottleID)
+                    diskUsageStore.scan(bottle, manager: bottleManager)
+                }
         } else {
             // Deleted while visible (or stale link) — nothing to show.
             ContentUnavailableView("Bottle Not Found", systemImage: "questionmark.circle")
@@ -164,6 +168,35 @@ struct BottleDetailView: View {
 
             DependenciesSection(bottle: bottle)
 
+            Section {
+                HStack {
+                    LabeledContent("Prefix size") {
+                        if diskUsageStore.isScanning(bottle.id) {
+                            ProgressView().controlSize(.small)
+                        } else if let bytes = diskUsageStore.size(for: bottle.id) {
+                            Text(BottleDiskUsage.formatted(bytes))
+                                .monospacedDigit()
+                        } else {
+                            Text("—").foregroundStyle(.secondary)
+                        }
+                    }
+                    Spacer()
+                    Button("Recompute") {
+                        diskUsageStore.scan(bottle, manager: bottleManager)
+                    }
+                    .controlSize(.small)
+                    .disabled(diskUsageStore.isScanning(bottle.id))
+                }
+                Button("Clean Wine Temp Files…") { cleanTempFiles(in: bottle) }
+                    .disabled(bottle.status != .ready || isAnyGameRunning(in: bottle))
+            } header: {
+                Text("Storage")
+            } footer: {
+                Text("Cleans drive_c/windows/Temp and each user's Temp folder. Wine recreates these on demand.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
             if let errorMessage {
                 Section {
                     Text(errorMessage)
@@ -239,6 +272,22 @@ struct BottleDetailView: View {
             }
         } message: {
             Text("This permanently removes the bottle and everything installed in it.")
+        }
+    }
+
+    // MARK: Storage
+
+    private func cleanTempFiles(in bottle: Bottle) {
+        Task {
+            do {
+                let freed = try await diskUsageStore.cleanTempFiles(
+                    in: bottle, manager: bottleManager
+                )
+                toastCenter.success("Freed \(BottleDiskUsage.formatted(freed))")
+                errorMessage = nil
+            } catch {
+                errorMessage = error.localizedDescription
+            }
         }
     }
 
