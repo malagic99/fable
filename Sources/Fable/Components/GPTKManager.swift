@@ -34,7 +34,7 @@ final class GPTKManager: ObservableObject {
     /// D3D DLLs provided by GPTK as Wine builtins. When the GPTK
     /// backend runs a game these are forced builtin so DXMT's native
     /// DLLs in system32 don't shadow them.
-    nonisolated static let builtinDLLs = ["d3d10core", "d3d11", "d3d12", "dxgi", "nvapi64"]
+    nonisolated static let builtinDLLs = ["d3d10core", "d3d11", "d3d12", "dxgi", "nvapi64", "nvngx-on-metalfx"]
 
     init(componentManager: ComponentManager, catalog: VersionCatalog) {
         self.componentManager = componentManager
