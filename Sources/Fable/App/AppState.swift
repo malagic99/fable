@@ -8,12 +8,20 @@ enum AppSection: String, CaseIterable, Identifiable, Hashable {
 
     var id: String { rawValue }
 
+    /// Localization key for the section's display name. Lives in
+    /// Localizable.strings as `sidebar.<rawValue>`.
+    var localizationKey: String { "sidebar.\(rawValue)" }
+
+    /// Localized display name as a plain String — for navigationTitle
+    /// and other String-typed APIs that don't take LocalizedStringKey.
     var title: String {
-        switch self {
-        case .bottles: "Bottles"
-        case .components: "Components"
-        case .settings: "Settings"
-        }
+        L10n.string(localizationKey)
+    }
+
+    /// Localized display name as a LocalizedStringKey — for Label/Text
+    /// which auto-resolve through the locale-aware key path.
+    var titleKey: LocalizedStringKey {
+        LocalizedStringKey(localizationKey)
     }
 
     var systemImage: String {

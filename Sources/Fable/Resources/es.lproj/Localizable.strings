@@ -1,0 +1,46 @@
+// Fable Spanish localization. Seed translation — covers the first
+// ~30 high-traffic strings to validate the pipeline. Crowdsourcing
+// the long tail comes later (see README → Contributing translations).
+
+// MARK: Sidebar
+"sidebar.bottles"             = "Botellas";
+"sidebar.components"          = "Componentes";
+"sidebar.settings"            = "Ajustes";
+
+// MARK: BottleListView
+"bottle.list.empty.title"     = "Aún no hay botellas";
+"bottle.list.empty.description" = "Crea una botella para instalar y ejecutar juegos de Windows.";
+"bottle.list.create"          = "Crear botella";
+"bottle.list.new_steam"       = "Nueva botella de Steam…";
+"bottle.list.new"             = "Nueva botella…";
+
+// MARK: CreateBottleView
+"bottle.create.name.label"    = "Nombre";
+"bottle.create.name.prompt"   = "Mi Botella";
+"bottle.create.windows"       = "Versión de Windows";
+"bottle.create.template"      = "Plantilla";
+"bottle.create.cancel"        = "Cancelar";
+"bottle.create.create"        = "Crear";
+
+// MARK: BottleDetailView
+"bottle.detail.section.bottle"   = "Botella";
+"bottle.detail.section.graphics" = "Gráficos";
+"bottle.detail.section.performance" = "Rendimiento";
+"bottle.detail.section.storage"  = "Almacenamiento";
+"bottle.detail.section.troubleshooting" = "Solución de problemas";
+"bottle.detail.duplicate"        = "Duplicar";
+"bottle.detail.rename"           = "Renombrar";
+"bottle.detail.delete"           = "Eliminar";
+
+// MARK: Common actions
+"action.save"                 = "Guardar";
+"action.done"                 = "Listo";
+"action.install"              = "Instalar";
+"action.cancel"               = "Cancelar";
+
+// MARK: Toasts
+"toast.bottle.duplicated"     = "Duplicada como «%@»";
+"toast.bottle.repaired"       = "«%@» reparada";
+"toast.bottle.killed"         = "Procesos Wine en «%@» finalizados";
+"toast.disk.freed"            = "Se liberaron %@";
+"toast.component.installed"   = "%@ %@ instalado";

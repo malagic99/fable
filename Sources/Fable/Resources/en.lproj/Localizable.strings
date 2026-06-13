@@ -1,0 +1,45 @@
+// Fable English localization. Keys are stable identifiers, not English
+// prose — so renaming an English string never breaks other locales.
+
+// MARK: Sidebar
+"sidebar.bottles"             = "Bottles";
+"sidebar.components"          = "Components";
+"sidebar.settings"            = "Settings";
+
+// MARK: BottleListView
+"bottle.list.empty.title"     = "No Bottles Yet";
+"bottle.list.empty.description" = "Create a bottle to install and run Windows games.";
+"bottle.list.create"          = "Create Bottle";
+"bottle.list.new_steam"       = "New Steam Bottle…";
+"bottle.list.new"             = "New Bottle…";
+
+// MARK: CreateBottleView
+"bottle.create.name.label"    = "Name";
+"bottle.create.name.prompt"   = "My Bottle";
+"bottle.create.windows"       = "Windows Version";
+"bottle.create.template"      = "Template";
+"bottle.create.cancel"        = "Cancel";
+"bottle.create.create"        = "Create";
+
+// MARK: BottleDetailView
+"bottle.detail.section.bottle"   = "Bottle";
+"bottle.detail.section.graphics" = "Graphics";
+"bottle.detail.section.performance" = "Performance";
+"bottle.detail.section.storage"  = "Storage";
+"bottle.detail.section.troubleshooting" = "Troubleshooting";
+"bottle.detail.duplicate"        = "Duplicate";
+"bottle.detail.rename"           = "Rename";
+"bottle.detail.delete"           = "Delete";
+
+// MARK: Common actions
+"action.save"                 = "Save";
+"action.done"                 = "Done";
+"action.install"              = "Install";
+"action.cancel"               = "Cancel";
+
+// MARK: Toasts (passed through L10n helper, not SwiftUI Text)
+"toast.bottle.duplicated"     = "Duplicated as “%@”";
+"toast.bottle.repaired"       = "“%@” repaired";
+"toast.bottle.killed"         = "Wine processes in “%@” killed";
+"toast.disk.freed"            = "Freed %@";
+"toast.component.installed"   = "%@ %@ installed";

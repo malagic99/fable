@@ -296,7 +296,7 @@ struct BottleDetailView: View {
                 try await wineManager.forceKillPrefix(
                     bottleManager.prefixDirectory(for: bottle)
                 )
-                toastCenter.success("Wine processes in “\(bottle.name)” killed")
+                toastCenter.success(L10n.string("toast.bottle.killed", bottle.name))
                 errorMessage = nil
             } catch {
                 errorMessage = error.localizedDescription
@@ -312,7 +312,7 @@ struct BottleDetailView: View {
                 let freed = try await diskUsageStore.cleanTempFiles(
                     in: bottle, manager: bottleManager
                 )
-                toastCenter.success("Freed \(BottleDiskUsage.formatted(freed))")
+                toastCenter.success(L10n.string("toast.disk.freed", BottleDiskUsage.formatted(freed)))
                 errorMessage = nil
             } catch {
                 errorMessage = error.localizedDescription
@@ -339,7 +339,7 @@ struct BottleDetailView: View {
         }
         do {
             let clone = try bottleManager.cloneBottle(bottle.id, newName: candidate)
-            toastCenter.success("Duplicated as “\(clone.name)”")
+            toastCenter.success(L10n.string("toast.bottle.duplicated", clone.name))
         } catch {
             errorMessage = error.localizedDescription
         }

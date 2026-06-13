@@ -3,6 +3,7 @@ import PackageDescription
 
 let package = Package(
     name: "Fable",
+    defaultLocalization: "en",
     platforms: [
         .macOS(.v14)
     ],
@@ -16,7 +17,9 @@ let package = Package(
             name: "Fable",
             path: "Sources/Fable",
             resources: [
-                .copy("Resources/versions.json")
+                .copy("Resources/versions.json"),
+                .process("Resources/en.lproj"),
+                .process("Resources/es.lproj"),
             ]
         ),
         .testTarget(

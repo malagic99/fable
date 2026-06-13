@@ -7,7 +7,7 @@ struct SidebarView: View {
     var body: some View {
         List(selection: $appState.selectedSection) {
             ForEach(AppSection.allCases) { section in
-                Label(section.title, systemImage: section.systemImage)
+                Label(section.titleKey, systemImage: section.systemImage)
                     .tag(section)
             }
         }

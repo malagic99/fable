@@ -15,14 +15,14 @@ struct BottleListView: View {
         Group {
             if bottleManager.bottles.isEmpty {
                 ContentUnavailableView {
-                    Label("No Bottles Yet", systemImage: "wineglass")
+                    Label("bottle.list.empty.title", systemImage: "wineglass")
                 } description: {
-                    Text("Create a bottle to install and run Windows games.")
+                    Text("bottle.list.empty.description")
                 } actions: {
                     VStack(spacing: 8) {
-                        Button("Create Bottle") { isShowingCreateSheet = true }
+                        Button("bottle.list.create") { isShowingCreateSheet = true }
                             .buttonStyle(.borderedProminent)
-                        Button("New Steam Bottle…") { isShowingSteamSheet = true }
+                        Button("bottle.list.new_steam") { isShowingSteamSheet = true }
                     }
                 }
             } else {
@@ -42,10 +42,10 @@ struct BottleListView: View {
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Menu {
-                    Button("New Bottle…") { isShowingCreateSheet = true }
-                    Button("New Steam Bottle…") { isShowingSteamSheet = true }
+                    Button("bottle.list.new") { isShowingCreateSheet = true }
+                    Button("bottle.list.new_steam") { isShowingSteamSheet = true }
                 } label: {
-                    Label("Create Bottle", systemImage: "plus")
+                    Label("bottle.list.create", systemImage: "plus")
                 }
                 .help("Create a new bottle")
             }
