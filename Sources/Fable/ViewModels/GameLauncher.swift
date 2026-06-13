@@ -60,11 +60,15 @@ final class GameLauncher: ObservableObject {
         let log = AppPaths.logs.appending(path: GameInstaller.logName(bottle.name, game.name))
         let baseOverrides = environment["WINEDLLOVERRIDES"] ?? ""
 
+        // Per-game override wins over the bottle's default — lets a D3D9
+        // and a D3D11 title share one bottle.
+        let effectiveBackend = game.graphicsBackend ?? bottle.graphicsBackend
+
         // Pick the Wine binary and graphics routing per backend.
         let wine: URL
         let runtimeKey: String
         var releaseWineserver: URL?
-        switch bottle.graphicsBackend {
+        switch effectiveBackend {
         case .gptk:
             wine = try gptkManager.wineBinary()
             runtimeKey = "gptk"
@@ -80,7 +84,7 @@ final class GameLauncher: ObservableObject {
             var dxmtConfig = bottle.dxmtConfig
             dxmtConfig.maxFrameRate = bottle.performance.frameRateCap
             environment.merge(DXMTManager.launchEnvironment(
-                enabled: bottle.graphicsBackend == .dxmt,
+                enabled: effectiveBackend == .dxmt,
                 config: dxmtConfig,
                 baseOverrides: baseOverrides,
                 logFile: log

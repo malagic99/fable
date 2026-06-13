@@ -27,19 +27,24 @@ struct Game: Codable, Identifiable, Hashable, Sendable {
     var arguments: String
     /// Extra environment variables applied at launch.
     var environment: [String: String]
+    /// Per-game graphics override. nil = inherit the bottle's backend
+    /// (lets a D3D9 and a D3D11 game share one bottle without fighting).
+    var graphicsBackend: GraphicsBackend?
 
     init(
         id: UUID = UUID(),
         name: String,
         executablePath: String,
         arguments: String = "",
-        environment: [String: String] = [:]
+        environment: [String: String] = [:],
+        graphicsBackend: GraphicsBackend? = nil
     ) {
         self.id = id
         self.name = name
         self.executablePath = executablePath
         self.arguments = arguments
         self.environment = environment
+        self.graphicsBackend = graphicsBackend
     }
 
     init(from decoder: Decoder) throws {
@@ -49,6 +54,7 @@ struct Game: Codable, Identifiable, Hashable, Sendable {
         executablePath = try container.decode(String.self, forKey: .executablePath)
         arguments = try container.decodeIfPresent(String.self, forKey: .arguments) ?? ""
         environment = try container.decodeIfPresent([String: String].self, forKey: .environment) ?? [:]
+        graphicsBackend = try container.decodeIfPresent(GraphicsBackend.self, forKey: .graphicsBackend)
     }
 }
 
@@ -69,6 +75,15 @@ enum GraphicsBackend: String, Codable, CaseIterable, Identifiable, Sendable {
         case .off: "Wine built-in (D3D9 era)"
         case .dxmt: "DXMT — DirectX 11 via Metal"
         case .gptk: "Game Porting Toolkit — DirectX 12 via Metal"
+        }
+    }
+
+    /// Compact label for inline UI ("DXMT", "GPTK", "Wine").
+    var shortName: String {
+        switch self {
+        case .off: "Wine"
+        case .dxmt: "DXMT"
+        case .gptk: "GPTK"
         }
     }
 }

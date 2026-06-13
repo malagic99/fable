@@ -122,6 +122,10 @@ struct GameLauncherView: View {
             Text("Last run exited with code \(code)")
                 .font(.caption)
                 .foregroundStyle(.orange)
+        } else if let override = game.graphicsBackend, override != bottle.graphicsBackend {
+            Text("Backend override: \(override.shortName)")
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
     }
 
