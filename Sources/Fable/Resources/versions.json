@@ -12,6 +12,12 @@
             "url": "https://github.com/Gcenx/macOS_Wine_builds/releases/download/11.10/wine-devel-11.10-osx64.tar.xz",
             "sha256": "6d0637c3526fbe7051a5f8968dbde68fbc3ac417717648b9331c46642b52173b"
         },
+        "winetricks": {
+            "name": "Winetricks",
+            "version": "20240105",
+            "url": "https://raw.githubusercontent.com/Winetricks/winetricks/20240105/src/winetricks",
+            "sha256": "8f28985b06e9e04b5268e2aef3429b2a0f6abd4fd12c4a30472dfe66355128fa"
+        },
         "dxmt": {
             "name": "DXMT",
             "version": "0.80",

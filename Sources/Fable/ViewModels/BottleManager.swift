@@ -167,6 +167,14 @@ final class BottleManager: ObservableObject {
         try save(bottles[index])
     }
 
+    func setWinetricksVerbInstalled(_ slug: String, for id: Bottle.ID) throws {
+        guard let index = bottles.firstIndex(where: { $0.id == id }) else {
+            throw BottleError.notFound
+        }
+        bottles[index].installedWinetricksVerbs.insert(slug)
+        try save(bottles[index])
+    }
+
     /// Re-reads the prefix's actual Windows version (winecfg may have
     /// changed it) and updates metadata if it drifted.
     func reconcileWindowsVersion(for id: Bottle.ID) {

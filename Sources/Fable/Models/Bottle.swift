@@ -95,6 +95,9 @@ struct Bottle: Codable, Identifiable, Hashable, Sendable {
     var graphicsBackend: GraphicsBackend
     var dxmtConfig: DXMTConfig
     var performance: PerformanceOptions
+    /// Winetricks verb slugs the user has installed in this bottle.
+    /// Trusted from click history — verb-level detection isn't reliable.
+    var installedWinetricksVerbs: Set<String>
 
     init(
         id: UUID = UUID(),
@@ -105,7 +108,8 @@ struct Bottle: Codable, Identifiable, Hashable, Sendable {
         games: [Game] = [],
         graphicsBackend: GraphicsBackend = .off,
         dxmtConfig: DXMTConfig = DXMTConfig(),
-        performance: PerformanceOptions = PerformanceOptions()
+        performance: PerformanceOptions = PerformanceOptions(),
+        installedWinetricksVerbs: Set<String> = []
     ) {
         self.id = id
         self.name = name
@@ -116,6 +120,7 @@ struct Bottle: Codable, Identifiable, Hashable, Sendable {
         self.graphicsBackend = graphicsBackend
         self.dxmtConfig = dxmtConfig
         self.performance = performance
+        self.installedWinetricksVerbs = installedWinetricksVerbs
     }
 
     private enum LegacyKeys: String, CodingKey {
@@ -148,5 +153,8 @@ struct Bottle: Codable, Identifiable, Hashable, Sendable {
             migrated.frameRateCap = dxmtConfig.maxFrameRate
             performance = migrated
         }
+        installedWinetricksVerbs = try container.decodeIfPresent(
+            Set<String>.self, forKey: .installedWinetricksVerbs
+        ) ?? []
     }
 }

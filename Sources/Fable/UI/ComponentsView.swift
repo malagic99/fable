@@ -30,6 +30,10 @@ struct ComponentsView: View {
                 if gptkManager.isInstalled {
                     GPTKOverlayRow()
                 }
+                ComponentRow(
+                    id: WinetricksManager.componentID,
+                    fallback: appState.versionCatalog.components[WinetricksManager.componentID]
+                )
             } header: {
                 Text("Runtime Components")
             } footer: {
@@ -126,6 +130,7 @@ private struct ComponentRow: View {
     @EnvironmentObject private var updateManager: UpdateManager
     @EnvironmentObject private var dxmtManager: DXMTManager
     @EnvironmentObject private var wineManager: WineManager
+    @EnvironmentObject private var winetricksManager: WinetricksManager
     @EnvironmentObject private var bottleManager: BottleManager
     @EnvironmentObject private var toastCenter: ToastCenter
 
@@ -194,7 +199,13 @@ private struct ComponentRow: View {
     private func install(_ component: VersionCatalog.Component) {
         Task {
             do {
-                try await updateManager.install(component, id: id)
+                // Winetricks is a single shell script, not a tarball —
+                // its manager bypasses ComponentManager's tar pipeline.
+                if id == WinetricksManager.componentID {
+                    try await winetricksManager.ensureInstalled()
+                } else {
+                    try await updateManager.install(component, id: id)
+                }
                 // Updated DXMT DLLs must be re-copied into bottles that
                 // use it.
                 if id == DXMTManager.componentID {

@@ -10,11 +10,22 @@ struct DependenciesSection: View {
     @EnvironmentObject private var toastCenter: ToastCenter
 
     @StateObject private var installer = DependencyInstaller()
+    @State private var isShowingWinetricks = false
 
     var body: some View {
         Section {
             ForEach(DependencyCatalog.all) { dependency in
                 row(for: dependency)
+            }
+            HStack {
+                Label("More from Winetricks…", systemImage: "wrench.and.screwdriver")
+                Spacer()
+                Text("\(bottle.installedWinetricksVerbs.count) installed")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Button("Browse") { isShowingWinetricks = true }
+                    .controlSize(.small)
+                    .disabled(bottle.status != .ready)
             }
         } header: {
             Text("Dependencies")
@@ -22,6 +33,9 @@ struct DependenciesSection: View {
             Text("Runtimes many games expect. Install what a game's requirements mention — its log will name anything missing.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
+        }
+        .sheet(isPresented: $isShowingWinetricks) {
+            WinetricksSheetView(bottle: bottle)
         }
     }
 
