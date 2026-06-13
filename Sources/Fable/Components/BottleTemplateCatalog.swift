@@ -1,5 +1,16 @@
 import Foundation
 
+/// One game (typically a launcher: Steam, Epic, Battle.net) that a
+/// template auto-registers after provisioning, if the executable lands
+/// in drive_c.
+struct GameRegistration: Hashable, Sendable {
+    let name: String
+    /// Path relative to the bottle's drive_c.
+    let executablePath: String
+    /// Default per-game launch arguments (shell-tokenized at launch).
+    let arguments: String
+}
+
 /// A preset that picks a graphics backend and a starter pack of
 /// dependencies + winetricks verbs for a freshly-created bottle.
 /// Provisioning runs them sequentially after the prefix is initialized.
@@ -12,8 +23,31 @@ struct BottleTemplate: Identifiable, Hashable, Sendable {
     let dependencyIDs: [String]
     /// Winetricks verb slugs to install after dependencies.
     let winetricksVerbs: [String]
+    /// Games auto-added to the bottle after deps + verbs run.
+    /// A registration is skipped silently if its executable didn't land.
+    let gamesToRegister: [GameRegistration]
 
-    var isVanilla: Bool { dependencyIDs.isEmpty && winetricksVerbs.isEmpty }
+    init(
+        id: String,
+        name: String,
+        summary: String,
+        graphicsBackend: GraphicsBackend,
+        dependencyIDs: [String],
+        winetricksVerbs: [String],
+        gamesToRegister: [GameRegistration] = []
+    ) {
+        self.id = id
+        self.name = name
+        self.summary = summary
+        self.graphicsBackend = graphicsBackend
+        self.dependencyIDs = dependencyIDs
+        self.winetricksVerbs = winetricksVerbs
+        self.gamesToRegister = gamesToRegister
+    }
+
+    var isVanilla: Bool {
+        dependencyIDs.isEmpty && winetricksVerbs.isEmpty && gamesToRegister.isEmpty
+    }
 }
 
 enum BottleTemplateCatalog {
@@ -50,7 +84,17 @@ enum BottleTemplateCatalog {
             summary: "Steam client + Visual C++ + corefonts + DXMT.",
             graphicsBackend: .dxmt,
             dependencyIDs: ["vcredist-x64", "vcredist-x86"],
-            winetricksVerbs: ["corefonts", "steam"]
+            winetricksVerbs: ["corefonts", "steam"],
+            // Steam installs to "Program Files (x86)/Steam/Steam.exe" by
+            // default. -no-cef-sandbox is required on macOS Wine (the
+            // documented workaround for the CEF crash on launch).
+            gamesToRegister: [
+                GameRegistration(
+                    name: "Steam",
+                    executablePath: "Program Files (x86)/Steam/Steam.exe",
+                    arguments: "-no-cef-sandbox"
+                )
+            ]
         ),
         BottleTemplate(
             id: "d3d12-gptk",

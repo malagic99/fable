@@ -3,6 +3,16 @@ import SwiftUI
 /// Modal sheet for creating a new bottle: validates the name, then
 /// provisions it (downloading Wine on first use and initializing the prefix).
 struct CreateBottleView: View {
+    /// Locks the picker to this template if non-nil — used by the
+    /// dedicated "New Steam Bottle…" entry point.
+    let initialTemplate: BottleTemplate?
+    let titleOverride: String?
+
+    init(initialTemplate: BottleTemplate? = nil, title: String? = nil) {
+        self.initialTemplate = initialTemplate
+        self.titleOverride = title
+    }
+
     @EnvironmentObject private var bottleManager: BottleManager
     @EnvironmentObject private var componentManager: ComponentManager
     @EnvironmentObject private var wineManager: WineManager
@@ -53,6 +63,10 @@ struct CreateBottleView: View {
         .interactiveDismissDisabled(isWorking)
         .onAppear {
             windowsVersion = settingsManager.settings.defaultWindowsVersion
+            if let initialTemplate {
+                template = initialTemplate
+                if name.isEmpty { name = initialTemplate.name }
+            }
         }
     }
 
@@ -70,10 +84,14 @@ struct CreateBottleView: View {
                     }
                 }
 
-                Picker("Template", selection: $template) {
-                    ForEach(BottleTemplateCatalog.all) { tmpl in
-                        Text(tmpl.name).tag(tmpl)
+                if initialTemplate == nil {
+                    Picker("Template", selection: $template) {
+                        ForEach(BottleTemplateCatalog.all) { tmpl in
+                            Text(tmpl.name).tag(tmpl)
+                        }
                     }
+                } else {
+                    LabeledContent("Template", value: template.name)
                 }
                 Text(template.summary)
                     .font(.caption)
@@ -289,6 +307,26 @@ struct CreateBottleView: View {
                     bottleManager: bottleManager, wineManager: wineManager
                 )
             }
+        }
+
+        registerTemplateGames(template, in: bottle)
+    }
+
+    /// Walks `gamesToRegister` and adds each one whose executable
+    /// actually landed in drive_c. A missing exe is not an error — some
+    /// installers (Steam) silently skip themselves on existing installs.
+    private func registerTemplateGames(_ template: BottleTemplate, in bottle: Bottle) {
+        guard !template.gamesToRegister.isEmpty else { return }
+        let driveC = bottleManager.driveCDirectory(for: bottle)
+        for registration in template.gamesToRegister {
+            let exe = driveC.appending(path: registration.executablePath)
+            guard FileManager.default.fileExists(atPath: exe.path) else { continue }
+            let game = Game(
+                name: registration.name,
+                executablePath: registration.executablePath,
+                arguments: registration.arguments
+            )
+            try? bottleManager.addGame(game, to: bottle.id)
         }
     }
 

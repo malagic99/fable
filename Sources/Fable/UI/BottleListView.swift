@@ -4,6 +4,10 @@ import SwiftUI
 struct BottleListView: View {
     @EnvironmentObject private var bottleManager: BottleManager
     @State private var isShowingCreateSheet = false
+    @State private var isShowingSteamSheet = false
+
+    private static let steamTemplate = BottleTemplateCatalog.all
+        .first { $0.id == "steam-ready" } ?? BottleTemplateCatalog.default
 
     private let columns = [GridItem(.adaptive(minimum: 200, maximum: 260), spacing: 16)]
 
@@ -15,8 +19,11 @@ struct BottleListView: View {
                 } description: {
                     Text("Create a bottle to install and run Windows games.")
                 } actions: {
-                    Button("Create Bottle") { isShowingCreateSheet = true }
-                        .buttonStyle(.borderedProminent)
+                    VStack(spacing: 8) {
+                        Button("Create Bottle") { isShowingCreateSheet = true }
+                            .buttonStyle(.borderedProminent)
+                        Button("New Steam Bottle…") { isShowingSteamSheet = true }
+                    }
                 }
             } else {
                 ScrollView {
@@ -34,8 +41,9 @@ struct BottleListView: View {
         }
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
-                Button {
-                    isShowingCreateSheet = true
+                Menu {
+                    Button("New Bottle…") { isShowingCreateSheet = true }
+                    Button("New Steam Bottle…") { isShowingSteamSheet = true }
                 } label: {
                     Label("Create Bottle", systemImage: "plus")
                 }
@@ -44,6 +52,12 @@ struct BottleListView: View {
         }
         .sheet(isPresented: $isShowingCreateSheet) {
             CreateBottleView()
+        }
+        .sheet(isPresented: $isShowingSteamSheet) {
+            CreateBottleView(
+                initialTemplate: Self.steamTemplate,
+                title: "New Steam Bottle"
+            )
         }
         .navigationDestination(for: Bottle.ID.self) { id in
             BottleDetailView(bottleID: id)
