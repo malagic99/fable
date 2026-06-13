@@ -94,6 +94,7 @@ struct Bottle: Codable, Identifiable, Hashable, Sendable {
     var games: [Game]
     var graphicsBackend: GraphicsBackend
     var dxmtConfig: DXMTConfig
+    var performance: PerformanceOptions
 
     init(
         id: UUID = UUID(),
@@ -103,7 +104,8 @@ struct Bottle: Codable, Identifiable, Hashable, Sendable {
         status: BottleStatus = .provisioning,
         games: [Game] = [],
         graphicsBackend: GraphicsBackend = .off,
-        dxmtConfig: DXMTConfig = DXMTConfig()
+        dxmtConfig: DXMTConfig = DXMTConfig(),
+        performance: PerformanceOptions = PerformanceOptions()
     ) {
         self.id = id
         self.name = name
@@ -113,6 +115,7 @@ struct Bottle: Codable, Identifiable, Hashable, Sendable {
         self.games = games
         self.graphicsBackend = graphicsBackend
         self.dxmtConfig = dxmtConfig
+        self.performance = performance
     }
 
     private enum LegacyKeys: String, CodingKey {
@@ -137,5 +140,13 @@ struct Bottle: Codable, Identifiable, Hashable, Sendable {
             graphicsBackend = dxmtEnabled ? .dxmt : .off
         }
         dxmtConfig = try container.decodeIfPresent(DXMTConfig.self, forKey: .dxmtConfig) ?? DXMTConfig()
+        if let perf = try container.decodeIfPresent(PerformanceOptions.self, forKey: .performance) {
+            performance = perf
+        } else {
+            // Pre-Day 12 bottles only carried a frame-rate cap on DXMTConfig.
+            var migrated = PerformanceOptions()
+            migrated.frameRateCap = dxmtConfig.maxFrameRate
+            performance = migrated
+        }
     }
 }

@@ -120,22 +120,43 @@ struct BottleDetailView: View {
                     }
                 }
                 .disabled(bottle.status != .ready)
-
-                if bottle.graphicsBackend == .dxmt {
-                    Picker("Frame Rate Cap", selection: Binding(
-                        get: { bottle.dxmtConfig.maxFrameRate ?? 0 },
-                        set: { setFrameRateCap($0 == 0 ? nil : $0, bottle: bottle) }
-                    )) {
-                        Text("Uncapped").tag(0)
-                        Text("120 fps").tag(120)
-                        Text("60 fps").tag(60)
-                        Text("30 fps").tag(30)
-                    }
-                }
             } header: {
                 Text("Graphics")
             } footer: {
                 Text(graphicsFooter(for: bottle.graphicsBackend))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Section {
+                Toggle("Metal Performance HUD", isOn: Binding(
+                    get: { bottle.performance.metalHUD },
+                    set: { setMetalHUD($0, bottle: bottle) }
+                ))
+                .help("Apple's built-in FPS / frametime / GPU overlay (MTL_HUD_ENABLED)")
+
+                Picker("Frame Rate Cap", selection: Binding(
+                    get: { bottle.performance.frameRateCap ?? 0 },
+                    set: { setFrameRateCap($0 == 0 ? nil : $0, bottle: bottle) }
+                )) {
+                    Text("Uncapped").tag(0)
+                    Text("120 fps").tag(120)
+                    Text("60 fps").tag(60)
+                    Text("30 fps").tag(30)
+                }
+                .disabled(bottle.graphicsBackend == .off)
+
+                if bottle.graphicsBackend == .gptk {
+                    Toggle("MetalFX Upscaling", isOn: Binding(
+                        get: { bottle.performance.metalFXUpscaling },
+                        set: { setMetalFXUpscaling($0, bottle: bottle) }
+                    ))
+                    .help("D3DMetal 4 neural upscaler — render lower, upscale via Metal")
+                }
+            } header: {
+                Text("Performance")
+            } footer: {
+                Text(performanceFooter(for: bottle.graphicsBackend))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -282,10 +303,33 @@ struct BottleDetailView: View {
         }
     }
 
+    private func performanceFooter(for backend: GraphicsBackend) -> String {
+        switch backend {
+        case .off:
+            "Frame-rate cap and MetalFX upscaling need a translation backend (DXMT or GPTK)."
+        case .dxmt:
+            "Frame-rate cap is applied through DXMT. MetalFX upscaling needs the GPTK backend."
+        case .gptk:
+            "All performance toggles are active. MetalFX is a D3DMetal 4 feature."
+        }
+    }
+
     private func setFrameRateCap(_ cap: Int?, bottle: Bottle) {
-        var config = bottle.dxmtConfig
-        config.maxFrameRate = cap
-        try? bottleManager.setGraphics(backend: bottle.graphicsBackend, config: config, for: bottle.id)
+        var perf = bottle.performance
+        perf.frameRateCap = cap
+        try? bottleManager.setPerformance(perf, for: bottle.id)
+    }
+
+    private func setMetalHUD(_ enabled: Bool, bottle: Bottle) {
+        var perf = bottle.performance
+        perf.metalHUD = enabled
+        try? bottleManager.setPerformance(perf, for: bottle.id)
+    }
+
+    private func setMetalFXUpscaling(_ enabled: Bool, bottle: Bottle) {
+        var perf = bottle.performance
+        perf.metalFXUpscaling = enabled
+        try? bottleManager.setPerformance(perf, for: bottle.id)
     }
 
     // MARK: Game actions

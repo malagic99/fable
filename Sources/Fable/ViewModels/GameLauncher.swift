@@ -72,16 +72,21 @@ final class GameLauncher: ObservableObject {
             environment.merge(
                 GPTKManager.launchEnvironment(baseOverrides: baseOverrides)
             ) { _, new in new }
+            environment.merge(bottle.performance.gptkEnvironment()) { _, new in new }
         case .dxmt, .off:
             wine = try wineManager.wineBinary()
             runtimeKey = "wine"
+            // Frame-rate cap rides on DXMT's config when the backend is DXMT.
+            var dxmtConfig = bottle.dxmtConfig
+            dxmtConfig.maxFrameRate = bottle.performance.frameRateCap
             environment.merge(DXMTManager.launchEnvironment(
                 enabled: bottle.graphicsBackend == .dxmt,
-                config: bottle.dxmtConfig,
+                config: dxmtConfig,
                 baseOverrides: baseOverrides,
                 logFile: log
             )) { _, new in new }
         }
+        environment.merge(bottle.performance.backendAgnosticEnvironment()) { _, new in new }
 
         // Version-mismatched wineservers can't share a prefix: refuse
         // to mix runtimes within one bottle while games are running.
