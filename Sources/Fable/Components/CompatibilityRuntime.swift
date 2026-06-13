@@ -12,32 +12,40 @@ struct CompatibilityRuntime: Sendable {
         wineBinary.deletingLastPathComponent().appending(path: "wineserver")
     }
 
-    /// Search known locations, preferring Fable's own (future GPTK
-    /// import) over other apps' copies.
+    /// Search known locations for a Wine with macOS-specific WoW64
+    /// patches — the prerequisite for running 32-bit custom-packed
+    /// installers (ISDone, FreeArc) that crash stock Wine + Apple GPTK
+    /// at `err:seh:NtRaiseException Exception frame is not in stack limits`.
+    ///
+    /// Order matters: CrossOver's proprietary patches handle this
+    /// installer class better than any open-source Wine on macOS, so
+    /// it goes first when present. Apple GPTK (wine 7.7 base, no
+    /// CrossOver patches) is the fallback — better than nothing for
+    /// some 32-bit installers, useless for the WoW64-crashers.
     static func discover(componentsDirectory: URL = AppPaths.components) -> CompatibilityRuntime? {
         let home = FileManager.default.homeDirectoryForCurrentUser
 
         var candidates: [(String, URL)] = []
 
-        // Fable's own imported GPTK component (Day 11 import flow).
+        // CrossOver — has the WoW64 stack patches the others lack.
         candidates.append((
-            "Game Porting Toolkit",
-            componentsDirectory.appending(path: "gptk", directoryHint: .isDirectory)
+            "CrossOver",
+            URL(filePath: "/Applications/CrossOver.app/Contents/SharedSupport/CrossOver")
+        ))
+        // Whisky's WhiskyWine (CrossOver-derived).
+        candidates.append((
+            "WhiskyWine",
+            home.appending(path: "Library/Application Support/com.isaacmarovitz.Whisky/Libraries")
         ))
         // Heroic's GPTK toolkit.
         candidates.append((
             "Heroic Game Porting Toolkit",
             home.appending(path: "Library/Application Support/heroic/tools/game-porting-toolkit")
         ))
-        // Whisky's WhiskyWine (GPTK-based).
+        // Fable's own imported GPTK component.
         candidates.append((
-            "WhiskyWine",
-            home.appending(path: "Library/Application Support/com.isaacmarovitz.Whisky/Libraries")
-        ))
-        // CrossOver itself.
-        candidates.append((
-            "CrossOver",
-            URL(filePath: "/Applications/CrossOver.app/Contents/SharedSupport/CrossOver")
+            "Game Porting Toolkit",
+            componentsDirectory.appending(path: "gptk", directoryHint: .isDirectory)
         ))
 
         for (name, root) in candidates {
