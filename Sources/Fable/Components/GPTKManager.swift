@@ -132,7 +132,21 @@ final class GPTKManager: ObservableObject {
         if let root = componentManager.installedDirectory(for: Self.componentID) {
             try? Data(versionLabel.utf8).write(
                 to: root.appending(path: ".d3dmetal-version"))
+            // Strip com.apple.quarantine recursively. Without this, Wine
+            // (running under Rosetta) hits dlopen errors at d3d12 DllMain
+            // and the game aborts with STATUS_DLL_INIT_FAILED (c0000142).
+            // The dmg payload comes from Apple but inherits quarantine
+            // from the user's browser download; the merge() doesn't drop
+            // xattrs, so we explicitly clear them post-copy.
+            try? await Self.stripQuarantine(at: root)
         }
+    }
+
+    nonisolated private static func stripQuarantine(at root: URL) async throws {
+        _ = try await ProcessRunner.run(
+            URL(filePath: "/usr/bin/xattr"),
+            arguments: ["-dr", "com.apple.quarantine", root.path]
+        )
     }
 
     /// Recursive overwrite-merge of directory contents.
