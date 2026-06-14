@@ -97,7 +97,10 @@ struct BottleDetailView: View {
                         .foregroundStyle(.secondary)
                 } else {
                     ForEach(bottle.games) { game in
-                        GameLauncherView(game: game, bottle: bottle)
+                        VStack(alignment: .leading, spacing: 6) {
+                            GameLauncherView(game: game, bottle: bottle)
+                            CompatibilityBanner(game: game, bottle: bottle)
+                        }
                     }
                 }
             } header: {
