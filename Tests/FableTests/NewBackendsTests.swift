@@ -4,14 +4,15 @@ import Testing
 
 @Suite struct NewBackendsTests {
     @Test
-    func allFiveBackendsAreCaseIterable() {
+    func allBackendsAreCaseIterable() {
         let all = GraphicsBackend.allCases
         #expect(all.contains(.off))
         #expect(all.contains(.dxmt))
         #expect(all.contains(.gptk))
         #expect(all.contains(.dxvk))
         #expect(all.contains(.crossover))
-        #expect(all.count == 5)
+        #expect(all.contains(.sikarugir))
+        #expect(all.count == 6)
     }
 
     @Test

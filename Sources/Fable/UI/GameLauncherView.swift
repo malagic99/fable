@@ -10,6 +10,7 @@ struct GameLauncherView: View {
     @EnvironmentObject private var wineManager: WineManager
     @EnvironmentObject private var gptkManager: GPTKManager
     @EnvironmentObject private var crossOverManager: CrossOverManager
+    @EnvironmentObject private var sikarugirManager: SikarugirManager
     @EnvironmentObject private var gameLauncher: GameLauncher
     @EnvironmentObject private var metricsStore: RunningGameMetricsStore
 
@@ -155,7 +156,8 @@ struct GameLauncherView: View {
                 bottleManager: bottleManager,
                 wineManager: wineManager,
                 gptkManager: gptkManager,
-                crossOverManager: crossOverManager
+                crossOverManager: crossOverManager,
+                sikarugirManager: sikarugirManager
             )
         } catch {
             launchError = error.localizedDescription

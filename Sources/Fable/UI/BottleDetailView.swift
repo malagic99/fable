@@ -9,6 +9,7 @@ struct BottleDetailView: View {
     @EnvironmentObject private var dxmtManager: DXMTManager
     @EnvironmentObject private var gptkManager: GPTKManager
     @EnvironmentObject private var crossOverManager: CrossOverManager
+    @EnvironmentObject private var sikarugirManager: SikarugirManager
     @EnvironmentObject private var gameLauncher: GameLauncher
     @EnvironmentObject private var diskUsageStore: BottleDiskUsageStore
     @EnvironmentObject private var toastCenter: ToastCenter
@@ -397,6 +398,8 @@ struct BottleDetailView: View {
             "D3D11/12 → Vulkan → MoltenVK → Metal, on modern Wine (11.10). Best for 2024+ UE5 games that crash on GPTK. ~20-30% slower than D3DMetal but supports modern Wine SEH. Needs `winetricks dxvk` in the bottle."
         case .crossover:
             "Routes through your installed CrossOver. Modern wine 9+ AND Apple-licensed D3DMetal — the highest-compatibility path. Requires CrossOver (codeweavers.com)."
+        case .sikarugir:
+            "Sikarugir's wine-10.0 + D3DMetal recompiled against it. The free matched pair — modern SEH AND real D3D12→Metal. Best for 2024+ D3D12 games. Requires Sikarugir installed."
         }
     }
 
@@ -421,6 +424,10 @@ struct BottleDetailView: View {
                 case .crossover:
                     // CrossOver is auto-detected; nothing to install on our side.
                     crossOverManager.refresh()
+                case .sikarugir:
+                    // Extracts Sikarugir's wine-10.0 engine + overlays its
+                    // d3dmetal renderer into Fable's components (one-time).
+                    try await sikarugirManager.ensureInstalled()
                 case .off:
                     // Launches route around any installed DLLs.
                     break
@@ -445,6 +452,8 @@ struct BottleDetailView: View {
             "Frame-rate cap routed through DXVK_FRAME_RATE. MetalFX is GPTK-only."
         case .crossover:
             "CrossOver manages its own performance config — Metal HUD still works via MTL_HUD_ENABLED."
+        case .sikarugir:
+            "Metal HUD + MetalFX work through D3DMetal. Frame-rate cap isn't wired for this backend yet."
         }
     }
 

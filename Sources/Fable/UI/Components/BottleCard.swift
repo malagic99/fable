@@ -87,6 +87,8 @@ struct BottleCard: View {
                 StatusBadge(text: "DXVK", color: .teal)
             case .crossover:
                 StatusBadge(text: "CrossOver", color: .green)
+            case .sikarugir:
+                StatusBadge(text: "Sikarugir", color: .pink)
             case .off:
                 EmptyView()
             }

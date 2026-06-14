@@ -116,6 +116,8 @@ struct GameSettingsView: View {
             return "DXVK routing forced on. Needs `winetricks dxvk` run in the bottle once."
         case .crossover:
             return "Routes through your installed CrossOver. Different wineserver — can't share the bottle with other backends running."
+        case .sikarugir:
+            return "Routes through Sikarugir's wine-10.0 + D3DMetal. The free D3D12 path for modern games."
         }
     }
 

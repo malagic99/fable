@@ -87,6 +87,11 @@ enum GraphicsBackend: String, Codable, CaseIterable, Identifiable, Sendable {
     /// CrossOver licensed D3DMetal from Apple and rebuilt it against
     /// wine 9+ source — modern SEH + the optimization layer in one.
     case crossover
+    /// Sikarugir: wine-10.0 + D3DMetal recompiled against it. The free
+    /// matched pair — modern SEH (unwinds modern C++ throws GPTK's
+    /// wine-7.7 can't) AND real D3D12→Metal. Best path for 2024+ D3D12
+    /// games. Discovered from the user's Sikarugir install.
+    case sikarugir
 
     var id: String { rawValue }
 
@@ -97,6 +102,7 @@ enum GraphicsBackend: String, Codable, CaseIterable, Identifiable, Sendable {
         case .gptk: "Game Porting Toolkit — DirectX 12 via Metal"
         case .dxvk: "DXVK + vkd3d — DirectX via Vulkan (modern Wine)"
         case .crossover: "CrossOver — D3D9–12 via licensed D3DMetal"
+        case .sikarugir: "Sikarugir — D3D12 via D3DMetal on modern Wine"
         }
     }
 
@@ -108,6 +114,7 @@ enum GraphicsBackend: String, Codable, CaseIterable, Identifiable, Sendable {
         case .gptk: "GPTK"
         case .dxvk: "DXVK"
         case .crossover: "CrossOver"
+        case .sikarugir: "Sikarugir"
         }
     }
 }

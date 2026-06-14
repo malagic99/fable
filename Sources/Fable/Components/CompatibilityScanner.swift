@@ -43,7 +43,8 @@ enum CompatibilityScanner {
     /// of the SEH-killer markers are present.
     static func recommendedBackend(
         for findings: [CompatibilityFinding],
-        crossOverAvailable: Bool
+        crossOverAvailable: Bool,
+        sikarugirAvailable: Bool = false
     ) -> GraphicsBackend? {
         // Hard blockers: no path forward.
         if findings.contains(where: { $0.severity == .knownBlocker }) {
@@ -54,22 +55,24 @@ enum CompatibilityScanner {
         let hasStreamline = ids.contains("streamline")
         let hasDirectStorage = ids.contains("directstorage")
         let hasDenuvo = ids.contains("denuvo-heuristic")
+        let needsModernD3D12 = hasStreamline || hasDirectStorage || hasDenuvo
 
-        // CrossOver beats everything when the user has it — it's the
-        // only stack with both modern wine SEH AND D3DMetal.
-        if crossOverAvailable && (hasStreamline || hasDirectStorage || hasDenuvo) {
-            return .crossover
-        }
-
-        // Streamline or hard SEH-stressing markers without CrossOver
-        // → DXVK on modern Wine. Loses D3DMetal but actually runs.
-        if hasStreamline {
+        // Sikarugir is the best path for modern D3D12: free, modern-wine
+        // SEH + real D3DMetal (the matched pair GPTK lacks). Prefer it
+        // over CrossOver when both are present — same capability, no cost.
+        if needsModernD3D12 {
+            if sikarugirAvailable { return .sikarugir }
+            if crossOverAvailable { return .crossover }
+            // Neither modern-D3DMetal stack present → DXVK on modern Wine.
+            // Loses D3DMetal but at least has modern SEH. (D3D11 only —
+            // a D3D12 game still won't render, but the recommendation
+            // surfaces the "install Sikarugir/CrossOver" path via the UI.)
             return .dxvk
         }
 
-        // Otherwise — clean install with no concerning markers.
-        // The default fallback is GPTK; the bottle's own picker takes
-        // over from there if the user disagrees.
+        // Clean install, no concerning markers. GPTK is fine for the
+        // games it was designed around; the picker takes over if the
+        // user disagrees.
         return .gptk
     }
 

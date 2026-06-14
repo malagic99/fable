@@ -272,10 +272,10 @@ struct CreateBottleView: View {
         case .gptk:
             try await gptkManager.ensureInstalled()
             try bottleManager.setGraphics(backend: .gptk, for: bottle.id)
-        case .dxvk, .crossover:
+        case .dxvk, .crossover, .sikarugir:
             // Templates can request these but the per-game setup
-            // (DXVK install via winetricks; CrossOver presence check) is
-            // done on first launch. Just persist the choice here.
+            // (DXVK install; CrossOver/Sikarugir discovery) happens on
+            // first launch. Just persist the choice here.
             try bottleManager.setGraphics(backend: template.graphicsBackend, for: bottle.id)
         case .off:
             // Vanilla / classic preset honors the global default if user

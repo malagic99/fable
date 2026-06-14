@@ -47,7 +47,8 @@ final class GameLauncher: ObservableObject {
         bottleManager: BottleManager,
         wineManager: WineManager,
         gptkManager: GPTKManager,
-        crossOverManager: CrossOverManager
+        crossOverManager: CrossOverManager,
+        sikarugirManager: SikarugirManager
     ) throws {
         guard running[game.id] == nil else { return }
 
@@ -103,6 +104,16 @@ final class GameLauncher: ObservableObject {
             environment.merge(
                 CrossOverManager.launchEnvironment(baseOverrides: baseOverrides)
             ) { _, new in new }
+        case .sikarugir:
+            // Sikarugir's wine-10.0 + D3DMetal recompiled against it.
+            // Forces the D3DMetal builtins so prefix natives don't shadow.
+            wine = try sikarugirManager.wineBinary()
+            runtimeKey = "sikarugir"
+            releaseWineserver = try? sikarugirManager.wineserverBinary()
+            environment.merge(
+                SikarugirManager.launchEnvironment(baseOverrides: baseOverrides)
+            ) { _, new in new }
+            environment.merge(bottle.performance.gptkEnvironment()) { _, new in new }
         case .dxmt, .off:
             wine = try wineManager.wineBinary()
             runtimeKey = "wine"

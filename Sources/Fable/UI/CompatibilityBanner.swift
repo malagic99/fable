@@ -9,6 +9,7 @@ struct CompatibilityBanner: View {
 
     @EnvironmentObject private var bottleManager: BottleManager
     @EnvironmentObject private var crossOverManager: CrossOverManager
+    @EnvironmentObject private var sikarugirManager: SikarugirManager
     @State private var findings: [CompatibilityFinding] = []
     @State private var recommendation: GraphicsBackend?
     @State private var isExpanded = false
@@ -26,12 +27,14 @@ struct CompatibilityBanner: View {
             let installDir = bottleManager.driveCDirectory(for: bottle)
                 .appending(path: gameInstallDirectory(for: game))
             let crossOverAvailable = crossOverManager.isInstalled
+            let sikarugirAvailable = sikarugirManager.isDiscovered
             findings = await Task.detached(priority: .utility) {
                 CompatibilityScanner.scan(gameDirectory: installDir)
             }.value
             recommendation = CompatibilityScanner.recommendedBackend(
                 for: findings,
-                crossOverAvailable: crossOverAvailable
+                crossOverAvailable: crossOverAvailable,
+                sikarugirAvailable: sikarugirAvailable
             )
         }
     }
