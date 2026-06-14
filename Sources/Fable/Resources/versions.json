@@ -8,9 +8,9 @@
         },
         "gptk": {
             "name": "Game Porting Toolkit",
-            "version": "11.10_1",
-            "url": "https://github.com/Gcenx/macOS_Wine_builds/releases/download/11.10/wine-devel-11.10-osx64.tar.xz",
-            "sha256": "6d0637c3526fbe7051a5f8968dbde68fbc3ac417717648b9331c46642b52173b"
+            "version": "3.0-3",
+            "url": "https://github.com/Gcenx/game-porting-toolkit/releases/download/Game-Porting-Toolkit-3.0-3/game-porting-toolkit-3.0-3.tar.xz",
+            "sha256": "d377683937340f914823dbb2e1252b329cbf834ff58907d0293db8cebf0e392e"
         },
         "winetricks": {
             "name": "Winetricks",
