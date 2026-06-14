@@ -59,14 +59,33 @@ struct Game: Codable, Identifiable, Hashable, Sendable {
 }
 
 /// Which translation layer renders a bottle's games.
+///
+/// **Backend matrix** — pick the right path for the era:
+///
+/// | Game class                          | Backend       | Why                                |
+/// |-------------------------------------|---------------|------------------------------------|
+/// | 1999-2010 D3D9                      | `.off`        | Wine 11.10 built-in works           |
+/// | 2010-2018 D3D11 AAA                 | `.dxmt`       | Best D3D11→Metal path               |
+/// | 2018-2024 D3D12 (no Streamline)     | `.gptk`       | D3DMetal optimization               |
+/// | 2024+ D3D12 + Streamline / SEH-heavy| `.dxvk`       | Modern Wine SEH handles unwinding   |
+/// | Hardest cases (modern AAA)          | `.crossover`  | CrossOver wine 9+ + licensed D3DMetal |
 enum GraphicsBackend: String, Codable, CaseIterable, Identifiable, Sendable {
     /// Wine's built-in rendering (D3D9-era games, safest).
     case off
-    /// DXMT: D3D11/10 → Metal.
+    /// DXMT: D3D11/10 → Metal. Runs on the modern Wine (11.10).
     case dxmt
     /// Game Porting Toolkit: D3D9–12 → Metal via Apple's D3DMetal,
-    /// running on the GPTK Wine.
+    /// running on the GPTK Wine (7.7 base). Best perf for the
+    /// titles whose age + features GPTK was designed around.
     case gptk
+    /// DXVK: D3D11/12 → Vulkan → MoltenVK → Metal, on modern Wine
+    /// (11.10). Higher overhead than D3DMetal but supports modern
+    /// SEH unwinding that GPTK's wine 7.7 fails on.
+    case dxvk
+    /// Route through the user's installed CrossOver (when present).
+    /// CrossOver licensed D3DMetal from Apple and rebuilt it against
+    /// wine 9+ source — modern SEH + the optimization layer in one.
+    case crossover
 
     var id: String { rawValue }
 
@@ -75,15 +94,19 @@ enum GraphicsBackend: String, Codable, CaseIterable, Identifiable, Sendable {
         case .off: "Wine built-in (D3D9 era)"
         case .dxmt: "DXMT — DirectX 11 via Metal"
         case .gptk: "Game Porting Toolkit — DirectX 12 via Metal"
+        case .dxvk: "DXVK — D3D11/12 via Vulkan (modern Wine)"
+        case .crossover: "CrossOver — D3D9–12 via licensed D3DMetal"
         }
     }
 
-    /// Compact label for inline UI ("DXMT", "GPTK", "Wine").
+    /// Compact label for inline UI ("DXMT", "GPTK", "DXVK", "CrossOver", "Wine").
     var shortName: String {
         switch self {
         case .off: "Wine"
         case .dxmt: "DXMT"
         case .gptk: "GPTK"
+        case .dxvk: "DXVK"
+        case .crossover: "CrossOver"
         }
     }
 }

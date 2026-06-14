@@ -8,7 +8,9 @@ struct CompatibilityBanner: View {
     let bottle: Bottle
 
     @EnvironmentObject private var bottleManager: BottleManager
+    @EnvironmentObject private var crossOverManager: CrossOverManager
     @State private var findings: [CompatibilityFinding] = []
+    @State private var recommendation: GraphicsBackend?
     @State private var isExpanded = false
 
     var body: some View {
@@ -23,9 +25,14 @@ struct CompatibilityBanner: View {
             // priority detached task for the actual filesystem walk.
             let installDir = bottleManager.driveCDirectory(for: bottle)
                 .appending(path: gameInstallDirectory(for: game))
+            let crossOverAvailable = crossOverManager.isInstalled
             findings = await Task.detached(priority: .utility) {
                 CompatibilityScanner.scan(gameDirectory: installDir)
             }.value
+            recommendation = CompatibilityScanner.recommendedBackend(
+                for: findings,
+                crossOverAvailable: crossOverAvailable
+            )
         }
     }
 
@@ -54,6 +61,13 @@ struct CompatibilityBanner: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
+                if let recommendation, bottle.graphicsBackend != recommendation {
+                    Spacer()
+                    Label("Try \(recommendation.shortName)", systemImage: "lightbulb")
+                        .font(.caption)
+                        .foregroundStyle(.tint)
+                        .labelStyle(.titleAndIcon)
+                }
             }
         }
         .padding(.horizontal, 12)

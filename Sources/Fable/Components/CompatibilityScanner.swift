@@ -32,6 +32,47 @@ enum CompatibilityScanner {
         return findings
     }
 
+    /// Recommends a graphics backend based on a Findings set. Returns
+    /// nil when the install hits a hard blocker (anti-cheat) — no
+    /// configuration will help.
+    ///
+    /// The decision tree mirrors the doc-comment backend matrix on
+    /// GraphicsBackend itself. Crossover wins when present because
+    /// it's the highest-compatibility path; otherwise we prefer DXVK
+    /// for Streamline-bearing games (modern SEH) and GPTK when none
+    /// of the SEH-killer markers are present.
+    static func recommendedBackend(
+        for findings: [CompatibilityFinding],
+        crossOverAvailable: Bool
+    ) -> GraphicsBackend? {
+        // Hard blockers: no path forward.
+        if findings.contains(where: { $0.severity == .knownBlocker }) {
+            return nil
+        }
+
+        let ids = Set(findings.map(\.id))
+        let hasStreamline = ids.contains("streamline")
+        let hasDirectStorage = ids.contains("directstorage")
+        let hasDenuvo = ids.contains("denuvo-heuristic")
+
+        // CrossOver beats everything when the user has it — it's the
+        // only stack with both modern wine SEH AND D3DMetal.
+        if crossOverAvailable && (hasStreamline || hasDirectStorage || hasDenuvo) {
+            return .crossover
+        }
+
+        // Streamline or hard SEH-stressing markers without CrossOver
+        // → DXVK on modern Wine. Loses D3DMetal but actually runs.
+        if hasStreamline {
+            return .dxvk
+        }
+
+        // Otherwise — clean install with no concerning markers.
+        // The default fallback is GPTK; the bottle's own picker takes
+        // over from there if the user disagrees.
+        return .gptk
+    }
+
     // MARK: Inventory
 
     /// Lowercased relative paths of every file under root, capped at

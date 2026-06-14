@@ -46,7 +46,8 @@ final class GameLauncher: ObservableObject {
         in bottle: Bottle,
         bottleManager: BottleManager,
         wineManager: WineManager,
-        gptkManager: GPTKManager
+        gptkManager: GPTKManager,
+        crossOverManager: CrossOverManager
     ) throws {
         guard running[game.id] == nil else { return }
 
@@ -81,6 +82,27 @@ final class GameLauncher: ObservableObject {
                 GPTKManager.launchEnvironment(baseOverrides: baseOverrides)
             ) { _, new in new }
             environment.merge(bottle.performance.gptkEnvironment()) { _, new in new }
+        case .dxvk:
+            // DXVK runs on the modern wine (11.10) — same binary as .off/.dxmt
+            // but with d3d11/d3d12/dxgi routed to native so DXVK's prefix
+            // DLLs win over Wine's stubs.
+            wine = try wineManager.wineBinary()
+            runtimeKey = "wine"
+            environment.merge(DXVKManager.launchEnvironment(
+                baseOverrides: baseOverrides,
+                frameRateCap: bottle.performance.frameRateCap,
+                logFile: log
+            )) { _, new in new }
+        case .crossover:
+            // CrossOver provides its own version-matched wine + D3DMetal.
+            // Different wineserver from our other backends, so it gets its
+            // own runtime key for the conflict check.
+            wine = try crossOverManager.wineBinary()
+            runtimeKey = "crossover"
+            releaseWineserver = try? crossOverManager.wineserverBinary()
+            environment.merge(
+                CrossOverManager.launchEnvironment(baseOverrides: baseOverrides)
+            ) { _, new in new }
         case .dxmt, .off:
             wine = try wineManager.wineBinary()
             runtimeKey = "wine"

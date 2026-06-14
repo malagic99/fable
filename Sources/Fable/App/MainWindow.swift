@@ -9,6 +9,7 @@ struct FableApp: App {
     @StateObject private var wineManager: WineManager
     @StateObject private var dxmtManager: DXMTManager
     @StateObject private var gptkManager: GPTKManager
+    @StateObject private var crossOverManager = CrossOverManager()
     @StateObject private var winetricksManager: WinetricksManager
     @StateObject private var updateManager: UpdateManager
     @StateObject private var appUpdateChecker = AppUpdateChecker()
@@ -69,6 +70,7 @@ struct FableApp: App {
                 .environmentObject(wineManager)
                 .environmentObject(dxmtManager)
                 .environmentObject(gptkManager)
+                .environmentObject(crossOverManager)
                 .environmentObject(winetricksManager)
                 .environmentObject(updateManager)
                 .environmentObject(appUpdateChecker)

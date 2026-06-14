@@ -8,6 +8,7 @@ struct BottleDetailView: View {
     @EnvironmentObject private var wineManager: WineManager
     @EnvironmentObject private var dxmtManager: DXMTManager
     @EnvironmentObject private var gptkManager: GPTKManager
+    @EnvironmentObject private var crossOverManager: CrossOverManager
     @EnvironmentObject private var gameLauncher: GameLauncher
     @EnvironmentObject private var diskUsageStore: BottleDiskUsageStore
     @EnvironmentObject private var toastCenter: ToastCenter
@@ -389,9 +390,13 @@ struct BottleDetailView: View {
         case .off:
             "Best for D3D9-era games. DirectX renders through Wine's built-in path."
         case .dxmt:
-            "Best for DirectX 11/10 games. D3D12-only games need Game Porting Toolkit."
+            "Best for DirectX 11/10 games. D3D12-only games need Game Porting Toolkit or DXVK."
         case .gptk:
-            "Runs games on Apple's Game Porting Toolkit Wine with D3DMetal (D3D9–12). Downloads ~240 MB on first use."
+            "Runs games on Apple's Game Porting Toolkit Wine with D3DMetal (D3D9–12). Downloads ~240 MB on first use. Wine 7.7 base — fails on modern UE5 SEH unwinding."
+        case .dxvk:
+            "D3D11/12 → Vulkan → MoltenVK → Metal, on modern Wine (11.10). Best for 2024+ UE5 games that crash on GPTK. ~20-30% slower than D3DMetal but supports modern Wine SEH. Needs `winetricks dxvk` in the bottle."
+        case .crossover:
+            "Routes through your installed CrossOver. Modern wine 9+ AND Apple-licensed D3DMetal — the highest-compatibility path. Requires CrossOver (codeweavers.com)."
         }
     }
 
@@ -408,6 +413,14 @@ struct BottleDetailView: View {
                     )
                 case .gptk:
                     try await gptkManager.ensureInstalled()
+                case .dxvk:
+                    // DXVK is installed via the existing Winetricks UI:
+                    // bottle's Dependencies → "More from Winetricks…" → dxvk.
+                    // Just persist the backend choice here.
+                    break
+                case .crossover:
+                    // CrossOver is auto-detected; nothing to install on our side.
+                    crossOverManager.refresh()
                 case .off:
                     // Launches route around any installed DLLs.
                     break
@@ -423,11 +436,15 @@ struct BottleDetailView: View {
     private func performanceFooter(for backend: GraphicsBackend) -> String {
         switch backend {
         case .off:
-            "Frame-rate cap and MetalFX upscaling need a translation backend (DXMT or GPTK)."
+            "Frame-rate cap and MetalFX upscaling need a translation backend (DXMT, DXVK, or GPTK)."
         case .dxmt:
             "Frame-rate cap is applied through DXMT. MetalFX upscaling needs the GPTK backend."
         case .gptk:
             "All performance toggles are active. MetalFX is a D3DMetal 4 feature."
+        case .dxvk:
+            "Frame-rate cap routed through DXVK_FRAME_RATE. MetalFX is GPTK-only."
+        case .crossover:
+            "CrossOver manages its own performance config — Metal HUD still works via MTL_HUD_ENABLED."
         }
     }
 

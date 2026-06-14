@@ -112,6 +112,10 @@ struct GameSettingsView: View {
             return "DXMT routing forced on. Needs DXMT enabled on the bottle (install it once from the Graphics section)."
         case .gptk:
             return "Game Porting Toolkit Wine forced on. The other backends in this bottle won't run while this one is open."
+        case .dxvk:
+            return "DXVK routing forced on. Needs `winetricks dxvk` run in the bottle once."
+        case .crossover:
+            return "Routes through your installed CrossOver. Different wineserver — can't share the bottle with other backends running."
         }
     }
 
