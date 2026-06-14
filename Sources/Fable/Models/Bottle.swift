@@ -78,9 +78,10 @@ enum GraphicsBackend: String, Codable, CaseIterable, Identifiable, Sendable {
     /// running on the GPTK Wine (7.7 base). Best perf for the
     /// titles whose age + features GPTK was designed around.
     case gptk
-    /// DXVK: D3D11/12 → Vulkan → MoltenVK → Metal, on modern Wine
-    /// (11.10). Higher overhead than D3DMetal but supports modern
-    /// SEH unwinding that GPTK's wine 7.7 fails on.
+    /// DXVK + vkd3d-proton: D3D9/10/11 via DXVK and D3D12 via
+    /// vkd3d-proton, both → Vulkan → MoltenVK → Metal, on modern Wine
+    /// (11.10). Higher overhead than D3DMetal but supports modern SEH
+    /// unwinding that GPTK's wine 7.7 fails on.
     case dxvk
     /// Route through the user's installed CrossOver (when present).
     /// CrossOver licensed D3DMetal from Apple and rebuilt it against
@@ -94,7 +95,7 @@ enum GraphicsBackend: String, Codable, CaseIterable, Identifiable, Sendable {
         case .off: "Wine built-in (D3D9 era)"
         case .dxmt: "DXMT — DirectX 11 via Metal"
         case .gptk: "Game Porting Toolkit — DirectX 12 via Metal"
-        case .dxvk: "DXVK — D3D11/12 via Vulkan (modern Wine)"
+        case .dxvk: "DXVK + vkd3d — DirectX via Vulkan (modern Wine)"
         case .crossover: "CrossOver — D3D9–12 via licensed D3DMetal"
         }
     }

@@ -1,19 +1,23 @@
 import Foundation
 
-/// DXVK routing — the open-source D3D11/12→Vulkan→MoltenVK→Metal path
-/// for modern Wine. Unlike DXMT and GPTK, DXVK installs via the
-/// existing `winetricks dxvk` verb rather than as a Fable-managed
-/// component, so this Manager is thin: it just provides the launch
-/// env and a presence check.
+/// DXVK + vkd3d-proton routing — the open-source DirectX→Vulkan→
+/// MoltenVK→Metal path for modern Wine.
+///
+/// IMPORTANT: "DXVK" is shorthand here for the full stack. DXVK itself
+/// only handles D3D9/10/11 → Vulkan; D3D12 → Vulkan is the SEPARATE
+/// vkd3d-proton project. A D3D12 game (e.g. any modern UE5 title)
+/// needs vkd3d-proton's d3d12.dll + d3d12core.dll alongside DXVK's
+/// dxgi.dll. Both install into the prefix's system32/syswow64.
 @MainActor
 final class DXVKManager: ObservableObject {
-    /// `winetricks dxvk` writes these to the prefix's `system32`/`syswow64`.
-    /// `isInstalled(in:)` looks for the 64-bit `d3d11.dll` as the canary.
+    /// Canary for the install check — DXVK's d3d11.dll is ~4MB whereas
+    /// Wine's builtin stub is tiny.
     nonisolated static let canaryDLL = "windows/system32/d3d11.dll"
 
-    /// DLLs DXVK provides — these go native so Wine loads DXVK's copies
-    /// (in system32) instead of Wine's own built-in d3d.
-    nonisolated static let routedDLLs = ["d3d10core", "d3d11", "d3d12", "dxgi"]
+    /// DLLs the stack provides — forced native so Wine loads the
+    /// prefix copies instead of its builtins. d3d12core is vkd3d-proton
+    /// 3.x's split-out core (d3d12.dll depends on it).
+    nonisolated static let routedDLLs = ["d3d9", "d3d10core", "d3d11", "d3d12", "d3d12core", "dxgi"]
 
     /// Whether DXVK is set up for the given bottle. The check is just
     /// the presence of the d3d11.dll — `winetricks dxvk` writes large
