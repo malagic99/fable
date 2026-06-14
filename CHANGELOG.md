@@ -1,5 +1,70 @@
 # Changelog
 
+## v0.4.0 — 2026-06-14
+
+Pushed past the Wine 7.7 ceiling. New backends, Smart Bottle
+compatibility scanner, and the Info.plist version finally matches the
+binary (v0.1.0 had been shown in Settings since the initial sprint).
+
+### Headline
+
+- **Two new graphics backends** that bypass GPTK's wine-7.7 SEH wall:
+  - `dxvk` — D3D11/12 → Vulkan → MoltenVK → Metal on Wine Devel
+    11.10. Loses D3DMetal's optimization but supports modern Wine
+    SEH that GPTK fails on (the 007 First Light int3 wall).
+  - `crossover` — routes through the user's installed CrossOver.
+    Modern wine + Apple-licensed D3DMetal in one stack. Auto-detected
+    at `/Applications/CrossOver.app`.
+- **Smart Bottle** — `CompatibilityScanner` walks game install dirs
+  and flags Streamline, DirectStorage, EAC/BattlEye/Vanguard, Goldberg
+  with missing `steam_interfaces.txt`, repack tokens, Denuvo. Inline
+  expandable banner under each game with severity + suggestion, plus
+  a "💡 Try DXVK" / "Try CrossOver" recommendation chip when a better
+  backend is detected.
+- **First-launch wizard** (Day 21, was Stage B1 — pulled forward).
+  Welcome → Source (Steam / Heroic-GOG-Epic / Manual) → First bottle
+  from a template → Done. Re-runnable from Settings.
+
+### Backends & runtime
+
+- `GraphicsBackend` enum gains `.dxvk` and `.crossover` cases with
+  backward-compat JSON decoding for v0.3.0 bottles.
+- `GameLauncher.launch()` routes each new backend with its own wine
+  binary + env; runtimeKey separates them in the multi-runtime
+  conflict check.
+- `CrossOverManager` discovers CrossOver across 23/24/25 path layouts.
+- `DXVKManager` provides launch env (`WINEDLLOVERRIDES=…=n`,
+  `DXVK_FRAME_RATE`, `DXVK_LOG_PATH`) and a prefix-presence check.
+- `CompatibilityRuntime.discover()` order: CrossOver → WhiskyWine →
+  Heroic GPTK → Fable's GPTK. Reversed from v0.2.0 because CrossOver
+  has the WoW64 stack patches the others lack.
+- `GPTKManager.overlayEvaluationLibraries` now strips
+  `com.apple.quarantine` after merging the dmg payload. Without this
+  Wine running under Rosetta failed `dlopen("D3DMetal")` with
+  `STATUS_DLL_INIT_FAILED`.
+
+### Onboarding & UX
+
+- First-launch wizard surface (`OnboardingState` + `OnboardingView`).
+- SwiftUI's `Text`/`Label`/`Button` localization now actually works —
+  `make-app.sh` mirrors `.lproj` resources into `Fable.app/Contents/
+  Resources` and stamps `CFBundleLocalizations`. v0.3.0 ad-hoc builds
+  showed raw keys like `sidebar.bottles`.
+
+### Tests
+
+159 tests across 44 suites, all passing.
+
+### Known limitations
+
+- DXVK still has to be installed once per bottle via `winetricks dxvk`
+  — automation slated for a v0.4.x patch.
+- CrossOver detection assumes default `/Applications/CrossOver.app`
+  install path; non-standard locations aren't supported yet.
+- 007 First Light still doesn't run because of platform-level
+  Streamline + Goldberg limitations — not a Fable bug, but Smart
+  Bottle now surfaces the cause pre-launch.
+
 ## v0.3.0 — 2026-06-13
 
 First-launch experience + foundations for bottle export/import +
