@@ -131,6 +131,16 @@ final class SikarugirManager: ObservableObject {
         let lib = bundle.appending(path: "lib", directoryHint: .isDirectory)
         try Self.overlay(renderer: renderer, intoLib: lib)
 
+        // 2b. Copy Sikarugir's bundled support dylibs (libinotify,
+        //     gnutls, freetype, etc.) from the Template app's
+        //     Frameworks/ into wswine.bundle/lib/. Sikarugir's wineserver
+        //     dlopens these via `bin/../lib/`, but the engine tarball
+        //     itself doesn't carry them — Sikarugir keeps them in the
+        //     app bundle. Without this step the FIRST launch crashes
+        //     with `dyld: Library not loaded: @rpath/libinotify.0.dylib`.
+        //     Real-world bite: user's Sikarugir backend, 2026-06-15.
+        try Self.copyBundleSupportLibs(renderer: renderer, intoLib: lib)
+
         // 3. Strip quarantine — Rosetta-loaded wine fails dlopen on
         //    quarantined dylibs/frameworks otherwise.
         _ = try? await ProcessRunner.run(
@@ -142,6 +152,39 @@ final class SikarugirManager: ObservableObject {
             .write(to: installRoot.appending(path: ".d3dmetal-version"))
 
         refresh()
+    }
+
+    /// Copies the support dylibs the engine wineserver/wine64 dlopen
+    /// at runtime (libinotify, gnutls, etc.) from Sikarugir's Template
+    /// app `Contents/Frameworks/` into our engine's `lib/`. Symlinks
+    /// are preserved with `cp -P` so `libinotify.dylib → libinotify.0.dylib`
+    /// stays a link, not a duplicate file.
+    nonisolated private static func copyBundleSupportLibs(renderer: URL, intoLib lib: URL) throws {
+        // renderer is …/Template-1.0.10.app/Contents/Frameworks/renderer/d3dmetal
+        // so its grandparent is the Frameworks dir we want to mine.
+        let frameworks = renderer.deletingLastPathComponent().deletingLastPathComponent()
+        let fm = FileManager.default
+        guard fm.fileExists(atPath: frameworks.path) else { return }
+        try fm.createDirectory(at: lib, withIntermediateDirectories: true)
+        let items = (try? fm.contentsOfDirectory(at: frameworks, includingPropertiesForKeys: nil)) ?? []
+        for item in items where item.pathExtension == "dylib" {
+            let target = lib.appending(path: item.lastPathComponent)
+            if fm.fileExists(atPath: target.path) { try fm.removeItem(at: target) }
+            // copyItem follows symlinks; use the underlying syscall via
+            // FileManager's link-preserving copy where possible.
+            do {
+                let attrs = try fm.attributesOfItem(atPath: item.path)
+                if (attrs[.type] as? FileAttributeType) == .typeSymbolicLink {
+                    let dest = try fm.destinationOfSymbolicLink(atPath: item.path)
+                    try fm.createSymbolicLink(atPath: target.path, withDestinationPath: dest)
+                } else {
+                    try fm.copyItem(at: item, to: target)
+                }
+            } catch {
+                // Skip unreadable entries — won't all be required at runtime.
+                continue
+            }
+        }
     }
 
     /// Copies the renderer's three payload groups into the engine lib:
