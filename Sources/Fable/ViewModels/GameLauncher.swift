@@ -98,11 +98,14 @@ final class GameLauncher: ObservableObject {
             // CrossOver provides its own version-matched wine + D3DMetal.
             // Different wineserver from our other backends, so it gets its
             // own runtime key for the conflict check.
+            // CrossOver's wine wrapper resolves the bottle from CX_BOTTLE
+            // inside CX_BOTTLE_PATH and requires cxbottle.conf at that path.
+            try CrossOverManager.ensureBottleConfig(at: prefix)
             wine = try crossOverManager.wineBinary()
             runtimeKey = "crossover"
             releaseWineserver = try? crossOverManager.wineserverBinary()
             environment.merge(
-                CrossOverManager.launchEnvironment(baseOverrides: baseOverrides)
+                CrossOverManager.launchEnvironment(prefix: prefix, baseOverrides: baseOverrides)
             ) { _, new in new }
         case .sikarugir:
             // Sikarugir's wine-10.0 + D3DMetal recompiled against it.
