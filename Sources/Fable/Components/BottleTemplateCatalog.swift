@@ -87,20 +87,20 @@ enum BottleTemplateCatalog {
             winetricksVerbs: ["corefonts", "steam"],
             // Steam installs to "Program Files (x86)/Steam/Steam.exe" by
             // default. The flags:
-            // - `-no-cef-sandbox` — required on macOS Wine (the CEF
-            //   sandbox can't enter on a non-Linux/Windows host).
-            // - `-cef-disable-gpu`, `-cef-disable-d3d11`,
-            //   `-cef-disable-gpu-compositing` — Steam's embedded
-            //   Chromium can't get a valid GPU context against Wine on
-            //   macOS, so its login window draws as a black square.
-            //   Forcing CEF to software rendering fixes it cleanly.
-            //   Performance hit is invisible (it's the login window /
-            //   store browser, not gameplay).
+            // - `-no-cef-sandbox` — required on macOS Wine; the CEF
+            //   sandbox can't enter on a non-Linux/Windows host.
+            // - `-cef-disable-gpu-compositing` — Steam's embedded
+            //   Chromium can't drive the GPU compositor against Wine on
+            //   macOS, so the login window paints as a black square
+            //   without it. Disabling only the compositor (not GPU
+            //   raster or D3D11) keeps CEF's text and QR-code rendering
+            //   working — disabling GPU/D3D11 wholesale starves Skia
+            //   and leaves the login frozen with no text + a stale QR.
             gamesToRegister: [
                 GameRegistration(
                     name: "Steam",
                     executablePath: "Program Files (x86)/Steam/Steam.exe",
-                    arguments: "-no-cef-sandbox -cef-disable-gpu -cef-disable-d3d11 -cef-disable-gpu-compositing"
+                    arguments: "-no-cef-sandbox -cef-disable-gpu-compositing"
                 )
             ]
         ),
