@@ -86,13 +86,21 @@ enum BottleTemplateCatalog {
             dependencyIDs: ["vcredist-x64", "vcredist-x86"],
             winetricksVerbs: ["corefonts", "steam"],
             // Steam installs to "Program Files (x86)/Steam/Steam.exe" by
-            // default. -no-cef-sandbox is required on macOS Wine (the
-            // documented workaround for the CEF crash on launch).
+            // default. The flags:
+            // - `-no-cef-sandbox` — required on macOS Wine (the CEF
+            //   sandbox can't enter on a non-Linux/Windows host).
+            // - `-cef-disable-gpu`, `-cef-disable-d3d11`,
+            //   `-cef-disable-gpu-compositing` — Steam's embedded
+            //   Chromium can't get a valid GPU context against Wine on
+            //   macOS, so its login window draws as a black square.
+            //   Forcing CEF to software rendering fixes it cleanly.
+            //   Performance hit is invisible (it's the login window /
+            //   store browser, not gameplay).
             gamesToRegister: [
                 GameRegistration(
                     name: "Steam",
                     executablePath: "Program Files (x86)/Steam/Steam.exe",
-                    arguments: "-no-cef-sandbox"
+                    arguments: "-no-cef-sandbox -cef-disable-gpu -cef-disable-d3d11 -cef-disable-gpu-compositing"
                 )
             ]
         ),
