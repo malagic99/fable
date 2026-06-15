@@ -96,11 +96,15 @@ enum BottleTemplateCatalog {
             //   raster or D3D11) keeps CEF's text and QR-code rendering
             //   working — disabling GPU/D3D11 wholesale starves Skia
             //   and leaves the login frozen with no text + a stale QR.
+            // - `-language english` — Wine's reported locale doesn't
+            //   always map to a Steam language code, leaving the login
+            //   form with empty input placeholders and a blank button.
+            //   Forcing english loads the strings catalog deterministically.
             gamesToRegister: [
                 GameRegistration(
                     name: "Steam",
                     executablePath: "Program Files (x86)/Steam/Steam.exe",
-                    arguments: "-no-cef-sandbox -cef-disable-gpu-compositing"
+                    arguments: "-no-cef-sandbox -cef-disable-gpu-compositing -language english"
                 )
             ]
         ),
