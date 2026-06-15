@@ -1,5 +1,48 @@
 # Changelog
 
+## v0.4.1 — 2026-06-15
+
+Compatibility release. Headline is a free fix that unblocks a whole
+class of games, plus the Sikarugir D3D12 backend and the DXVK/vkd3d
+correction.
+
+### Headline — the AVX free fix
+
+- **`ROSETTA_ADVERTISE_AVX=1` is now set on every launch.** Default
+  Rosetta 2 advertises only SSE4.2 to translated x86 games (AVX=0,
+  AVX2=0, FMA=0, BMI2=0). Many 2020+ titles run a CPU-feature check at
+  startup and deliberately abort (int3) if AVX/AVX2 is missing — an
+  invisible failure that looks like a graphics/Wine bug but is the CPU
+  gate. This single env var flips AVX/AVX2/FMA/BMI2 on (verified on
+  macOS 26.5 / M4 Pro). CrossOver and GPTK do this internally; Fable now
+  matches them, for free, across every backend. No-op on native-arm64
+  Wine.
+
+### New backend
+
+- **Sikarugir backend** — discovers a local Sikarugir install, extracts
+  its GPL wine-10.0 engine into Fable's components, and overlays the
+  d3dmetal renderer (D3DMetal recompiled against modern Wine). This is
+  the free matched-pair recipe — modern SEH + real D3D12→Metal — that
+  Apple's wine-7.7 GPTK can't provide. Architecture verified identical
+  to CrossOver 26.2's commercial implementation.
+
+### Fixes
+
+- **DXVK backend now installs vkd3d-proton for D3D12.** DXVK only does
+  D3D9/10/11; D3D12→Vulkan is the separate vkd3d-proton project. The
+  backend's DLL routing now includes `d3d12core` (vkd3d 3.x split it
+  out) and the display name names vkd3d explicitly.
+
+### Notes
+
+- 174 tests across 47 suites, all passing.
+- Known limitation surfaced this cycle: games with packed/protected
+  exes whose anti-tamper rejects the emulated environment (e.g. certain
+  cracked repacks) abort identically on every backend including
+  CrossOver — no wrapper fixes those; use a clean release or stream from
+  a Windows PC. Smart Bottle's heuristics flag the telltale signs.
+
 ## v0.4.0 — 2026-06-14
 
 Pushed past the Wine 7.7 ceiling. New backends, Smart Bottle
