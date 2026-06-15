@@ -82,6 +82,14 @@ final class WineManager: ObservableObject {
             // never block on UI. Games that need .NET get it via the
             // bottle later.
             "WINEDLLOVERRIDES": "mscoree,mshtml=",
+            // Make Rosetta 2 advertise AVX/AVX2/FMA/BMI2 to the
+            // translated x86 process (and its children — i.e. the game).
+            // Default Rosetta hides these, so any game whose CPU check
+            // requires AVX aborts with int3 before it ever renders, for
+            // no visible reason. macOS 15+/26 Rosetta supports them
+            // behind this opt-in. No-op on native-arm64 Wine. Verified
+            // 2026-06-15: unset → AVX=0; =1 → AVX=1,AVX2=1,FMA=1,BMI2=1.
+            "ROSETTA_ADVERTISE_AVX": "1",
         ]
     }
 
