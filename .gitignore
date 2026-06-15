@@ -1,17 +1,25 @@
+# Build
 .build/
-Fable.app/
-*.tar.xz
-*.tar.gz
 .swiftpm/
 *.xcodeproj
 xcuserdata/
 DerivedData/
+Fable.app/
+
+# macOS
 .DS_Store
-Fable-*.zip
+
+# Sorted artifact folders (component cache / release zips / scratch+personal)
+vendor/
+dist/
+misc/
+
+# Loose artifacts, belt-and-suspenders if dropped in root
+*.tar.xz
+*.tar.gz
 *.dmg
+Fable-*.zip
+crossover-*.zip
+*.pptx
 *.pdf
 *.xlsx
-
-testunpack/
-*.pptx
-crossover-*.zip
