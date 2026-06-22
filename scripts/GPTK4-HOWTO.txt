@@ -1,0 +1,147 @@
+==============================================================================
+ GPTK 4 + Heroic — HOW TO USE   (written 2026-06-22)
+ Helper script: scripts/gptk4_heroic_patch.py
+==============================================================================
+
+You now have TWO ways to run GPTK 4 D3DMetal through Heroic. Pick per game.
+
+  (1) PAID path  — CrossOver 26.2, patched to GPTK 4   [trial ends ~2026-06-28]
+  (2) FREE path  — Heroic's Gcenx "Game-Porting-Toolkit-latest" build, with
+                   GPTK 4's D3DMetal injected over its stock 3.0   [permanent]
+
+Both were set up by scripts/gptk4_heroic_patch.py. Both are fully reversible.
+
+
+------------------------------------------------------------------------------
+ WHICH ONE TO USE
+------------------------------------------------------------------------------
+- Until the CrossOver trial ends (~Jun 28): the CrossOver path is the most
+  stable GPTK 4 setup, because CrossOver 26.2's wine is modern and matches
+  GPTK 4's ABI.
+- After the trial ends, CrossOver stops running Windows apps (the licence check
+  lives in CrossOver's wineloader, which Heroic calls — so Heroic launches via
+  CrossOver get gated too). Switch your games to the FREE path.
+- FREE path caveat: it injects GPTK 4's D3DMetal onto an OLDER (3.0-era) wine.
+  This is EXPERIMENTAL — the version mix can be unstable for some games. If a
+  game misbehaves on injected 4.0, revert that bundle to its rock-solid stock
+  3.0 (one command, see REVERT). Stock 3.0 is free and permanent regardless.
+
+Best long-term: when Gcenx ships a *matched* "Game-Porting-Toolkit-4.0" build,
+install it in Heroic's Wine Manager and drop all the injection.
+Watch: https://github.com/Gcenx/game-porting-toolkit/releases
+
+
+------------------------------------------------------------------------------
+ USING IT IN HEROIC
+------------------------------------------------------------------------------
+1. Heroic -> the game -> Settings.
+2. Wine version:
+     - FREE path : select  "Game-Porting-Toolkit-latest"
+     - PAID path : select  CrossOver  (and set the bottle/prefix you patched,
+                   e.g. ~/Library/Application Support/CrossOver/Bottles/Crossover)
+   If "Game-Porting-Toolkit-latest" is NOT listed, fully quit & reopen Heroic —
+   it scans tools/wine on launch.
+3. Graphics layer: enable D3DMetal (a GPTK build defaults to it).
+4. Heroic -> game -> Settings -> Advanced -> Environment Variables, add:
+       WINEMSYNC=1
+       D3DM_ENABLE_METALFX=1        (only if the game has DLSS/upscaling)
+       ROSETTA_ADVERTISE_AVX=1      (lets AVX/AVX2-gated games start)
+       D3DM_SUPPORT_DXR=1           (only for DirectX Raytracing titles)
+   IMPORTANT: set D3DM_ENABLE_METALFX here in Heroic's env-var box, NOT in
+   cxbottle.conf — it often doesn't take effect from the bottle when launched
+   through Heroic.
+
+
+------------------------------------------------------------------------------
+ VERIFY IT'S REALLY GPTK 4
+------------------------------------------------------------------------------
+   launchctl setenv MTL_HUD_ENABLED 1
+   # launch the game from Heroic; the Metal HUD top line should read
+   #   "Game Porting Toolkit 4"   (and "MetalFX" if DLSS is active)
+   launchctl unsetenv MTL_HUD_ENABLED
+If it still says 3.0, the runner didn't pick up the new libs — re-run the
+inject for that target.
+
+
+------------------------------------------------------------------------------
+ REVERT
+------------------------------------------------------------------------------
+FREE path (back to stock, stable D3DMetal 3.0):
+   cd ~/FABLE
+   python3 scripts/gptk4_heroic_patch.py --wine-bundle Game-Porting-Toolkit-latest --revert
+
+PAID path (back to stock CrossOver GPTK):
+   cd ~/FABLE
+   python3 scripts/gptk4_heroic_patch.py --revert
+   (then remove the env-var lines added to the bottle's cxbottle.conf, or
+    restore cxbottle.conf.bak next to it)
+
+
+------------------------------------------------------------------------------
+ RE-RUNNING / OTHER COMMANDS
+------------------------------------------------------------------------------
+Inject GPTK 4 into the free Heroic build (what was done):
+   python3 scripts/gptk4_heroic_patch.py --wine-bundle Game-Porting-Toolkit-latest --metalfx
+
+Patch CrossOver again (e.g. after a CrossOver update overwrites it):
+   python3 scripts/gptk4_heroic_patch.py --bottle Crossover --metalfx --dxr
+
+Useful flags:
+   --dry-run     show every action, change nothing
+   --gptk-dmg P  point at Game_Porting_Toolkit_4.0.dmg if it's not mounted
+   --dxr         add DirectX Raytracing env var
+   --no-avx      skip the ROSETTA_ADVERTISE_AVX var
+   --force       proceed even if a backup already exists
+   --yes         skip the confirmation prompt
+
+The GPTK 4 libraries are read from the mounted Apple "Evaluation environment
+for Windows games 4.0" volume. If it's not mounted, mount
+Game_Porting_Toolkit_4.0.dmg (and its inner eval dmg), or pass --gptk-dmg.
+
+
+------------------------------------------------------------------------------
+ GOTCHAS LEARNED THE HARD WAY (so you don't have to)
+------------------------------------------------------------------------------
+* App Management / EPERM (PAID path only): modifying CrossOver.app in
+  /Applications is blocked by macOS unless the app HOSTING the terminal has
+  "App Management" or "Full Disk Access" in System Settings -> Privacy &
+  Security. Here that host is Claude.app. Grant it, fully quit & reopen the
+  app, then re-run. (The FREE path lives in your home folder and has no such
+  block.)
+
+* Quarantine SIGKILL: dylibs copied off a downloaded DMG/tarball carry
+  com.apple.quarantine and get killed on load. The script strips it
+  automatically (xattr -dr com.apple.quarantine) on everything it installs.
+
+* CrossOver auto-updates will overwrite the GPTK 4 patch and silently drop you
+  back to 3.0 in the HUD. Just re-run the CrossOver command above after any
+  update. SUAutomaticallyUpdate was already 0 in your prefs, but watch for it.
+
+* Patching/re-signing does NOT reset the CrossOver trial. Trial state is keyed
+  off FirstRunDate (2026-06-14) in prefs + server-side; expiry ~2026-06-28.
+
+* Leftover nvngx-on-metalfx.so/.dll may sit next to nvngx.so/.dll in a patched
+  build — harmless, never loaded; the original is in the backup anyway.
+
+
+------------------------------------------------------------------------------
+ TROUBLESHOOTING
+------------------------------------------------------------------------------
+* Game ran once, now won't boot after a swap -> clear the shader cache:
+     cd "$(getconf DARWIN_USER_CACHE_DIR)/d3dm/GAME_NAME"
+     rm -r shaders.cache
+* "Out of files" / multithread crash -> the bottle/prefix is using ESync; try
+  WINEMSYNC=1 (already set) or disable both.
+* AVX/AVX2-gated game won't start -> ROSETTA_ADVERTISE_AVX=1 (already set).
+* Anti-cheat (EAC, BattlEye, kernel-level) -> won't run under any Wine/GPTK
+  setup. Single-player usually fine; competitive multiplayer usually not.
+* FREE-path game unstable specifically on 4.0 -> revert that bundle to 3.0
+  (see REVERT); it's the expected fallback for the experimental version mix.
+
+
+------------------------------------------------------------------------------
+ BACKUP LOCATIONS (don't delete unless you want the patch permanent)
+------------------------------------------------------------------------------
+PAID: /Applications/CrossOver.app/Contents/SharedSupport/CrossOver/lib64/apple_gptk.backup
+FREE: ~/Library/Application Support/heroic/tools/wine/Game-Porting-Toolkit-latest/.gptk4-backup
+==============================================================================
