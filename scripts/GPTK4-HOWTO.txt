@@ -6,7 +6,7 @@
 You now have TWO ways to run GPTK 4 D3DMetal through Heroic. Pick per game.
 
   (1) PAID path  — CrossOver 26.2, patched to GPTK 4   [trial ends ~2026-06-28]
-  (2) FREE path  — Heroic's Gcenx "Game-Porting-Toolkit-latest" build, with
+  (2) FREE path  — Heroic's Gcenx "gptk4" build, with
                    GPTK 4's D3DMetal injected over its stock 3.0   [permanent]
 
 Both were set up by scripts/gptk4_heroic_patch.py. Both are fully reversible.
@@ -36,10 +36,10 @@ Watch: https://github.com/Gcenx/game-porting-toolkit/releases
 ------------------------------------------------------------------------------
 1. Heroic -> the game -> Settings.
 2. Wine version:
-     - FREE path : select  "Game-Porting-Toolkit-latest"
+     - FREE path : select  "gptk4"
      - PAID path : select  CrossOver  (and set the bottle/prefix you patched,
                    e.g. ~/Library/Application Support/CrossOver/Bottles/Crossover)
-   If "Game-Porting-Toolkit-latest" is NOT listed, fully quit & reopen Heroic —
+   If "gptk4" is NOT listed, fully quit & reopen Heroic —
    it scans tools/wine on launch.
 3. Graphics layer: enable D3DMetal (a GPTK build defaults to it).
 4. Heroic -> game -> Settings -> Advanced -> Environment Variables, add:
@@ -68,7 +68,7 @@ inject for that target.
 ------------------------------------------------------------------------------
 FREE path (back to stock, stable D3DMetal 3.0):
    cd ~/FABLE
-   python3 scripts/gptk4_heroic_patch.py --wine-bundle Game-Porting-Toolkit-latest --revert
+   python3 scripts/gptk4_heroic_patch.py --wine-bundle gptk4 --revert
 
 PAID path (back to stock CrossOver GPTK):
    cd ~/FABLE
@@ -81,7 +81,7 @@ PAID path (back to stock CrossOver GPTK):
  RE-RUNNING / OTHER COMMANDS
 ------------------------------------------------------------------------------
 Inject GPTK 4 into the free Heroic build (what was done):
-   python3 scripts/gptk4_heroic_patch.py --wine-bundle Game-Porting-Toolkit-latest --metalfx
+   python3 scripts/gptk4_heroic_patch.py --wine-bundle gptk4 --metalfx
 
 Patch CrossOver again (e.g. after a CrossOver update overwrites it):
    python3 scripts/gptk4_heroic_patch.py --bottle Crossover --metalfx --dxr
@@ -143,5 +143,5 @@ Game_Porting_Toolkit_4.0.dmg (and its inner eval dmg), or pass --gptk-dmg.
  BACKUP LOCATIONS (don't delete unless you want the patch permanent)
 ------------------------------------------------------------------------------
 PAID: /Applications/CrossOver.app/Contents/SharedSupport/CrossOver/lib64/apple_gptk.backup
-FREE: ~/Library/Application Support/heroic/tools/wine/Game-Porting-Toolkit-latest/.gptk4-backup
+FREE: ~/Library/Application Support/heroic/tools/wine/gptk4/.gptk4-backup
 ==============================================================================
