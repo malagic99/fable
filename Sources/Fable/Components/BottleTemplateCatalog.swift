@@ -48,6 +48,12 @@ struct BottleTemplate: Identifiable, Hashable, Sendable {
     var isVanilla: Bool {
         dependencyIDs.isEmpty && winetricksVerbs.isEmpty && gamesToRegister.isEmpty
     }
+
+    /// Installs the Steam client — eligible for the clone-from-donor fast
+    /// path that skips the slow download/install chain.
+    var installsSteam: Bool {
+        winetricksVerbs.contains("steam")
+    }
 }
 
 enum BottleTemplateCatalog {

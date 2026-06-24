@@ -4,6 +4,7 @@ enum BottleError: LocalizedError, Equatable {
     case emptyName
     case duplicateName(String)
     case notFound
+    case seedFailed(String)
 
     var errorDescription: String? {
         switch self {
@@ -13,6 +14,8 @@ enum BottleError: LocalizedError, Equatable {
             "A bottle named “\(name)” already exists."
         case .notFound:
             "This bottle no longer exists."
+        case .seedFailed(let detail):
+            "Couldn't clone the Steam install: \(detail)"
         }
     }
 }
@@ -152,6 +155,49 @@ final class BottleManager: ObservableObject {
         try save(clone)
         bottles.append(clone)
         return clone
+    }
+
+    // MARK: Steam fast-path (clone a known-good install)
+
+    /// A ready bottle that already holds a complete Steam install (its
+    /// `steamui.dll` is present), usable as a clone donor so new Steam
+    /// bottles skip the slow vcredist + corefonts + Steam-download install
+    /// chain — the chain that's both slow under Rosetta and prone to hang
+    /// on a dead corefonts mirror.
+    func steamDonorBottle(excluding excludeID: Bottle.ID?) -> Bottle? {
+        bottles.first { candidate in
+            candidate.id != excludeID && candidate.status == .ready
+                && FileManager.default.fileExists(atPath: driveCDirectory(for: candidate)
+                    .appending(path: "Program Files (x86)/Steam/steamui.dll").path)
+        }
+    }
+
+    /// Replaces `targetID`'s freshly-initialized prefix with a clone of
+    /// `donorID`'s, and inherits the donor's proven graphics backend so the
+    /// cloned Steam renders exactly as the donor does. Uses `cp -c`
+    /// (clonefile(2), copy-on-write) — even a multi-GB Steam tree seeds in
+    /// seconds with no real disk duplication, versus the 10–20 min install.
+    func seedPrefix(into targetID: Bottle.ID, fromBottle donorID: Bottle.ID) async throws {
+        guard let target = bottle(with: targetID), let donor = bottle(with: donorID) else {
+            throw BottleError.notFound
+        }
+        let fm = FileManager.default
+        let donorPrefix = prefixDirectory(for: donor)
+        let targetPrefix = prefixDirectory(for: target)
+        guard fm.fileExists(atPath: donorPrefix.path) else { throw BottleError.notFound }
+
+        // Drop the fresh prefix and clone the donor's in its place.
+        try? fm.removeItem(at: targetPrefix)
+        let result = try await ProcessRunner.run(
+            URL(filePath: "/bin/cp"),
+            arguments: ["-c", "-R", donorPrefix.path, targetPrefix.path]
+        )
+        guard result.succeeded else { throw BottleError.seedFailed(result.standardError) }
+
+        // A stale update lock captured at the copy instant confuses launch.
+        try? fm.removeItem(at: targetPrefix.appending(path: ".update-timestamp"))
+        // Inherit the donor's working render config.
+        try setGraphics(backend: donor.graphicsBackend, for: targetID)
     }
 
     func bottle(with id: Bottle.ID) -> Bottle? {
