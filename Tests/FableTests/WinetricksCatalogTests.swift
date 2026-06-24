@@ -95,4 +95,38 @@ import Testing
         let bottle = try JSONDecoder().decode(Bottle.self, from: Data(legacyJSON.utf8))
         #expect(bottle.installedWinetricksVerbs.isEmpty)
     }
+
+    @Test
+    func resilientWgetConfigFailsFastAndIsIdempotent() throws {
+        // The fix for the "stuck on corefonts" hang: a wget config that
+        // times out fast on a stalled mirror instead of wget's 15-min default.
+        let url = try WinetricksManager.resilientWgetConfig()
+        let body = try String(contentsOf: url, encoding: .utf8)
+        #expect(body.contains("timeout = 45"))
+        #expect(body.contains("tries = 3"))
+        // Idempotent: re-deriving returns the same file, unchanged.
+        let again = try WinetricksManager.resilientWgetConfig()
+        #expect(again == url)
+        #expect((try String(contentsOf: again, encoding: .utf8)) == body)
+    }
+
+    @Test
+    func waitForExitTimesOutAndReturnsNil() async throws {
+        // A process that outlives the timeout yields nil (caller terminates).
+        let sleeper = try ProcessRunner.start(
+            URL(filePath: "/bin/sh"), arguments: ["-c", "sleep 30"]
+        )
+        let result = await WinetricksManager.waitForExit(sleeper, timeout: 0.5)
+        #expect(result == nil)
+        sleeper.terminate()
+    }
+
+    @Test
+    func waitForExitReturnsCodeWhenProcessFinishesFirst() async throws {
+        let quick = try ProcessRunner.start(
+            URL(filePath: "/bin/sh"), arguments: ["-c", "exit 0"]
+        )
+        let result = await WinetricksManager.waitForExit(quick, timeout: 30)
+        #expect(result == 0)
+    }
 }
