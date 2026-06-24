@@ -109,12 +109,15 @@ final class GameLauncher: ObservableObject {
             ) { _, new in new }
         case .sikarugir:
             // Sikarugir's wine-10.0 + D3DMetal recompiled against it.
-            // Forces the D3DMetal builtins so prefix natives don't shadow.
+            // Forces the D3DMetal builtins so prefix natives don't shadow,
+            // and points D3DMetal at its framework (the env that makes CEF
+            // composite instead of black-squaring).
             wine = try sikarugirManager.wineBinary()
             runtimeKey = "sikarugir"
             releaseWineserver = try? sikarugirManager.wineserverBinary()
+            let sikBundle = wine.deletingLastPathComponent().deletingLastPathComponent()
             environment.merge(
-                SikarugirManager.launchEnvironment(baseOverrides: baseOverrides)
+                SikarugirManager.launchEnvironment(baseOverrides: baseOverrides, bundleRoot: sikBundle)
             ) { _, new in new }
             environment.merge(bottle.performance.gptkEnvironment()) { _, new in new }
         case .dxmt, .off:
