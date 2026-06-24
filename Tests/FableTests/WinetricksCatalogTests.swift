@@ -129,4 +129,41 @@ import Testing
         let result = await WinetricksManager.waitForExit(quick, timeout: 30)
         #expect(result == 0)
     }
+
+    @Test
+    func seedCacheCopiesPayloadsWithoutOverwriting() throws {
+        let fm = FileManager.default
+        let root = fm.temporaryDirectory.appending(path: "seed-\(UUID().uuidString)")
+        let seed = root.appending(path: "seed")
+        let cache = root.appending(path: "cache")
+        let corefonts = seed.appending(path: "corefonts")
+        try fm.createDirectory(at: corefonts, withIntermediateDirectories: true)
+        try fm.createDirectory(at: cache, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: root) }
+
+        // A payload subfolder + a top-level file in the seed.
+        try Data("arial".utf8).write(to: corefonts.appending(path: "arial32.exe"))
+        try Data("new".utf8).write(to: seed.appending(path: "top.dat"))
+        // A file already in the cache must NOT be clobbered.
+        try Data("keep".utf8).write(to: cache.appending(path: "top.dat"))
+
+        try WinetricksManager.seedCache(at: cache, from: [seed])
+
+        // Subfolder payload carried over...
+        #expect(fm.fileExists(atPath: cache.appending(path: "corefonts/arial32.exe").path))
+        // ...existing file preserved, not overwritten.
+        let kept = try String(contentsOf: cache.appending(path: "top.dat"), encoding: .utf8)
+        #expect(kept == "keep")
+    }
+
+    @Test
+    func seedCacheSkipsMissingSeeds() throws {
+        let fm = FileManager.default
+        let cache = fm.temporaryDirectory.appending(path: "cache-\(UUID().uuidString)")
+        try fm.createDirectory(at: cache, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: cache) }
+        // A non-existent seed path is silently skipped (no throw).
+        try WinetricksManager.seedCache(at: cache, from: [URL(filePath: "/no/such/seed")])
+        #expect(((try? fm.contentsOfDirectory(at: cache, includingPropertiesForKeys: nil)) ?? []).isEmpty)
+    }
 }
