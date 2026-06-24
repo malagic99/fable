@@ -12,7 +12,11 @@ import Testing
     @Test
     func sikarugirHasDisplayAndShortName() {
         #expect(GraphicsBackend.sikarugir.shortName == "Sikarugir")
-        #expect(GraphicsBackend.sikarugir.displayName.contains("D3DMetal"))
+        // Display name leads with the modern flagship's headline use cases.
+        let display = GraphicsBackend.sikarugir.displayName
+        #expect(display.contains("Sikarugir"))
+        #expect(display.contains("DirectX 12"))
+        #expect(display.contains("Steam"))
     }
 
     @Test

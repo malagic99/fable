@@ -60,49 +60,52 @@ struct Game: Codable, Identifiable, Hashable, Sendable {
 
 /// Which translation layer renders a bottle's games.
 ///
-/// **Backend matrix** — pick the right path for the era:
+/// **Backend matrix** — pick the path for the game (updated 2026-06):
 ///
-/// | Game class                          | Backend       | Why                                |
-/// |-------------------------------------|---------------|------------------------------------|
-/// | 1999-2010 D3D9                      | `.off`        | Wine 11.10 built-in works           |
-/// | 2010-2018 D3D11 AAA                 | `.dxmt`       | Best D3D11→Metal path               |
-/// | 2018-2024 D3D12 (no Streamline)     | `.gptk`       | D3DMetal optimization               |
-/// | 2024+ D3D12 + Streamline / SEH-heavy| `.dxvk`       | Modern Wine SEH handles unwinding   |
-/// | Hardest cases (modern AAA)          | `.crossover`  | CrossOver wine 9+ + licensed D3DMetal |
+/// | Game class                             | Backend      | Why                          |
+/// |----------------------------------------|--------------|------------------------------|
+/// | Older DirectX 9–11 (1999–2012)         | `.off`       | Wine's built-in wined3d is enough |
+/// | DirectX 10/11 (2012–2020)              | `.dxmt`      | Best D3D11→Metal, modern Wine|
+/// | DirectX 12 / modern AAA / Steam client | `.sikarugir` | Free matched Wine-10 + D3DMetal: modern SEH + D3D12→Metal, and the only free path that renders Steam's CEF |
+/// | Vulkan-friendly / DXVK titles          | `.dxvk`      | DirectX→Vulkan→Metal, modern Wine |
+/// | You already own CrossOver              | `.crossover` | Routes through its engine     |
+/// | Legacy fallback                        | `.gptk`      | Apple GPTK on Wine 7.7 — superseded by `.sikarugir` for anything needing modern SEH |
+///
+/// NB: `rawValue`s are persisted in every bottle.json — never rename a
+/// case. Only the user-facing displayName/shortName below should change.
 enum GraphicsBackend: String, Codable, CaseIterable, Identifiable, Sendable {
-    /// Wine's built-in rendering (D3D9-era games, safest).
+    /// Wine's built-in wined3d (DirectX→OpenGL→Metal). For older games.
     case off
-    /// DXMT: D3D11/10 → Metal. Runs on the modern Wine (11.10).
+    /// DXMT: D3D10/11 → Metal. Runs on the modern Wine (11.10).
     case dxmt
-    /// Game Porting Toolkit: D3D9–12 → Metal via Apple's D3DMetal,
-    /// running on the GPTK Wine (7.7 base). Best perf for the
-    /// titles whose age + features GPTK was designed around.
+    /// Apple Game Porting Toolkit: DirectX → Metal via D3DMetal, but on
+    /// the GPTK Wine (7.7 base) — can't unwind modern MSVC SEH, so it's a
+    /// LEGACY fallback now superseded by `.sikarugir` for modern titles.
     case gptk
-    /// DXVK + vkd3d-proton: D3D9/10/11 via DXVK and D3D12 via
-    /// vkd3d-proton, both → Vulkan → MoltenVK → Metal, on modern Wine
-    /// (11.10). Higher overhead than D3DMetal but supports modern SEH
-    /// unwinding that GPTK's wine 7.7 fails on.
+    /// DXVK + vkd3d-proton: D3D9/10/11 via DXVK and D3D12 via vkd3d,
+    /// both → Vulkan → MoltenVK → Metal, on modern Wine (11.10). Higher
+    /// overhead than D3DMetal but a solid Vulkan-path alternative.
     case dxvk
     /// Route through the user's installed CrossOver (when present).
-    /// CrossOver licensed D3DMetal from Apple and rebuilt it against
-    /// wine 9+ source — modern SEH + the optimization layer in one.
+    /// Same D3DMetal class of result; requires the paid app.
     case crossover
-    /// Sikarugir: wine-10.0 + D3DMetal recompiled against it. The free
-    /// matched pair — modern SEH (unwinds modern C++ throws GPTK's
-    /// wine-7.7 can't) AND real D3D12→Metal. Best path for 2024+ D3D12
-    /// games. Discovered from the user's Sikarugir install.
+    /// Sikarugir: free matched Wine-10.0 + D3DMetal pair. Modern SEH
+    /// (unwinds modern C++ throws GPTK's wine-7.7 can't) AND real
+    /// D3D12→Metal — and, with the D3DMetal framework wired, the only
+    /// free backend that renders Steam's CEF client. The modern flagship.
     case sikarugir
 
     var id: String { rawValue }
 
+    /// One-line label for the backend picker: name — what it does (note).
     var displayName: String {
         switch self {
-        case .off: "Wine built-in (D3D9 era)"
-        case .dxmt: "DXMT — DirectX 11 via Metal"
-        case .gptk: "Game Porting Toolkit — DirectX 12 via Metal"
-        case .dxvk: "DXVK + vkd3d — DirectX via Vulkan (modern Wine)"
-        case .crossover: "CrossOver — D3D9–12 via licensed D3DMetal"
-        case .sikarugir: "Sikarugir — D3D12 via D3DMetal on modern Wine"
+        case .off: "Built-in Wine — DirectX 9–11, older games"
+        case .dxmt: "DXMT — DirectX 10/11 → Metal"
+        case .gptk: "Apple GPTK — DirectX → Metal (legacy, Wine 7.7)"
+        case .dxvk: "DXVK + vkd3d — DirectX → Vulkan → Metal"
+        case .crossover: "CrossOver — uses your installed copy (paid)"
+        case .sikarugir: "Sikarugir — DirectX 12 + Steam → Metal (free)"
         }
     }
 
