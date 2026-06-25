@@ -13,6 +13,7 @@ struct CompatibilityBanner: View {
     @EnvironmentObject private var toastCenter: ToastCenter
     @State private var findings: [CompatibilityFinding] = []
     @State private var recommendation: GraphicsBackend?
+    @State private var recipe: GameRecipe?
     @State private var isExpanded = false
 
     /// The backend actually in effect for this game (its override, else the
@@ -35,14 +36,25 @@ struct CompatibilityBanner: View {
                 .appending(path: gameInstallDirectory(for: game))
             let crossOverAvailable = crossOverManager.isInstalled
             let sikarugirAvailable = sikarugirManager.isDiscovered
-            findings = await Task.detached(priority: .utility) {
+            let scanned = await Task.detached(priority: .utility) {
                 CompatibilityScanner.scan(gameDirectory: installDir)
             }.value
-            recommendation = CompatibilityScanner.recommendedBackend(
-                for: findings,
-                crossOverAvailable: crossOverAvailable,
-                sikarugirAvailable: sikarugirAvailable
-            )
+            // A known recipe is authoritative: surface it as an info note and
+            // let it drive the recommendation; otherwise fall back to the
+            // heuristic decision tree.
+            if let match = GameRecipeCatalog.recipe(forExecutablePath: game.executablePath) {
+                recipe = match
+                findings = [match.finding] + scanned
+                recommendation = match.backend
+            } else {
+                recipe = nil
+                findings = scanned
+                recommendation = CompatibilityScanner.recommendedBackend(
+                    for: scanned,
+                    crossOverAvailable: crossOverAvailable,
+                    sikarugirAvailable: sikarugirAvailable
+                )
+            }
         }
     }
 
@@ -117,15 +129,17 @@ struct CompatibilityBanner: View {
         }
     }
 
-    /// Applies the recommended backend as this game's per-game override and,
-    /// since heavy D3DMetal backends want the steady-FPS defaults, applies
-    /// those to the bottle too (only if untuned).
+    /// Applies the recommended backend as this game's per-game override, plus
+    /// the matching performance preset (the recipe's exact tuning when known,
+    /// else the backend's steady-FPS default) — only when untuned.
     private func applyRecommendation(_ backend: GraphicsBackend) {
         var updated = game
         updated.graphicsBackend = backend
         do {
             try bottleManager.updateGame(updated, in: bottle.id)
-            if backend == .sikarugir || backend == .gptk {
+            if let recipe {
+                bottleManager.applyPerformanceIfDefault(recipe.performance, for: bottle.id)
+            } else if backend == .sikarugir || backend == .gptk {
                 bottleManager.applyRecommendedPerformanceIfDefault(for: bottle.id)
             }
             toastCenter.success("\(game.name) will use \(backend.shortName)")
