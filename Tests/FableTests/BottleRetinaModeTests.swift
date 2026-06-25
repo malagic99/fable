@@ -12,6 +12,25 @@ import Testing
     }
 
     @Test
+    func readsRetinaModeFromUserReg() throws {
+        let fm = FileManager.default
+        let prefix = fm.temporaryDirectory.appending(path: "pfx-\(UUID().uuidString)", directoryHint: .isDirectory)
+        try fm.createDirectory(at: prefix, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: prefix) }
+        let userReg = prefix.appending(path: "user.reg")
+
+        // Key absent → nil.
+        try "[Software\\\\Wine\\\\Mac Driver]\n\"AllowSetGamma\"=dword:00000000\n".write(to: userReg, atomically: true, encoding: .utf8)
+        #expect(WineManager.currentRetinaMode(at: prefix) == nil)
+
+        // Explicitly on / off are read back (the drift the SS2 fix caught).
+        try "[Software\\\\Wine\\\\Mac Driver]\n\"RetinaMode\"=\"y\"\n".write(to: userReg, atomically: true, encoding: .utf8)
+        #expect(WineManager.currentRetinaMode(at: prefix) == true)
+        try "[Software\\\\Wine\\\\Mac Driver]\n\"RetinaMode\"=\"n\"\n".write(to: userReg, atomically: true, encoding: .utf8)
+        #expect(WineManager.currentRetinaMode(at: prefix) == false)
+    }
+
+    @Test
     func roundTripsWhenEnabled() throws {
         var bottle = Bottle(name: "B")
         bottle.retinaMode = true

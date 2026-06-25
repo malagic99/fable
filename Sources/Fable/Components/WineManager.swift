@@ -140,6 +140,23 @@ final class WineManager: ObservableObject {
         )
     }
 
+    /// The prefix's current winemac.drv Retina mode, read straight from
+    /// user.reg. nil when the key isn't present. Exposed for testing.
+    nonisolated static func currentRetinaMode(at prefix: URL) -> Bool? {
+        guard let reg = try? String(contentsOf: prefix.appending(path: "user.reg"), encoding: .utf8),
+              let line = reg.split(separator: "\n").first(where: { $0.contains(#""RetinaMode"="#) })
+        else { return nil }
+        return line.contains(#""y""#)
+    }
+
+    /// Makes the prefix's Retina mode match `enabled`, writing only when it
+    /// has drifted — so the bottle's saved setting stays authoritative if the
+    /// registry was ever changed out of band. Cheap no-op when already in sync.
+    func reconcileRetinaMode(_ enabled: Bool, at prefix: URL) async {
+        guard Self.currentRetinaMode(at: prefix) != enabled else { return }
+        try? await setRetinaMode(enabled, at: prefix)
+    }
+
     /// Initializes a fresh Wine prefix and pins its Windows version.
     func createPrefix(at prefix: URL, windowsVersion: WindowsVersion) async throws {
         let wine = try wineBinary()

@@ -38,6 +38,15 @@ struct BottleDetailView: View {
                     // Self-heal: finish any Steam install that downloaded but
                     // stalled on the WoW64 commit step (silent on open).
                     commitStuckSteam(bottle, announce: false)
+                    // Self-heal: keep the prefix's Retina mode matching the
+                    // bottle's saved setting (off-by-default fixes corner-render).
+                    if bottle.status == .ready && !isAnyGameRunning(in: bottle) {
+                        Task {
+                            await wineManager.reconcileRetinaMode(
+                                bottle.retinaMode, at: bottleManager.prefixDirectory(for: bottle)
+                            )
+                        }
+                    }
                 }
         } else {
             // Deleted while visible (or stale link) — nothing to show.
