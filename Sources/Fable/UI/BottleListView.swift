@@ -9,7 +9,7 @@ struct BottleListView: View {
     private static let steamTemplate = BottleTemplateCatalog.all
         .first { $0.id == "steam-ready" } ?? BottleTemplateCatalog.default
 
-    private let columns = [GridItem(.adaptive(minimum: 200, maximum: 260), spacing: 16)]
+    private let columns = [GridItem(.adaptive(minimum: 248, maximum: 320), spacing: 18)]
 
     var body: some View {
         Group {
@@ -27,23 +27,13 @@ struct BottleListView: View {
                 }
             } else {
                 ScrollView {
-                    LazyVGrid(columns: columns, spacing: 16) {
+                    LazyVGrid(columns: columns, spacing: 18) {
                         ForEach(bottleManager.bottles) { bottle in
-                            // The quick-launch button is a sibling overlay,
-                            // not nested in the link's label, so clicking it
-                            // launches the game instead of opening the detail.
-                            ZStack(alignment: .bottomTrailing) {
-                                NavigationLink(value: bottle.id) {
-                                    BottleCard(bottle: bottle)
-                                }
-                                .buttonStyle(.plain)
-
-                                BottleQuickLaunchButton(bottle: bottle)
-                                    .padding(12)
-                            }
+                            BottleGridItem(bottle: bottle)
                         }
                     }
-                    .padding(20)
+                    .padding(24)
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
                 }
             }
         }
@@ -70,6 +60,31 @@ struct BottleListView: View {
         .navigationDestination(for: Bottle.ID.self) { id in
             BottleDetailView(bottleID: id)
         }
+    }
+}
+
+/// One bottle in the grid: the card navigates to detail on tap, and a
+/// quick-launch button reveals on hover (a sibling overlay, not nested in
+/// the link, so its taps launch the game instead of opening the detail).
+/// Owns the hover state shared by the card's lift and the button's reveal.
+private struct BottleGridItem: View {
+    let bottle: Bottle
+    @State private var isHovering = false
+
+    var body: some View {
+        ZStack(alignment: .bottomTrailing) {
+            NavigationLink(value: bottle.id) {
+                BottleCard(bottle: bottle, isHovering: isHovering)
+            }
+            .buttonStyle(.plain)
+
+            BottleQuickLaunchButton(bottle: bottle)
+                .padding(12)
+                .opacity(isHovering ? 1 : 0)
+                .allowsHitTesting(isHovering)
+                .animation(.easeInOut(duration: 0.15), value: isHovering)
+        }
+        .onHover { isHovering = $0 }
     }
 }
 
