@@ -29,10 +29,18 @@ struct BottleListView: View {
                 ScrollView {
                     LazyVGrid(columns: columns, spacing: 16) {
                         ForEach(bottleManager.bottles) { bottle in
-                            NavigationLink(value: bottle.id) {
-                                BottleCard(bottle: bottle)
+                            // The quick-launch button is a sibling overlay,
+                            // not nested in the link's label, so clicking it
+                            // launches the game instead of opening the detail.
+                            ZStack(alignment: .bottomTrailing) {
+                                NavigationLink(value: bottle.id) {
+                                    BottleCard(bottle: bottle)
+                                }
+                                .buttonStyle(.plain)
+
+                                BottleQuickLaunchButton(bottle: bottle)
+                                    .padding(12)
                             }
-                            .buttonStyle(.plain)
                         }
                     }
                     .padding(20)

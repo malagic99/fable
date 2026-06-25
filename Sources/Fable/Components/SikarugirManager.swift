@@ -266,7 +266,16 @@ final class SikarugirManager: ObservableObject {
 
     /// Forces the D3DMetal-backed builtin d3d DLLs so nothing in the
     /// prefix's system32 shadows them, AND points D3DMetal at its
-    /// framework. WINEESYNC matches Sikarugir's own launch defaults.
+    /// framework.
+    ///
+    /// `WINEMSYNC=1` (NOT esync) is load-bearing for Steam: esync's eventfd
+    /// waits degrade into a CPU spin-poll under Rosetta, so Steam's IOCP
+    /// network threads pin 4+ cores in `__wine_syscall_dispatcher` and starve
+    /// downloads to ~0 with multi-minute stalls. msync uses Mach's
+    /// `os_sync_wait_on_address`, so those threads block properly — measured
+    /// 411%→32% CPU and 0→60+ Mbps on a stuck 30 GB download. The Sikarugir
+    /// wine supports both; we deliberately override its esync default.
+    /// See memory fable-steam-install-wow64-gap.
     ///
     /// `D3DMETAL_FRAMEWORK_PATH` is the load-bearing piece: the d3dmetal
     /// dispatch (d3d11.so) dlopens D3DMetal via this env var, falling back
@@ -280,7 +289,7 @@ final class SikarugirManager: ObservableObject {
     nonisolated static func launchEnvironment(baseOverrides: String, bundleRoot: URL?) -> [String: String] {
         var env: [String: String] = [
             "WINEDLLOVERRIDES": "\(baseOverrides);\(builtinDLLs.joined(separator: ","))=b",
-            "WINEESYNC": "1",
+            "WINEMSYNC": "1",
         ]
         guard let bundleRoot else { return env }
         let external = bundleRoot.appending(path: "lib/external", directoryHint: .isDirectory)

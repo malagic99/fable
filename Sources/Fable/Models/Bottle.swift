@@ -147,6 +147,10 @@ struct Bottle: Codable, Identifiable, Hashable, Sendable {
     /// Winetricks verb slugs the user has installed in this bottle.
     /// Trusted from click history — verb-level detection isn't reliable.
     var installedWinetricksVerbs: Set<String>
+    /// winemac.drv Retina mode. Crisps HiDPI UI (Steam's CEF, launchers)
+    /// but renders many non-HiDPI-aware games (SDL/GL) into a corner with
+    /// mismatched input — so it defaults OFF, since the point is games.
+    var retinaMode: Bool
 
     init(
         id: UUID = UUID(),
@@ -158,7 +162,8 @@ struct Bottle: Codable, Identifiable, Hashable, Sendable {
         graphicsBackend: GraphicsBackend = .off,
         dxmtConfig: DXMTConfig = DXMTConfig(),
         performance: PerformanceOptions = PerformanceOptions(),
-        installedWinetricksVerbs: Set<String> = []
+        installedWinetricksVerbs: Set<String> = [],
+        retinaMode: Bool = false
     ) {
         self.id = id
         self.name = name
@@ -170,6 +175,7 @@ struct Bottle: Codable, Identifiable, Hashable, Sendable {
         self.dxmtConfig = dxmtConfig
         self.performance = performance
         self.installedWinetricksVerbs = installedWinetricksVerbs
+        self.retinaMode = retinaMode
     }
 
     private enum LegacyKeys: String, CodingKey {
@@ -205,5 +211,8 @@ struct Bottle: Codable, Identifiable, Hashable, Sendable {
         installedWinetricksVerbs = try container.decodeIfPresent(
             Set<String>.self, forKey: .installedWinetricksVerbs
         ) ?? []
+        // Added post-launch; older bottles default to off (matches the
+        // winemac.drv default and keeps existing games rendering correctly).
+        retinaMode = try container.decodeIfPresent(Bool.self, forKey: .retinaMode) ?? false
     }
 }

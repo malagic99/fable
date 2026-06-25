@@ -37,7 +37,10 @@ import Testing
         #expect(overrides.contains("d3d12"))
         #expect(overrides.contains("dxgi"))
         #expect(overrides.contains("=b"))
-        #expect(env["WINEESYNC"] == "1")
+        // msync, not esync: esync spin-polls IOCP under Rosetta and stalls
+        // Steam downloads (411%→32% CPU when switched). msync blocks via Mach.
+        #expect(env["WINEMSYNC"] == "1")
+        #expect(env["WINEESYNC"] == nil)
     }
 
     @Test

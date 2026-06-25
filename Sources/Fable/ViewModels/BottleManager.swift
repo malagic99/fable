@@ -209,6 +209,26 @@ final class BottleManager: ObservableObject {
         prefixDirectory(for: bottle).appending(path: "drive_c", directoryHint: .isDirectory)
     }
 
+    /// The Steam client root inside this bottle, if Steam is installed
+    /// (the dir holding `steamapps/` + `depotcache/`). nil for non-Steam bottles.
+    func steamRoot(for bottle: Bottle) -> URL? {
+        let root = driveCDirectory(for: bottle)
+            .appending(path: "Program Files (x86)/Steam", directoryHint: .isDirectory)
+        return FileManager.default.fileExists(atPath: root.appending(path: "steamui.dll").path)
+            ? root : nil
+    }
+
+    /// Finishes any Steam install that downloaded + extracted but stalled on
+    /// the commit step (the WoW64 dead-service gap — see SteamInstallCommitter).
+    /// Runs the filesystem work off the main actor. Returns the names committed.
+    /// Caller must ensure Steam isn't running for this bottle.
+    func commitStuckSteamInstalls(in bottle: Bottle) async -> [String] {
+        guard let root = steamRoot(for: bottle) else { return [] }
+        return await Task.detached(priority: .utility) {
+            SteamInstallCommitter.commitStuckInstalls(steamRoot: root)
+        }.value
+    }
+
     func addGame(_ game: Game, to id: Bottle.ID) throws {
         guard let index = bottles.firstIndex(where: { $0.id == id }) else {
             throw BottleError.notFound
@@ -243,6 +263,14 @@ final class BottleManager: ObservableObject {
         if let config {
             bottles[index].dxmtConfig = config
         }
+        try save(bottles[index])
+    }
+
+    func setRetinaMode(_ enabled: Bool, for id: Bottle.ID) throws {
+        guard let index = bottles.firstIndex(where: { $0.id == id }) else {
+            throw BottleError.notFound
+        }
+        bottles[index].retinaMode = enabled
         try save(bottles[index])
     }
 

@@ -64,6 +64,8 @@ struct GameLauncherView: View {
 
             Menu {
                 Button("Game Settings…") { isShowingSettings = true }
+                Button("Create Desktop Shortcut") { createShortcut() }
+                    .help("A double-clickable app on your Desktop that launches this game directly")
                 if let log = gameLauncher.lastLog[game.id] {
                     Button("View Last Log") { logToView = log }
                 }
@@ -159,6 +161,26 @@ struct GameLauncherView: View {
                 crossOverManager: crossOverManager,
                 sikarugirManager: sikarugirManager
             )
+        } catch {
+            launchError = error.localizedDescription
+        }
+    }
+
+    private func createShortcut() {
+        do {
+            let plan = try gameLauncher.makeLaunchPlan(
+                game,
+                in: bottle,
+                bottleManager: bottleManager,
+                wineManager: wineManager,
+                gptkManager: gptkManager,
+                crossOverManager: crossOverManager,
+                sikarugirManager: sikarugirManager
+            )
+            let desktop = FileManager.default.urls(for: .desktopDirectory, in: .userDomainMask).first
+                ?? FileManager.default.homeDirectoryForCurrentUser.appending(path: "Desktop")
+            let app = try ShortcutGenerator.createApp(named: game.name, plan: plan, in: desktop)
+            NSWorkspace.shared.activateFileViewerSelecting([app])
         } catch {
             launchError = error.localizedDescription
         }

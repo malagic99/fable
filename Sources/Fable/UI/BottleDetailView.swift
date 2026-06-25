@@ -30,6 +30,9 @@ struct BottleDetailView: View {
                 .onAppear {
                     bottleManager.reconcileWindowsVersion(for: bottleID)
                     diskUsageStore.scan(bottle, manager: bottleManager)
+                    // Self-heal: finish any Steam install that downloaded but
+                    // stalled on the WoW64 commit step (silent on open).
+                    commitStuckSteam(bottle, announce: false)
                 }
         } else {
             // Deleted while visible (or stale link) — nothing to show.
@@ -130,12 +133,22 @@ struct BottleDetailView: View {
                     }
                 }
                 .disabled(bottle.status != .ready)
+
+                Toggle("Retina (HiDPI) Mode", isOn: Binding(
+                    get: { bottle.retinaMode },
+                    set: { setRetinaMode($0, bottle: bottle) }
+                ))
+                .disabled(bottle.status != .ready || isAnyGameRunning(in: bottle))
+                .help("Crisp on Retina displays for launcher/Steam UI. Off is best for games — many render into a corner with Retina on.")
             } header: {
                 Text("Graphics")
             } footer: {
-                Text(graphicsFooter(for: bottle.graphicsBackend))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(graphicsFooter(for: bottle.graphicsBackend))
+                    Text("Retina mode sharpens HiDPI UI (Steam, launchers) but breaks many non-HiDPI games — leave off for game bottles. Applies on next launch.")
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
             }
 
             Section {
@@ -200,6 +213,24 @@ struct BottleDetailView: View {
                 Text("Cleans drive_c/windows/Temp and each user's Temp folder. Wine recreates these on demand.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+            }
+
+            if bottleManager.steamRoot(for: bottle) != nil {
+                Section {
+                    Button("Finish Stuck Steam Downloads") {
+                        commitStuckSteam(bottle, announce: true)
+                    }
+                    .disabled(bottle.status != .ready || isAnyGameRunning(in: bottle))
+                    .help(isAnyGameRunning(in: bottle)
+                          ? "Stop Steam first"
+                          : "Move already-downloaded files into place and mark them installed")
+                } header: {
+                    Text("Steam")
+                } footer: {
+                    Text("If a download sticks at “installing files”, that's the Sikarugir/WoW64 commit gap — Steam downloaded everything but its dead helper service can't move it into place. This does that move and marks it installed. Stop Steam first; it also runs automatically when you open this bottle.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
 
             Section {
@@ -305,6 +336,26 @@ struct BottleDetailView: View {
                 errorMessage = nil
             } catch {
                 errorMessage = error.localizedDescription
+            }
+        }
+    }
+
+    // MARK: Steam
+
+    /// Finishes Steam installs stuck on the WoW64 commit step. Skips while a
+    /// game is running (we'd race Steam's files). `announce` shows a toast even
+    /// when there was nothing to do (manual button vs. silent auto-heal).
+    private func commitStuckSteam(_ bottle: Bottle, announce: Bool) {
+        guard !isAnyGameRunning(in: bottle) else {
+            if announce { toastCenter.error("Stop Steam before finishing downloads.") }
+            return
+        }
+        Task {
+            let committed = await bottleManager.commitStuckSteamInstalls(in: bottle)
+            if !committed.isEmpty {
+                toastCenter.success("Finished installing: \(committed.joined(separator: ", "))")
+            } else if announce {
+                toastCenter.success("No stuck downloads to finish.")
             }
         }
     }
@@ -454,6 +505,28 @@ struct BottleDetailView: View {
             "CrossOver manages its own performance config — Metal HUD still works via MTL_HUD_ENABLED."
         case .sikarugir:
             "Metal HUD + MetalFX work through D3DMetal. Frame-rate cap isn't wired for this backend yet."
+        }
+    }
+
+    private func setRetinaMode(_ enabled: Bool, bottle: Bottle) {
+        // Persist optimistically so the toggle reflects the choice, then
+        // write the prefix registry. Revert on failure.
+        do {
+            try bottleManager.setRetinaMode(enabled, for: bottle.id)
+        } catch {
+            errorMessage = error.localizedDescription
+            return
+        }
+        Task {
+            do {
+                try await wineManager.setRetinaMode(
+                    enabled, at: bottleManager.prefixDirectory(for: bottle)
+                )
+                errorMessage = nil
+            } catch {
+                try? bottleManager.setRetinaMode(!enabled, for: bottle.id)
+                errorMessage = error.localizedDescription
+            }
         }
     }
 
