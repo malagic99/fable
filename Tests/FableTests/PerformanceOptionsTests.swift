@@ -31,6 +31,25 @@ import Testing
     }
 
     @Test
+    func recommendedDefaultsPerBackend() {
+        // Heavy D3DMetal path: cap + upscale so AAA titles hold steady FPS.
+        for backend in [GraphicsBackend.sikarugir, .gptk] {
+            let rec = PerformanceOptions.recommended(for: backend)
+            #expect(rec.frameRateCap == 60)
+            #expect(rec.metalFXUpscaling)
+        }
+        // Translation backends: cap only (MetalFX is D3DMetal-only).
+        for backend in [GraphicsBackend.dxmt, .dxvk] {
+            let rec = PerformanceOptions.recommended(for: backend)
+            #expect(rec.frameRateCap == 60)
+            #expect(!rec.metalFXUpscaling)
+        }
+        // Bare backends keep defaults.
+        #expect(PerformanceOptions.recommended(for: .off) == PerformanceOptions())
+        #expect(PerformanceOptions.recommended(for: .crossover) == PerformanceOptions())
+    }
+
+    @Test
     func legacyBottleWithoutPerformanceMigratesFrameRateCap() throws {
         let legacyJSON = """
         {"id": "\(UUID().uuidString)", "name": "Old", "windowsVersion": "win10",

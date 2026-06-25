@@ -268,6 +268,7 @@ struct CreateBottleView: View {
            let donor = bottleManager.steamDonorBottle(excluding: bottle.id) {
             phase = .installingDependencies("Cloning Steam from “\(donor.name)”")
             try await bottleManager.seedPrefix(into: bottle.id, fromBottle: donor.id)
+            bottleManager.applyRecommendedPerformanceIfDefault(for: bottle.id)
             registerTemplateGames(template, in: bottle)
             return
         }
@@ -328,6 +329,7 @@ struct CreateBottleView: View {
             }
         }
 
+        bottleManager.applyRecommendedPerformanceIfDefault(for: bottle.id)
         registerTemplateGames(template, in: bottle)
     }
 

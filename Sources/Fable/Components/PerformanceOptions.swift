@@ -18,6 +18,26 @@ struct PerformanceOptions: Codable, Hashable, Sendable {
     /// GPTK: routed through `D3DM_FRAME_RATE_LIMIT`.
     var frameRateCap: Int?
 
+    /// Sensible performance defaults for a backend, so heavy modern titles
+    /// hold a steady frame rate instead of starting smooth and decaying.
+    /// Applied to fresh bottles (and on backend switch) only when the user
+    /// hasn't customized performance yet.
+    static func recommended(for backend: GraphicsBackend) -> PerformanceOptions {
+        switch backend {
+        case .sikarugir, .gptk:
+            // D3DMetal AAA path: cap to 60 and upscale to ease sustained GPU
+            // load + unified-memory pressure on long sessions.
+            return PerformanceOptions(metalHUD: false, metalFXUpscaling: true, frameRateCap: 60)
+        case .dxmt, .dxvk:
+            // Translation backends honor the cap (MetalFX is D3DMetal-only).
+            return PerformanceOptions(metalHUD: false, metalFXUpscaling: false, frameRateCap: 60)
+        case .off, .crossover:
+            // wined3d (old, light games) and CrossOver (manages its own) keep
+            // the bare defaults.
+            return PerformanceOptions()
+        }
+    }
+
     /// Env additions that apply regardless of backend.
     func backendAgnosticEnvironment() -> [String: String] {
         metalHUD ? ["MTL_HUD_ENABLED": "1"] : [:]

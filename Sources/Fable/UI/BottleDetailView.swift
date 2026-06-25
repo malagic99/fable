@@ -484,6 +484,11 @@ struct BottleDetailView: View {
                     break
                 }
                 try bottleManager.setGraphics(backend: backend, for: bottle.id)
+                // Heavy D3DMetal backends get a steady-FPS default (60 cap +
+                // MetalFX) — only when the user hasn't tuned performance yet.
+                if bottleManager.applyRecommendedPerformanceIfDefault(for: bottle.id) {
+                    toastCenter.success("Applied recommended performance: 60 fps cap + MetalFX")
+                }
                 errorMessage = nil
             } catch {
                 errorMessage = error.localizedDescription

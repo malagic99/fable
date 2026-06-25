@@ -292,6 +292,21 @@ final class BottleManager: ObservableObject {
         try save(bottles[index])
     }
 
+    /// Applies the bottle's current backend's recommended performance
+    /// defaults (e.g. 60 fps cap + MetalFX for the D3DMetal AAA path), but
+    /// only if the user hasn't customized performance yet — so heavy titles
+    /// hold a steady frame rate without manual tuning. Returns true if applied.
+    @discardableResult
+    func applyRecommendedPerformanceIfDefault(for id: Bottle.ID) -> Bool {
+        guard let index = bottles.firstIndex(where: { $0.id == id }),
+              bottles[index].performance == PerformanceOptions() else { return false }
+        let recommended = PerformanceOptions.recommended(for: bottles[index].graphicsBackend)
+        guard recommended != PerformanceOptions() else { return false }
+        bottles[index].performance = recommended
+        try? save(bottles[index])
+        return true
+    }
+
     func setWinetricksVerbInstalled(_ slug: String, for id: Bottle.ID) throws {
         guard let index = bottles.firstIndex(where: { $0.id == id }) else {
             throw BottleError.notFound
