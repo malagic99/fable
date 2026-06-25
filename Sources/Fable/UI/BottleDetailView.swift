@@ -13,7 +13,12 @@ struct BottleDetailView: View {
     @EnvironmentObject private var gameLauncher: GameLauncher
     @EnvironmentObject private var diskUsageStore: BottleDiskUsageStore
     @EnvironmentObject private var toastCenter: ToastCenter
+    @EnvironmentObject private var settingsManager: SettingsManager
     @Environment(\.dismiss) private var dismiss
+
+    /// When off, the bottle page is a clean click-and-play view; when on,
+    /// the full backend/performance/storage/troubleshooting panels show.
+    private var advanced: Bool { settingsManager.settings.advancedMode }
 
     @State private var isShowingRename = false
     @State private var renameText = ""
@@ -43,57 +48,66 @@ struct BottleDetailView: View {
     @ViewBuilder
     private func detailContent(for bottle: Bottle) -> some View {
         Form {
-            Section("Bottle") {
-                LabeledContent("Name", value: bottle.name)
-                LabeledContent("Windows Version", value: bottle.windowsVersion.displayName)
-                LabeledContent("Status") {
-                    switch bottle.status {
-                    case .ready:
-                        Label("Ready", systemImage: "checkmark.circle.fill")
-                            .foregroundStyle(.green)
-                    case .provisioning:
-                        Label("Setting up", systemImage: "clock")
-                            .foregroundStyle(.orange)
-                    case .broken:
-                        HStack {
-                            Label("Setup was interrupted", systemImage: "exclamationmark.triangle.fill")
+            // The bottle info section is power-user detail. In simple mode we
+            // only surface it when the bottle needs attention (setting up /
+            // repair); a ready bottle goes straight to its games.
+            if advanced || bottle.status != .ready {
+                Section("Bottle") {
+                    if advanced {
+                        LabeledContent("Name", value: bottle.name)
+                        LabeledContent("Windows Version", value: bottle.windowsVersion.displayName)
+                    }
+                    LabeledContent("Status") {
+                        switch bottle.status {
+                        case .ready:
+                            Label("Ready", systemImage: "checkmark.circle.fill")
+                                .foregroundStyle(.green)
+                        case .provisioning:
+                            Label("Setting up", systemImage: "clock")
                                 .foregroundStyle(.orange)
-                            if isRepairing {
-                                ProgressView().controlSize(.small)
-                            } else {
-                                Button("Repair") { repair(bottle) }
-                                    .controlSize(.small)
+                        case .broken:
+                            HStack {
+                                Label("Setup was interrupted", systemImage: "exclamationmark.triangle.fill")
+                                    .foregroundStyle(.orange)
+                                if isRepairing {
+                                    ProgressView().controlSize(.small)
+                                } else {
+                                    Button("Repair") { repair(bottle) }
+                                        .controlSize(.small)
+                                }
                             }
                         }
                     }
-                }
-                LabeledContent("Created") {
-                    Text(bottle.createdAt, format: .dateTime.day().month().year())
-                }
-                LabeledContent("Location") {
-                    HStack {
-                        Text(bottleManager.directory(for: bottle).path)
-                            .truncationMode(.middle)
-                            .lineLimit(1)
-                        Button("Show in Finder") {
-                            NSWorkspace.shared.activateFileViewerSelecting(
-                                [bottleManager.directory(for: bottle)]
-                            )
+                    if advanced {
+                        LabeledContent("Created") {
+                            Text(bottle.createdAt, format: .dateTime.day().month().year())
                         }
-                        .controlSize(.small)
+                        LabeledContent("Location") {
+                            HStack {
+                                Text(bottleManager.directory(for: bottle).path)
+                                    .truncationMode(.middle)
+                                    .lineLimit(1)
+                                Button("Show in Finder") {
+                                    NSWorkspace.shared.activateFileViewerSelecting(
+                                        [bottleManager.directory(for: bottle)]
+                                    )
+                                }
+                                .controlSize(.small)
+                            }
+                        }
+                        LabeledContent("Wine Tools") {
+                            HStack {
+                                Button("Wine Settings…") { openTool("winecfg") }
+                                    .controlSize(.small)
+                                    .help("Audio, graphics, drive mappings, Windows version (winecfg)")
+                                Button("Registry Editor…") { openTool("regedit") }
+                                    .controlSize(.small)
+                                    .help("Edit this bottle's Windows registry (regedit)")
+                            }
+                        }
+                        .disabled(bottle.status != .ready)
                     }
                 }
-                LabeledContent("Wine Tools") {
-                    HStack {
-                        Button("Wine Settings…") { openTool("winecfg") }
-                            .controlSize(.small)
-                            .help("Audio, graphics, drive mappings, Windows version (winecfg)")
-                        Button("Registry Editor…") { openTool("regedit") }
-                            .controlSize(.small)
-                            .help("Edit this bottle's Windows registry (regedit)")
-                    }
-                }
-                .disabled(bottle.status != .ready)
             }
 
             Section {
@@ -122,6 +136,8 @@ struct BottleDetailView: View {
                         .help("Add a game's .exe to this bottle")
                 }
             }
+
+            if advanced {
 
             Section {
                 Picker("Backend", selection: Binding(
@@ -246,6 +262,8 @@ struct BottleDetailView: View {
                     .foregroundStyle(.secondary)
             }
 
+            }  // end advanced sections
+
             if let errorMessage {
                 Section {
                     Text(errorMessage)
@@ -266,15 +284,17 @@ struct BottleDetailView: View {
                 }
                 .help("Rename this bottle")
 
-                Button {
-                    duplicate(bottle)
-                } label: {
-                    Label("Duplicate", systemImage: "doc.on.doc")
+                if advanced {
+                    Button {
+                        duplicate(bottle)
+                    } label: {
+                        Label("Duplicate", systemImage: "doc.on.doc")
+                    }
+                    .disabled(bottle.status != .ready || isAnyGameRunning(in: bottle))
+                    .help(isAnyGameRunning(in: bottle)
+                          ? "Stop running games before duplicating"
+                          : "Clone this bottle and its installed games")
                 }
-                .disabled(bottle.status != .ready || isAnyGameRunning(in: bottle))
-                .help(isAnyGameRunning(in: bottle)
-                      ? "Stop running games before duplicating"
-                      : "Clone this bottle and its installed games")
 
                 Button(role: .destructive) {
                     isShowingDeleteConfirmation = true

@@ -21,6 +21,16 @@ private struct GeneralSettingsTab: View {
 
     var body: some View {
         Form {
+            Section {
+                Toggle("Advanced Mode", isOn: $settingsManager.settings.advancedMode)
+            } header: {
+                Text("Interface")
+            } footer: {
+                Text("Off: a clean click-and-play view of each bottle's games. On: the full graphics backend, performance, dependency, storage, and troubleshooting panels.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
             Section("New Bottle Defaults") {
                 Picker("Windows Version", selection: $settingsManager.settings.defaultWindowsVersion) {
                     ForEach(WindowsVersion.allCases) { version in

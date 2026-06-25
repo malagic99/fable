@@ -10,22 +10,39 @@ struct BottleCard: View {
 
     @EnvironmentObject private var diskUsageStore: BottleDiskUsageStore
     @EnvironmentObject private var bottleManager: BottleManager
+    @State private var icon: NSImage?
+
+    /// The bottle's first game — its icon becomes the card's cover art.
+    private var primaryGame: Game? { bottle.games.first }
+
+    @ViewBuilder
+    private var bottleIcon: some View {
+        if let icon {
+            Image(nsImage: icon)
+                .resizable()
+                .interpolation(.high)
+                .frame(width: 44, height: 44)
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+        } else {
+            Image(systemName: "wineglass")
+                .font(.system(size: 22, weight: .medium))
+                .foregroundStyle(.white)
+                .frame(width: 44, height: 44)
+                .background(
+                    LinearGradient(
+                        colors: [.purple, .indigo],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    in: RoundedRectangle(cornerRadius: 10)
+                )
+        }
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .top) {
-                Image(systemName: "wineglass")
-                    .font(.system(size: 22, weight: .medium))
-                    .foregroundStyle(.white)
-                    .frame(width: 44, height: 44)
-                    .background(
-                        LinearGradient(
-                            colors: [.purple, .indigo],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ),
-                        in: RoundedRectangle(cornerRadius: 10)
-                    )
+                bottleIcon
                 Spacer()
                 statusBadge
             }
@@ -71,6 +88,16 @@ struct BottleCard: View {
             if diskUsageStore.size(for: bottle.id) == nil {
                 diskUsageStore.scan(bottle, manager: bottleManager)
             }
+        }
+        .task(id: primaryGame?.executablePath) {
+            // Cover art from the primary game's exe icon (Steam, the game…).
+            guard let game = primaryGame else { icon = nil; return }
+            let exe = bottleManager.driveCDirectory(for: bottle).appending(path: game.executablePath)
+            let data = await Task.detached(priority: .utility) { () -> Data? in
+                guard let bytes = try? Data(contentsOf: exe, options: .alwaysMapped) else { return nil }
+                return ExeIconExtractor.icoData(from: bytes)
+            }.value
+            icon = data.flatMap { NSImage(data: $0) }
         }
     }
 

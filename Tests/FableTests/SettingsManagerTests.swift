@@ -38,6 +38,27 @@ import Testing
     }
 
     @Test
+    func advancedModeDefaultsOffAndPersists() {
+        let url = tempConfig()
+        defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+
+        let manager = SettingsManager(configURL: url)
+        #expect(!manager.settings.advancedMode)   // simple, click-and-play by default
+
+        manager.settings.advancedMode = true
+        let reloaded = SettingsManager(configURL: url)
+        #expect(reloaded.settings.advancedMode)
+    }
+
+    @Test
+    func legacyConfigWithoutAdvancedModeDecodesOff() throws {
+        // A config.json written before the field existed must still load.
+        let json = #"{"defaultWindowsVersion": "win10"}"#
+        let settings = try JSONDecoder().decode(AppSettings.self, from: Data(json.utf8))
+        #expect(!settings.advancedMode)
+    }
+
+    @Test
     func corruptedFileFallsBackToDefaults() throws {
         let url = tempConfig()
         defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }

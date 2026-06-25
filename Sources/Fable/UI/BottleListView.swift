@@ -78,10 +78,11 @@ private struct BottleGridItem: View {
             }
             .buttonStyle(.plain)
 
+            // Always visible for one-glance click-and-play; a subtle lift on
+            // hover ties it to the card.
             BottleQuickLaunchButton(bottle: bottle)
                 .padding(12)
-                .opacity(isHovering ? 1 : 0)
-                .allowsHitTesting(isHovering)
+                .scaleEffect(isHovering ? 1.08 : 1)
                 .animation(.easeInOut(duration: 0.15), value: isHovering)
         }
         .onHover { isHovering = $0 }
