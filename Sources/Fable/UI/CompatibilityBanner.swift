@@ -10,9 +10,16 @@ struct CompatibilityBanner: View {
     @EnvironmentObject private var bottleManager: BottleManager
     @EnvironmentObject private var crossOverManager: CrossOverManager
     @EnvironmentObject private var sikarugirManager: SikarugirManager
+    @EnvironmentObject private var toastCenter: ToastCenter
     @State private var findings: [CompatibilityFinding] = []
     @State private var recommendation: GraphicsBackend?
     @State private var isExpanded = false
+
+    /// The backend actually in effect for this game (its override, else the
+    /// bottle's). The recommendation only shows when it differs.
+    private var effectiveBackend: GraphicsBackend {
+        game.graphicsBackend ?? bottle.graphicsBackend
+    }
 
     var body: some View {
         Group {
@@ -64,12 +71,18 @@ struct CompatibilityBanner: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
-                if let recommendation, bottle.graphicsBackend != recommendation {
+                if let recommendation, effectiveBackend != recommendation {
                     Spacer()
-                    Label("Try \(recommendation.shortName)", systemImage: "lightbulb")
-                        .font(.caption)
-                        .foregroundStyle(.tint)
-                        .labelStyle(.titleAndIcon)
+                    Button {
+                        applyRecommendation(recommendation)
+                    } label: {
+                        Label("Use \(recommendation.shortName)", systemImage: "wand.and.stars")
+                            .font(.caption)
+                            .labelStyle(.titleAndIcon)
+                    }
+                    .buttonStyle(.borderless)
+                    .foregroundStyle(.tint)
+                    .help("Set this game's graphics backend to the recommended \(recommendation.displayName)")
                 }
             }
         }
@@ -101,6 +114,23 @@ struct CompatibilityBanner: View {
                 }
             }
             Spacer()
+        }
+    }
+
+    /// Applies the recommended backend as this game's per-game override and,
+    /// since heavy D3DMetal backends want the steady-FPS defaults, applies
+    /// those to the bottle too (only if untuned).
+    private func applyRecommendation(_ backend: GraphicsBackend) {
+        var updated = game
+        updated.graphicsBackend = backend
+        do {
+            try bottleManager.updateGame(updated, in: bottle.id)
+            if backend == .sikarugir || backend == .gptk {
+                bottleManager.applyRecommendedPerformanceIfDefault(for: bottle.id)
+            }
+            toastCenter.success("\(game.name) will use \(backend.shortName)")
+        } catch {
+            toastCenter.error(error.localizedDescription)
         }
     }
 
