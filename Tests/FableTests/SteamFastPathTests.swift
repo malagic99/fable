@@ -58,6 +58,30 @@ import Testing
     }
 
     @Test
+    func donorPrefersOneWithSharedRedist() throws {
+        let (manager, root) = makeManager()
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        // Plain Steam bottle created first (so naive order would pick it)…
+        let plain = try manager.createBottle(name: "Steam no redist")
+        try manager.setStatus(.ready, for: plain.id)
+        try plantSteam(in: plain, manager: manager)
+        // …and one that also has the shared redist installed.
+        let withRedist = try manager.createBottle(name: "Steam with redist")
+        try manager.setStatus(.ready, for: withRedist.id)
+        try plantSteam(in: withRedist, manager: manager)
+        let redist = manager.driveCDirectory(for: withRedist)
+            .appending(path: "Program Files (x86)/Steam/steamapps/common/Steamworks Shared/_CommonRedist",
+                       directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(at: redist, withIntermediateDirectories: true)
+
+        // The redist-complete donor wins, so clones inherit a working redist.
+        #expect(manager.steamDonorBottle(excluding: nil)?.id == withRedist.id)
+        #expect(manager.hasSteamworksRedist(withRedist) == true)
+        #expect(manager.hasSteamworksRedist(plain) == false)
+    }
+
+    @Test
     func seedPrefixClonesDonorAndInheritsBackend() async throws {
         let (manager, root) = makeManager()
         defer { try? FileManager.default.removeItem(at: root) }

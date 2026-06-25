@@ -165,11 +165,21 @@ final class BottleManager: ObservableObject {
     /// chain — the chain that's both slow under Rosetta and prone to hang
     /// on a dead corefonts mirror.
     func steamDonorBottle(excluding excludeID: Bottle.ID?) -> Bottle? {
-        bottles.first { candidate in
+        let candidates = bottles.filter { candidate in
             candidate.id != excludeID && candidate.status == .ready
                 && FileManager.default.fileExists(atPath: driveCDirectory(for: candidate)
                     .appending(path: "Program Files (x86)/Steam/steamui.dll").path)
         }
+        // Prefer a donor that already has the shared "Steamworks Common
+        // Redistributables" installed, so the clone inherits a working redist
+        // and games don't re-trigger the (WoW64-stalling) redist install.
+        return candidates.first(where: hasSteamworksRedist) ?? candidates.first
+    }
+
+    /// Whether a bottle's Steam has the shared redistributables committed.
+    func hasSteamworksRedist(_ bottle: Bottle) -> Bool {
+        FileManager.default.fileExists(atPath: driveCDirectory(for: bottle)
+            .appending(path: "Program Files (x86)/Steam/steamapps/common/Steamworks Shared/_CommonRedist").path)
     }
 
     /// Replaces `targetID`'s freshly-initialized prefix with a clone of

@@ -32,6 +32,11 @@ final class GameLauncher: ObservableObject {
     /// nil). Used by RunningGameMetricsStore to drive its polling.
     var onProcessLifecycle: ((Game.ID, Int32?) -> Void)?
 
+    /// Fired after a game has fully exited *and* its prefix's wineserver has
+    /// drained — i.e. the prefix is idle and safe to touch. Used to auto-heal
+    /// Steam installs left stuck on the WoW64 commit step (no-op otherwise).
+    var onGameFullyExited: ((Bottle.ID) -> Void)?
+
     func isRunning(_ gameID: Game.ID) -> Bool {
         running[gameID] != nil
     }
@@ -214,6 +219,7 @@ final class GameLauncher: ObservableObject {
         onProcessLifecycle?(game.id, process.processIdentifier)
 
         let gameName = game.name
+        let bottleID = bottle.id
         let prefixPath = bottleManager.prefixDirectory(for: bottle).path
         let releaseWineserver = plan.releaseWineserver
         Task { [weak self] in
@@ -236,6 +242,9 @@ final class GameLauncher: ObservableObject {
             if code != 0 && code != 15 {
                 self?.onAbnormalExit?("“\(gameName)” exited with code \(code) — check its log")
             }
+            // Prefix is idle now — a Steam quit is the natural moment to
+            // finish any install stuck on the WoW64 commit step.
+            self?.onGameFullyExited?(bottleID)
         }
     }
 
