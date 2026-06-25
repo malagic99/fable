@@ -146,6 +146,12 @@ struct BottleDetailView: View {
                 }
             }
 
+            Section {
+                ControllerStatusView(bottle: bottle)
+            } header: {
+                Text("Controllers")
+            }
+
             if advanced {
 
             Section {
