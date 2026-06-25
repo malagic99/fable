@@ -169,12 +169,12 @@ struct BottleDetailView: View {
                 }
                 .disabled(bottle.graphicsBackend == .off)
 
-                if bottle.graphicsBackend == .gptk {
+                if bottle.graphicsBackend == .gptk || bottle.graphicsBackend == .sikarugir {
                     Toggle("MetalFX Upscaling", isOn: Binding(
                         get: { bottle.performance.metalFXUpscaling },
                         set: { setMetalFXUpscaling($0, bottle: bottle) }
                     ))
-                    .help("D3DMetal 4 neural upscaler — render lower, upscale via Metal")
+                    .help("D3DMetal neural upscaler — render lower, upscale via Metal. Eases sustained GPU + memory load (helps with slow FPS decay).")
                 }
             } header: {
                 Text("Performance")
@@ -504,7 +504,7 @@ struct BottleDetailView: View {
         case .crossover:
             "CrossOver manages its own performance config — Metal HUD still works via MTL_HUD_ENABLED."
         case .sikarugir:
-            "Metal HUD + MetalFX work through D3DMetal. Frame-rate cap isn't wired for this backend yet."
+            "Metal HUD, frame-rate cap, and MetalFX all run through D3DMetal. If FPS starts smooth then slowly drops, cap to 60 and/or enable MetalFX to ease sustained GPU + unified-memory load."
         }
     }
 
