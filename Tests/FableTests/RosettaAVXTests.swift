@@ -25,6 +25,15 @@ import Testing
     }
 
     @Test
+    func prefixEnvironmentEnablesPlayStationControllerHIDAPI() {
+        let env = makeWineManager().environment(forPrefix: URL(filePath: "/tmp/prefix"))
+        // PlayStation pads (DualSense / DualShock 4) need SDL's dedicated
+        // HIDAPI drivers to map correctly in SDL-based games.
+        #expect(env["SDL_JOYSTICK_HIDAPI_PS4"] == "1")
+        #expect(env["SDL_JOYSTICK_HIDAPI_PS5"] == "1")
+    }
+
+    @Test
     func avxFlagSurvivesIntoGptkLaunchEnvironment() {
         // GPTK/Sikarugir/CrossOver merge their overrides ON TOP of the
         // base prefix env, so the AVX flag must still be there after the

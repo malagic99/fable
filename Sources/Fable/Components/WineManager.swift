@@ -90,6 +90,12 @@ final class WineManager: ObservableObject {
             // behind this opt-in. No-op on native-arm64 Wine. Verified
             // 2026-06-15: unset → AVX=0; =1 → AVX=1,AVX2=1,FMA=1,BMI2=1.
             "ROSETTA_ADVERTISE_AVX": "1",
+            // PlayStation controllers (DualSense / DualShock 4): enable SDL's
+            // dedicated HIDAPI drivers so SDL-based games recognize the pad
+            // and its layout correctly. Harmless for Xbox/other pads (Wine
+            // maps those to XInput natively) and for non-controller runs.
+            "SDL_JOYSTICK_HIDAPI_PS4": "1",
+            "SDL_JOYSTICK_HIDAPI_PS5": "1",
         ]
     }
 
