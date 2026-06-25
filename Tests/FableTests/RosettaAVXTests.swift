@@ -39,7 +39,7 @@ import Testing
     func avxFlagSurvivesIntoSikarugirLaunchEnvironment() {
         let wine = makeWineManager()
         var env = wine.environment(forPrefix: URL(filePath: "/tmp/prefix"))
-        env.merge(SikarugirManager.launchEnvironment(baseOverrides: "mscoree=")) { _, new in new }
+        env.merge(SikarugirManager.launchEnvironment(baseOverrides: "mscoree=", bundleRoot: nil)) { _, new in new }
         #expect(env["ROSETTA_ADVERTISE_AVX"] == "1")
     }
 }

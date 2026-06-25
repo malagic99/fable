@@ -107,6 +107,39 @@ final class WineManager: ObservableObject {
         )
     }
 
+    /// Sets winemac.drv Retina mode (and matching DPI) for a prefix.
+    ///
+    /// Macs ship Retina (2×) panels; by default winemac.drv backs each Wine
+    /// window with a 1× surface, so an app renders at half pixel density and
+    /// macOS upscales the whole window — soft, visibly pixelated text and
+    /// images (most obvious in Steam's CEF login). `RetinaMode=y` gives the
+    /// window a native-resolution backing store; bumping `LogPixels` to 192
+    /// (0xC0) doubles Windows' DPI scaling so the UI lands at the right
+    /// physical size instead of being crisp-but-tiny. This is the same pair
+    /// CrossOver sets behind its "Retina mode" toggle.
+    ///
+    /// The flip side: many games aren't HiDPI-aware (SDL/GL titles like
+    /// LÖVE-based Balatro) and render into a corner with input mapped to the
+    /// full window when Retina is on — so this is a per-bottle choice, off by
+    /// default. `enabled == false` writes `n`/96 to revert cleanly. Takes
+    /// effect when the prefix's processes next cold-start. Idempotent.
+    func setRetinaMode(_ enabled: Bool, at prefix: URL) async throws {
+        let wine = try wineBinary()
+        let env = environment(forPrefix: prefix)
+        _ = try await ProcessRunner.run(
+            wine,
+            arguments: ["reg", "add", #"HKCU\Software\Wine\Mac Driver"#,
+                        "/v", "RetinaMode", "/t", "REG_SZ", "/d", enabled ? "y" : "n", "/f"],
+            environment: env
+        )
+        _ = try await ProcessRunner.run(
+            wine,
+            arguments: ["reg", "add", #"HKCU\Control Panel\Desktop"#,
+                        "/v", "LogPixels", "/t", "REG_DWORD", "/d", enabled ? "192" : "96", "/f"],
+            environment: env
+        )
+    }
+
     /// Initializes a fresh Wine prefix and pins its Windows version.
     func createPrefix(at prefix: URL, windowsVersion: WindowsVersion) async throws {
         let wine = try wineBinary()
@@ -126,6 +159,10 @@ final class WineManager: ObservableObject {
         guard setVersion.succeeded else {
             throw WineError.prefixCreationFailed("couldn't set Windows version: \(setVersion.standardError)")
         }
+
+        // Default Retina OFF: it crisps launcher/CEF UI but breaks many
+        // non-HiDPI games. A per-bottle toggle opts in (see Bottle.retinaMode).
+        try await setRetinaMode(false, at: prefix)
 
         // Wait for wineserver to finish flushing the new prefix.
         _ = try await ProcessRunner.run(try wineserverBinary(), arguments: ["-w"], environment: env)

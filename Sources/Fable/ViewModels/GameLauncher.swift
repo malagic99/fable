@@ -32,6 +32,11 @@ final class GameLauncher: ObservableObject {
     /// nil). Used by RunningGameMetricsStore to drive its polling.
     var onProcessLifecycle: ((Game.ID, Int32?) -> Void)?
 
+    /// Fired after a game has fully exited *and* its prefix's wineserver has
+    /// drained — i.e. the prefix is idle and safe to touch. Used to auto-heal
+    /// Steam installs left stuck on the WoW64 commit step (no-op otherwise).
+    var onGameFullyExited: ((Bottle.ID) -> Void)?
+
     func isRunning(_ gameID: Game.ID) -> Bool {
         running[gameID] != nil
     }
@@ -41,7 +46,31 @@ final class GameLauncher: ObservableObject {
     private var runningRuntime: [Game.ID: String] = [:]
     private var runningBottle: [Game.ID: Bottle.ID] = [:]
 
-    func launch(
+    /// Everything needed to start a game: the resolved Wine binary, full
+    /// argument vector, merged environment, and working directory. The
+    /// single source of truth for *how* a game launches — used both by
+    /// `launch()` and by `ShortcutGenerator` so a desktop shortcut runs the
+    /// exact same command the app does.
+    struct LaunchPlan {
+        let wine: URL
+        let executable: URL
+        /// Tokenized per-game arguments (appended after the executable).
+        let arguments: [String]
+        let environment: [String: String]
+        let workingDirectory: URL
+        let logFile: URL
+        /// Identifies the wineserver family, for the one-runtime-per-bottle check.
+        let runtimeKey: String
+        /// Alternate-runtime wineserver to drain after exit (nil for the default).
+        let releaseWineserver: URL?
+
+        /// Full argv passed to `wine`: the executable path then its arguments.
+        var wineArguments: [String] { [executable.path] + arguments }
+    }
+
+    /// Resolves the backend, Wine binary, and environment for a game without
+    /// starting it. Throws if the executable is missing.
+    func makeLaunchPlan(
         _ game: Game,
         in bottle: Bottle,
         bottleManager: BottleManager,
@@ -49,9 +78,7 @@ final class GameLauncher: ObservableObject {
         gptkManager: GPTKManager,
         crossOverManager: CrossOverManager,
         sikarugirManager: SikarugirManager
-    ) throws {
-        guard running[game.id] == nil else { return }
-
+    ) throws -> LaunchPlan {
         let prefix = bottleManager.prefixDirectory(for: bottle)
         let executable = bottleManager.driveCDirectory(for: bottle)
             .appending(path: game.executablePath)
@@ -98,20 +125,26 @@ final class GameLauncher: ObservableObject {
             // CrossOver provides its own version-matched wine + D3DMetal.
             // Different wineserver from our other backends, so it gets its
             // own runtime key for the conflict check.
+            // CrossOver's wine wrapper resolves the bottle from CX_BOTTLE
+            // inside CX_BOTTLE_PATH and requires cxbottle.conf at that path.
+            try CrossOverManager.ensureBottleConfig(at: prefix)
             wine = try crossOverManager.wineBinary()
             runtimeKey = "crossover"
             releaseWineserver = try? crossOverManager.wineserverBinary()
             environment.merge(
-                CrossOverManager.launchEnvironment(baseOverrides: baseOverrides)
+                CrossOverManager.launchEnvironment(prefix: prefix, baseOverrides: baseOverrides)
             ) { _, new in new }
         case .sikarugir:
             // Sikarugir's wine-10.0 + D3DMetal recompiled against it.
-            // Forces the D3DMetal builtins so prefix natives don't shadow.
+            // Forces the D3DMetal builtins so prefix natives don't shadow,
+            // and points D3DMetal at its framework (the env that makes CEF
+            // composite instead of black-squaring).
             wine = try sikarugirManager.wineBinary()
             runtimeKey = "sikarugir"
             releaseWineserver = try? sikarugirManager.wineserverBinary()
+            let sikBundle = wine.deletingLastPathComponent().deletingLastPathComponent()
             environment.merge(
-                SikarugirManager.launchEnvironment(baseOverrides: baseOverrides)
+                SikarugirManager.launchEnvironment(baseOverrides: baseOverrides, bundleRoot: sikBundle)
             ) { _, new in new }
             environment.merge(bottle.performance.gptkEnvironment()) { _, new in new }
         case .dxmt, .off:
@@ -128,35 +161,67 @@ final class GameLauncher: ObservableObject {
             )) { _, new in new }
         }
         environment.merge(bottle.performance.backendAgnosticEnvironment()) { _, new in new }
+        // Per-game environment overrides win over everything.
+        environment.merge(game.environment) { _, new in new }
+
+        return LaunchPlan(
+            wine: wine,
+            executable: executable,
+            arguments: ArgumentTokenizer.tokenize(game.arguments),
+            environment: environment,
+            workingDirectory: executable.deletingLastPathComponent(),
+            logFile: log,
+            runtimeKey: runtimeKey,
+            releaseWineserver: releaseWineserver
+        )
+    }
+
+    func launch(
+        _ game: Game,
+        in bottle: Bottle,
+        bottleManager: BottleManager,
+        wineManager: WineManager,
+        gptkManager: GPTKManager,
+        crossOverManager: CrossOverManager,
+        sikarugirManager: SikarugirManager
+    ) throws {
+        guard running[game.id] == nil else { return }
+
+        let plan = try makeLaunchPlan(
+            game, in: bottle,
+            bottleManager: bottleManager, wineManager: wineManager,
+            gptkManager: gptkManager, crossOverManager: crossOverManager,
+            sikarugirManager: sikarugirManager
+        )
 
         // Version-mismatched wineservers can't share a prefix: refuse
         // to mix runtimes within one bottle while games are running.
         let conflicting = runningBottle.contains { gameID, bottleID in
-            bottleID == bottle.id && runningRuntime[gameID] != runtimeKey
+            bottleID == bottle.id && runningRuntime[gameID] != plan.runtimeKey
         }
         if conflicting {
             throw GameLaunchError.runtimeConflict(bottle.name)
         }
 
-        // Per-game environment overrides win over everything.
-        environment.merge(game.environment) { _, new in new }
         let process = try ProcessRunner.start(
-            wine,
-            arguments: [executable.path] + ArgumentTokenizer.tokenize(game.arguments),
-            environment: environment,
-            currentDirectory: executable.deletingLastPathComponent(),
-            redirectingOutputTo: log
+            plan.wine,
+            arguments: plan.wineArguments,
+            environment: plan.environment,
+            currentDirectory: plan.workingDirectory,
+            redirectingOutputTo: plan.logFile
         )
 
         running[game.id] = process
-        runningRuntime[game.id] = runtimeKey
+        runningRuntime[game.id] = plan.runtimeKey
         runningBottle[game.id] = bottle.id
-        lastLog[game.id] = log
+        lastLog[game.id] = plan.logFile
         lastExitCode[game.id] = nil
         onProcessLifecycle?(game.id, process.processIdentifier)
 
         let gameName = game.name
-        let prefixPath = prefix.path
+        let bottleID = bottle.id
+        let prefixPath = bottleManager.prefixDirectory(for: bottle).path
+        let releaseWineserver = plan.releaseWineserver
         Task { [weak self] in
             let code = await process.waitForExit()
             // Let an alternate runtime's wineserver release the prefix
@@ -177,6 +242,9 @@ final class GameLauncher: ObservableObject {
             if code != 0 && code != 15 {
                 self?.onAbnormalExit?("“\(gameName)” exited with code \(code) — check its log")
             }
+            // Prefix is idle now — a Steam quit is the natural moment to
+            // finish any install stuck on the WoW64 commit step.
+            self?.onGameFullyExited?(bottleID)
         }
     }
 

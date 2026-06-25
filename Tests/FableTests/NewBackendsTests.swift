@@ -109,15 +109,48 @@ import Testing
     }
 
     @Test
-    func launchEnvironmentPassesOnlyBaseOverridesWhenSet() {
-        let env = CrossOverManager.launchEnvironment(baseOverrides: "mscoree,mshtml=")
+    func launchEnvironmentRoutesCrossOverAtFablePrefix() {
+        let prefix = URL(filePath: "/tmp/FableTest-\(UUID().uuidString)/prefix")
+        let env = CrossOverManager.launchEnvironment(prefix: prefix, baseOverrides: "mscoree,mshtml=")
+        // CrossOver's perl wrapper resolves a bottle from CX_BOTTLE inside
+        // CX_BOTTLE_PATH and ignores WINEPREFIX, so both must be set.
+        #expect(env["CX_BOTTLE"] == "prefix")
+        #expect(env["CX_BOTTLE_PATH"] == prefix.deletingLastPathComponent().path)
         #expect(env["WINEDLLOVERRIDES"] == "mscoree,mshtml=")
     }
 
     @Test
-    func launchEnvironmentIsEmptyWhenNoBaseOverrides() {
-        let env = CrossOverManager.launchEnvironment(baseOverrides: "")
-        #expect(env.isEmpty)
+    func launchEnvironmentOmitsOverridesWhenBaseIsEmpty() {
+        let prefix = URL(filePath: "/tmp/FableTest-\(UUID().uuidString)/prefix")
+        let env = CrossOverManager.launchEnvironment(prefix: prefix, baseOverrides: "")
+        #expect(env["WINEDLLOVERRIDES"] == nil)
+        #expect(env["CX_BOTTLE"] == "prefix")
+    }
+
+    @Test
+    func ensureBottleConfigWritesMinimalConfWhenAbsent() throws {
+        let tmp = URL(filePath: "/tmp/FableTest-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: tmp) }
+        try CrossOverManager.ensureBottleConfig(at: tmp)
+        let conf = tmp.appending(path: "cxbottle.conf")
+        let body = try String(contentsOf: conf, encoding: .utf8)
+        #expect(body.contains("[Bottle]"))
+        #expect(body.contains("\"Template\" = \"win10_64\""))
+        #expect(body.contains("\"WineArch\" = \"win64\""))
+        #expect(body.contains("\"BottleID\""))
+    }
+
+    @Test
+    func ensureBottleConfigIsIdempotent() throws {
+        let tmp = URL(filePath: "/tmp/FableTest-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: tmp) }
+        try CrossOverManager.ensureBottleConfig(at: tmp)
+        let original = try String(contentsOf: tmp.appending(path: "cxbottle.conf"), encoding: .utf8)
+        try CrossOverManager.ensureBottleConfig(at: tmp)
+        let afterSecondCall = try String(contentsOf: tmp.appending(path: "cxbottle.conf"), encoding: .utf8)
+        // Second call must not rewrite — the BottleID UUID would change
+        // and CrossOver loses track of the bottle's identity across launches.
+        #expect(original == afterSecondCall)
     }
 }
 

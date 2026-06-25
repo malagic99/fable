@@ -258,6 +258,21 @@ struct CreateBottleView: View {
     /// progress updates. The template's backend wins over the global
     /// DXMT default since the user picked it deliberately.
     private func applyTemplate(_ template: BottleTemplate, to bottle: Bottle) async throws {
+        // Fast path: a Steam template clones an existing known-good Steam
+        // bottle instead of re-running the slow chain (vcredist + corefonts +
+        // the ~hundreds-of-MB Steam download + first-run self-update, which is
+        // slow under Rosetta and prone to hang on a dead corefonts mirror).
+        // The clone is near-instant (APFS clonefile) and inherits the donor's
+        // working graphics backend, so the new Steam bottle just works.
+        if template.installsSteam,
+           let donor = bottleManager.steamDonorBottle(excluding: bottle.id) {
+            phase = .installingDependencies("Cloning Steam from “\(donor.name)”")
+            try await bottleManager.seedPrefix(into: bottle.id, fromBottle: donor.id)
+            bottleManager.applyRecommendedPerformanceIfDefault(for: bottle.id)
+            registerTemplateGames(template, in: bottle)
+            return
+        }
+
         switch template.graphicsBackend {
         case .dxmt:
             try await dxmtManager.ensureInstalled()
@@ -314,6 +329,7 @@ struct CreateBottleView: View {
             }
         }
 
+        bottleManager.applyRecommendedPerformanceIfDefault(for: bottle.id)
         registerTemplateGames(template, in: bottle)
     }
 

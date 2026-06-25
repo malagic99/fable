@@ -12,7 +12,11 @@ import Testing
     @Test
     func sikarugirHasDisplayAndShortName() {
         #expect(GraphicsBackend.sikarugir.shortName == "Sikarugir")
-        #expect(GraphicsBackend.sikarugir.displayName.contains("D3DMetal"))
+        // Display name leads with the modern flagship's headline use cases.
+        let display = GraphicsBackend.sikarugir.displayName
+        #expect(display.contains("Sikarugir"))
+        #expect(display.contains("DirectX 12"))
+        #expect(display.contains("Steam"))
     }
 
     @Test
@@ -26,14 +30,43 @@ import Testing
 
     @Test
     func launchEnvironmentForcesD3DMetalBuiltins() {
-        let env = SikarugirManager.launchEnvironment(baseOverrides: "mscoree,mshtml=")
+        let env = SikarugirManager.launchEnvironment(baseOverrides: "mscoree,mshtml=", bundleRoot: nil)
         let overrides = env["WINEDLLOVERRIDES"] ?? ""
         // D3DMetal-backed DLLs must be builtin so prefix natives don't win.
         #expect(overrides.contains("d3d11"))
         #expect(overrides.contains("d3d12"))
         #expect(overrides.contains("dxgi"))
         #expect(overrides.contains("=b"))
-        #expect(env["WINEESYNC"] == "1")
+        // msync, not esync: esync spin-polls IOCP under Rosetta and stalls
+        // Steam downloads (411%→32% CPU when switched). msync blocks via Mach.
+        #expect(env["WINEMSYNC"] == "1")
+        #expect(env["WINEESYNC"] == nil)
+    }
+
+    @Test
+    func launchEnvironmentWiresD3DMetalFrameworkWhenPresent() throws {
+        // Build a fake bundle with lib/external/D3DMetal.framework + libd3dshared.
+        let tmp = URL(filePath: "/tmp/FableSikTest-\(UUID().uuidString)")
+        let external = tmp.appending(path: "lib/external")
+        let fwDir = external.appending(path: "D3DMetal.framework/Versions/A")
+        try FileManager.default.createDirectory(at: fwDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tmp) }
+        try Data("x".utf8).write(to: fwDir.appending(path: "D3DMetal"))
+        try Data("x".utf8).write(to: external.appending(path: "libd3dshared.dylib"))
+
+        let env = SikarugirManager.launchEnvironment(baseOverrides: "", bundleRoot: tmp)
+        // The load-bearing env: without D3DMETAL_FRAMEWORK_PATH the d3dmetal
+        // dispatch can't dlopen D3DMetal → no Metal surface → black square.
+        #expect(env["D3DMETAL_FRAMEWORK_PATH"] == fwDir.appending(path: "D3DMetal").path)
+        #expect(env["CX_APPLEGPTK_LIBD3DSHARED_PATH"] == external.appending(path: "libd3dshared.dylib").path)
+    }
+
+    @Test
+    func launchEnvironmentOmitsD3DMetalPathsWhenBundleMissing() {
+        // No bundle root → no framework env (graceful, e.g. unit tests).
+        let env = SikarugirManager.launchEnvironment(baseOverrides: "", bundleRoot: nil)
+        #expect(env["D3DMETAL_FRAMEWORK_PATH"] == nil)
+        #expect(env["CX_APPLEGPTK_LIBD3DSHARED_PATH"] == nil)
     }
 
     @Test

@@ -27,6 +27,30 @@ import Testing
     }
 
     @Test
+    func recommendedPerformanceAppliesOnlyWhenUncustomized() throws {
+        let (manager, dir) = try makeTempManager()
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let bottle = try manager.createBottle(name: "AAA")
+        try manager.setGraphics(backend: .sikarugir, for: bottle.id)
+
+        // Fresh perf → recommended applies (60 cap + MetalFX).
+        #expect(manager.applyRecommendedPerformanceIfDefault(for: bottle.id) == true)
+        #expect(manager.bottle(with: bottle.id)?.performance.frameRateCap == 60)
+        #expect(manager.bottle(with: bottle.id)?.performance.metalFXUpscaling == true)
+
+        // Idempotent / never clobbers: a second call (now customized) is a no-op.
+        #expect(manager.applyRecommendedPerformanceIfDefault(for: bottle.id) == false)
+
+        // A user-customized bottle is left alone.
+        let custom = try manager.createBottle(name: "Tuned")
+        try manager.setGraphics(backend: .sikarugir, for: custom.id)
+        try manager.setPerformance(PerformanceOptions(metalHUD: true), for: custom.id)
+        #expect(manager.applyRecommendedPerformanceIfDefault(for: custom.id) == false)
+        #expect(manager.bottle(with: custom.id)?.performance.frameRateCap == nil)
+    }
+
+    @Test
     func createRejectsEmptyAndDuplicateNames() throws {
         let (manager, dir) = try makeTempManager()
         defer { try? FileManager.default.removeItem(at: dir) }

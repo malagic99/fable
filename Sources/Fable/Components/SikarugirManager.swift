@@ -103,7 +103,14 @@ final class SikarugirManager: ObservableObject {
     /// is already extracted with the renderer present.
     func ensureInstalled() async throws {
         guard isDiscovered else { throw SikarugirError.notInstalled }
-        if isInstalled { return }
+        // Self-heal installs that predate comprehensive support-lib staging:
+        // if the engine is present but its lib is missing the TLS/font
+        // dylibs (libfreetype = blank Steam text, libgnutls = no QR/online),
+        // re-stage them from Sikarugir's renderer without a full reinstall.
+        if isInstalled {
+            try? backfillSupportLibs()
+            return
+        }
 
         let tarball = try engineTarball()
         let renderer = try d3dMetalRenderer()
@@ -154,9 +161,25 @@ final class SikarugirManager: ObservableObject {
         refresh()
     }
 
+    /// Re-stages Sikarugir's support dylibs into an already-installed
+    /// engine if the load-bearing ones are missing (libfreetype for text,
+    /// libgnutls for TLS/online). No-op once present. Lets installs made
+    /// before this staging existed pick up the dylibs on next launch
+    /// rather than forcing a delete-and-reinstall.
+    func backfillSupportLibs() throws {
+        guard let root = componentManager.installedDirectory(for: Self.componentID) else { return }
+        let lib = root.appending(path: "wswine.bundle/lib", directoryHint: .isDirectory)
+        let freetype = lib.appending(path: "libfreetype.dylib")
+        let freetype6 = lib.appending(path: "libfreetype.6.dylib")
+        let fm = FileManager.default
+        guard !fm.fileExists(atPath: freetype.path), !fm.fileExists(atPath: freetype6.path) else { return }
+        guard let renderer = try? d3dMetalRenderer() else { return }
+        try Self.copyBundleSupportLibs(renderer: renderer, intoLib: lib)
+    }
+
     /// Copies the support dylibs the engine wineserver/wine64 dlopen
-    /// at runtime (libinotify, gnutls, etc.) from Sikarugir's Template
-    /// app `Contents/Frameworks/` into our engine's `lib/`. Symlinks
+    /// at runtime (libinotify, gnutls, freetype, etc.) from Sikarugir's
+    /// Template app `Contents/Frameworks/` into our engine's `lib/`. Symlinks
     /// are preserved with `cp -P` so `libinotify.dylib → libinotify.0.dylib`
     /// stays a link, not a duplicate file.
     nonisolated private static func copyBundleSupportLibs(renderer: URL, intoLib lib: URL) throws {
@@ -235,13 +258,49 @@ final class SikarugirManager: ObservableObject {
 
     // MARK: Launch
 
+    /// The wswine.bundle root for an install (…/wswine.bundle), derived
+    /// from the wine binary at …/wswine.bundle/bin/wine.
+    func bundleRoot() throws -> URL {
+        try wineBinary().deletingLastPathComponent().deletingLastPathComponent()
+    }
+
     /// Forces the D3DMetal-backed builtin d3d DLLs so nothing in the
-    /// prefix's system32 shadows them. WINEESYNC matches Sikarugir's
-    /// own launch defaults.
-    nonisolated static func launchEnvironment(baseOverrides: String) -> [String: String] {
-        [
+    /// prefix's system32 shadows them, AND points D3DMetal at its
+    /// framework.
+    ///
+    /// `WINEMSYNC=1` (NOT esync) is load-bearing for Steam: esync's eventfd
+    /// waits degrade into a CPU spin-poll under Rosetta, so Steam's IOCP
+    /// network threads pin 4+ cores in `__wine_syscall_dispatcher` and starve
+    /// downloads to ~0 with multi-minute stalls. msync uses Mach's
+    /// `os_sync_wait_on_address`, so those threads block properly — measured
+    /// 411%→32% CPU and 0→60+ Mbps on a stuck 30 GB download. The Sikarugir
+    /// wine supports both; we deliberately override its esync default.
+    /// See memory fable-steam-install-wow64-gap.
+    ///
+    /// `D3DMETAL_FRAMEWORK_PATH` is the load-bearing piece: the d3dmetal
+    /// dispatch (d3d11.so) dlopens D3DMetal via this env var, falling back
+    /// to /System/Library/Frameworks (where it isn't). Without it the
+    /// Metal client surface is never created, so anything using the GPU
+    /// compositor — most visibly Steam's CEF login — renders as a black
+    /// square. Discovered 2026-06-24; see memory fable-winemac-drv-gap.
+    /// `CX_APPLEGPTK_LIBD3DSHARED_PATH` points at the shared GPTK lib the
+    /// dispatch also needs. Both files ship inside the bundle's
+    /// `lib/external` (staged from Sikarugir's renderer at install).
+    nonisolated static func launchEnvironment(baseOverrides: String, bundleRoot: URL?) -> [String: String] {
+        var env: [String: String] = [
             "WINEDLLOVERRIDES": "\(baseOverrides);\(builtinDLLs.joined(separator: ","))=b",
-            "WINEESYNC": "1",
+            "WINEMSYNC": "1",
         ]
+        guard let bundleRoot else { return env }
+        let external = bundleRoot.appending(path: "lib/external", directoryHint: .isDirectory)
+        let framework = external.appending(path: "D3DMetal.framework/Versions/A/D3DMetal")
+        if FileManager.default.fileExists(atPath: framework.path) {
+            env["D3DMETAL_FRAMEWORK_PATH"] = framework.path
+        }
+        let d3dshared = external.appending(path: "libd3dshared.dylib")
+        if FileManager.default.fileExists(atPath: d3dshared.path) {
+            env["CX_APPLEGPTK_LIBD3DSHARED_PATH"] = d3dshared.path
+        }
+        return env
     }
 }

@@ -13,7 +13,12 @@ struct BottleDetailView: View {
     @EnvironmentObject private var gameLauncher: GameLauncher
     @EnvironmentObject private var diskUsageStore: BottleDiskUsageStore
     @EnvironmentObject private var toastCenter: ToastCenter
+    @EnvironmentObject private var settingsManager: SettingsManager
     @Environment(\.dismiss) private var dismiss
+
+    /// When off, the bottle page is a clean click-and-play view; when on,
+    /// the full backend/performance/storage/troubleshooting panels show.
+    private var advanced: Bool { settingsManager.settings.advancedMode }
 
     @State private var isShowingRename = false
     @State private var renameText = ""
@@ -30,6 +35,9 @@ struct BottleDetailView: View {
                 .onAppear {
                     bottleManager.reconcileWindowsVersion(for: bottleID)
                     diskUsageStore.scan(bottle, manager: bottleManager)
+                    // Self-heal: finish any Steam install that downloaded but
+                    // stalled on the WoW64 commit step (silent on open).
+                    commitStuckSteam(bottle, announce: false)
                 }
         } else {
             // Deleted while visible (or stale link) — nothing to show.
@@ -40,57 +48,66 @@ struct BottleDetailView: View {
     @ViewBuilder
     private func detailContent(for bottle: Bottle) -> some View {
         Form {
-            Section("Bottle") {
-                LabeledContent("Name", value: bottle.name)
-                LabeledContent("Windows Version", value: bottle.windowsVersion.displayName)
-                LabeledContent("Status") {
-                    switch bottle.status {
-                    case .ready:
-                        Label("Ready", systemImage: "checkmark.circle.fill")
-                            .foregroundStyle(.green)
-                    case .provisioning:
-                        Label("Setting up", systemImage: "clock")
-                            .foregroundStyle(.orange)
-                    case .broken:
-                        HStack {
-                            Label("Setup was interrupted", systemImage: "exclamationmark.triangle.fill")
+            // The bottle info section is power-user detail. In simple mode we
+            // only surface it when the bottle needs attention (setting up /
+            // repair); a ready bottle goes straight to its games.
+            if advanced || bottle.status != .ready {
+                Section("Bottle") {
+                    if advanced {
+                        LabeledContent("Name", value: bottle.name)
+                        LabeledContent("Windows Version", value: bottle.windowsVersion.displayName)
+                    }
+                    LabeledContent("Status") {
+                        switch bottle.status {
+                        case .ready:
+                            Label("Ready", systemImage: "checkmark.circle.fill")
+                                .foregroundStyle(.green)
+                        case .provisioning:
+                            Label("Setting up", systemImage: "clock")
                                 .foregroundStyle(.orange)
-                            if isRepairing {
-                                ProgressView().controlSize(.small)
-                            } else {
-                                Button("Repair") { repair(bottle) }
-                                    .controlSize(.small)
+                        case .broken:
+                            HStack {
+                                Label("Setup was interrupted", systemImage: "exclamationmark.triangle.fill")
+                                    .foregroundStyle(.orange)
+                                if isRepairing {
+                                    ProgressView().controlSize(.small)
+                                } else {
+                                    Button("Repair") { repair(bottle) }
+                                        .controlSize(.small)
+                                }
                             }
                         }
                     }
-                }
-                LabeledContent("Created") {
-                    Text(bottle.createdAt, format: .dateTime.day().month().year())
-                }
-                LabeledContent("Location") {
-                    HStack {
-                        Text(bottleManager.directory(for: bottle).path)
-                            .truncationMode(.middle)
-                            .lineLimit(1)
-                        Button("Show in Finder") {
-                            NSWorkspace.shared.activateFileViewerSelecting(
-                                [bottleManager.directory(for: bottle)]
-                            )
+                    if advanced {
+                        LabeledContent("Created") {
+                            Text(bottle.createdAt, format: .dateTime.day().month().year())
                         }
-                        .controlSize(.small)
+                        LabeledContent("Location") {
+                            HStack {
+                                Text(bottleManager.directory(for: bottle).path)
+                                    .truncationMode(.middle)
+                                    .lineLimit(1)
+                                Button("Show in Finder") {
+                                    NSWorkspace.shared.activateFileViewerSelecting(
+                                        [bottleManager.directory(for: bottle)]
+                                    )
+                                }
+                                .controlSize(.small)
+                            }
+                        }
+                        LabeledContent("Wine Tools") {
+                            HStack {
+                                Button("Wine Settings…") { openTool("winecfg") }
+                                    .controlSize(.small)
+                                    .help("Audio, graphics, drive mappings, Windows version (winecfg)")
+                                Button("Registry Editor…") { openTool("regedit") }
+                                    .controlSize(.small)
+                                    .help("Edit this bottle's Windows registry (regedit)")
+                            }
+                        }
+                        .disabled(bottle.status != .ready)
                     }
                 }
-                LabeledContent("Wine Tools") {
-                    HStack {
-                        Button("Wine Settings…") { openTool("winecfg") }
-                            .controlSize(.small)
-                            .help("Audio, graphics, drive mappings, Windows version (winecfg)")
-                        Button("Registry Editor…") { openTool("regedit") }
-                            .controlSize(.small)
-                            .help("Edit this bottle's Windows registry (regedit)")
-                    }
-                }
-                .disabled(bottle.status != .ready)
             }
 
             Section {
@@ -120,6 +137,8 @@ struct BottleDetailView: View {
                 }
             }
 
+            if advanced {
+
             Section {
                 Picker("Backend", selection: Binding(
                     get: { bottle.graphicsBackend },
@@ -130,12 +149,22 @@ struct BottleDetailView: View {
                     }
                 }
                 .disabled(bottle.status != .ready)
+
+                Toggle("Retina (HiDPI) Mode", isOn: Binding(
+                    get: { bottle.retinaMode },
+                    set: { setRetinaMode($0, bottle: bottle) }
+                ))
+                .disabled(bottle.status != .ready || isAnyGameRunning(in: bottle))
+                .help("Crisp on Retina displays for launcher/Steam UI. Off is best for games — many render into a corner with Retina on.")
             } header: {
                 Text("Graphics")
             } footer: {
-                Text(graphicsFooter(for: bottle.graphicsBackend))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(graphicsFooter(for: bottle.graphicsBackend))
+                    Text("Retina mode sharpens HiDPI UI (Steam, launchers) but breaks many non-HiDPI games — leave off for game bottles. Applies on next launch.")
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
             }
 
             Section {
@@ -156,12 +185,12 @@ struct BottleDetailView: View {
                 }
                 .disabled(bottle.graphicsBackend == .off)
 
-                if bottle.graphicsBackend == .gptk {
+                if bottle.graphicsBackend == .gptk || bottle.graphicsBackend == .sikarugir {
                     Toggle("MetalFX Upscaling", isOn: Binding(
                         get: { bottle.performance.metalFXUpscaling },
                         set: { setMetalFXUpscaling($0, bottle: bottle) }
                     ))
-                    .help("D3DMetal 4 neural upscaler — render lower, upscale via Metal")
+                    .help("D3DMetal neural upscaler — render lower, upscale via Metal. Eases sustained GPU + memory load (helps with slow FPS decay).")
                 }
             } header: {
                 Text("Performance")
@@ -202,6 +231,24 @@ struct BottleDetailView: View {
                     .foregroundStyle(.secondary)
             }
 
+            if bottleManager.steamRoot(for: bottle) != nil {
+                Section {
+                    Button("Finish Stuck Steam Downloads") {
+                        commitStuckSteam(bottle, announce: true)
+                    }
+                    .disabled(bottle.status != .ready || isAnyGameRunning(in: bottle))
+                    .help(isAnyGameRunning(in: bottle)
+                          ? "Stop Steam first"
+                          : "Move already-downloaded files into place and mark them installed")
+                } header: {
+                    Text("Steam")
+                } footer: {
+                    Text("If a download sticks at “installing files”, that's the Sikarugir/WoW64 commit gap — Steam downloaded everything but its dead helper service can't move it into place. This does that move and marks it installed. Stop Steam first; it also runs automatically when you open this bottle.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
             Section {
                 Button("Force Kill Wine Processes…", role: .destructive) {
                     forceKill(bottle)
@@ -214,6 +261,8 @@ struct BottleDetailView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+
+            }  // end advanced sections
 
             if let errorMessage {
                 Section {
@@ -235,15 +284,17 @@ struct BottleDetailView: View {
                 }
                 .help("Rename this bottle")
 
-                Button {
-                    duplicate(bottle)
-                } label: {
-                    Label("Duplicate", systemImage: "doc.on.doc")
+                if advanced {
+                    Button {
+                        duplicate(bottle)
+                    } label: {
+                        Label("Duplicate", systemImage: "doc.on.doc")
+                    }
+                    .disabled(bottle.status != .ready || isAnyGameRunning(in: bottle))
+                    .help(isAnyGameRunning(in: bottle)
+                          ? "Stop running games before duplicating"
+                          : "Clone this bottle and its installed games")
                 }
-                .disabled(bottle.status != .ready || isAnyGameRunning(in: bottle))
-                .help(isAnyGameRunning(in: bottle)
-                      ? "Stop running games before duplicating"
-                      : "Clone this bottle and its installed games")
 
                 Button(role: .destructive) {
                     isShowingDeleteConfirmation = true
@@ -305,6 +356,26 @@ struct BottleDetailView: View {
                 errorMessage = nil
             } catch {
                 errorMessage = error.localizedDescription
+            }
+        }
+    }
+
+    // MARK: Steam
+
+    /// Finishes Steam installs stuck on the WoW64 commit step. Skips while a
+    /// game is running (we'd race Steam's files). `announce` shows a toast even
+    /// when there was nothing to do (manual button vs. silent auto-heal).
+    private func commitStuckSteam(_ bottle: Bottle, announce: Bool) {
+        guard !isAnyGameRunning(in: bottle) else {
+            if announce { toastCenter.error("Stop Steam before finishing downloads.") }
+            return
+        }
+        Task {
+            let committed = await bottleManager.commitStuckSteamInstalls(in: bottle)
+            if !committed.isEmpty {
+                toastCenter.success("Finished installing: \(committed.joined(separator: ", "))")
+            } else if announce {
+                toastCenter.success("No stuck downloads to finish.")
             }
         }
     }
@@ -433,6 +504,11 @@ struct BottleDetailView: View {
                     break
                 }
                 try bottleManager.setGraphics(backend: backend, for: bottle.id)
+                // Heavy D3DMetal backends get a steady-FPS default (60 cap +
+                // MetalFX) — only when the user hasn't tuned performance yet.
+                if bottleManager.applyRecommendedPerformanceIfDefault(for: bottle.id) {
+                    toastCenter.success("Applied recommended performance: 60 fps cap + MetalFX")
+                }
                 errorMessage = nil
             } catch {
                 errorMessage = error.localizedDescription
@@ -453,7 +529,29 @@ struct BottleDetailView: View {
         case .crossover:
             "CrossOver manages its own performance config — Metal HUD still works via MTL_HUD_ENABLED."
         case .sikarugir:
-            "Metal HUD + MetalFX work through D3DMetal. Frame-rate cap isn't wired for this backend yet."
+            "Metal HUD, frame-rate cap, and MetalFX all run through D3DMetal. If FPS starts smooth then slowly drops, cap to 60 and/or enable MetalFX to ease sustained GPU + unified-memory load."
+        }
+    }
+
+    private func setRetinaMode(_ enabled: Bool, bottle: Bottle) {
+        // Persist optimistically so the toggle reflects the choice, then
+        // write the prefix registry. Revert on failure.
+        do {
+            try bottleManager.setRetinaMode(enabled, for: bottle.id)
+        } catch {
+            errorMessage = error.localizedDescription
+            return
+        }
+        Task {
+            do {
+                try await wineManager.setRetinaMode(
+                    enabled, at: bottleManager.prefixDirectory(for: bottle)
+                )
+                errorMessage = nil
+            } catch {
+                try? bottleManager.setRetinaMode(!enabled, for: bottle.id)
+                errorMessage = error.localizedDescription
+            }
         }
     }
 

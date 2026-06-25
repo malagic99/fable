@@ -6,6 +6,9 @@ struct AppSettings: Codable, Equatable, Sendable {
     var defaultWindowsVersion: WindowsVersion = .win10
     var defaultDXMTEnabled: Bool = false
     var defaultDXMTConfig: DXMTConfig = DXMTConfig()
+    /// When off (default), bottles show a streamlined click-and-play view;
+    /// when on, the full backend/performance/storage/troubleshooting panels.
+    var advancedMode: Bool = false
 
     init() {}
 
@@ -17,6 +20,8 @@ struct AppSettings: Codable, Equatable, Sendable {
             .decodeIfPresent(Bool.self, forKey: .defaultDXMTEnabled) ?? false
         defaultDXMTConfig = try container
             .decodeIfPresent(DXMTConfig.self, forKey: .defaultDXMTConfig) ?? DXMTConfig()
+        advancedMode = try container
+            .decodeIfPresent(Bool.self, forKey: .advancedMode) ?? false
     }
 }
 

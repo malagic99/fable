@@ -66,6 +66,17 @@ struct FableApp: App {
                             metricsStore?.stopTracking(id)
                         }
                     }
+                    // Quitting Steam is the moment to finish any install stuck
+                    // on the WoW64 commit step — no-op for non-Steam bottles.
+                    gameLauncher.onGameFullyExited = { [weak bottleManager, weak toastCenter] bottleID in
+                        guard let bottleManager, let bottle = bottleManager.bottle(with: bottleID) else { return }
+                        Task {
+                            let committed = await bottleManager.commitStuckSteamInstalls(in: bottle)
+                            if !committed.isEmpty {
+                                toastCenter?.success("Finished installing: \(committed.joined(separator: ", "))")
+                            }
+                        }
+                    }
                     Task { await appUpdateChecker.checkIfDue() }
                 }
                 .environmentObject(appState)
