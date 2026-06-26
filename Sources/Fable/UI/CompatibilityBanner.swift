@@ -15,6 +15,7 @@ struct CompatibilityBanner: View {
     @EnvironmentObject private var wineManager: WineManager
     @EnvironmentObject private var quirkService: QuirkService
     @EnvironmentObject private var settingsManager: SettingsManager
+    @EnvironmentObject private var userRecipeStore: UserRecipeStore
     @State private var findings: [CompatibilityFinding] = []
     @State private var recommendation: GraphicsBackend?
     @State private var recipe: GameRecipe?
@@ -61,8 +62,10 @@ struct CompatibilityBanner: View {
             let external = quirks + scanned
             // A known recipe is authoritative: surface it as an info note and
             // let it drive the recommendation; otherwise fall back to the
-            // heuristic decision tree.
-            if let match = GameRecipeCatalog.recipe(forExecutablePath: game.executablePath) {
+            // heuristic decision tree. A user-imported (shared) recipe wins over
+            // the built-in catalog.
+            if let match = userRecipeStore.recipe(forExecutablePath: game.executablePath)
+                ?? GameRecipeCatalog.recipe(forExecutablePath: game.executablePath) {
                 recipe = match
                 findings = [match.finding] + external
                 recommendation = match.backend

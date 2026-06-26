@@ -18,6 +18,8 @@ struct SettingsView: View {
 
 private struct GeneralSettingsTab: View {
     @EnvironmentObject private var settingsManager: SettingsManager
+    @EnvironmentObject private var userRecipeStore: UserRecipeStore
+    @EnvironmentObject private var toastCenter: ToastCenter
 
     var body: some View {
         Form {
@@ -33,6 +35,16 @@ private struct GeneralSettingsTab: View {
 
             Section {
                 Toggle("Look Up Compatibility Online (ProtonDB)", isOn: $settingsManager.settings.onlineCompatibilityLookups)
+                LabeledContent("Shared Recipes") {
+                    HStack(spacing: 8) {
+                        if !userRecipeStore.recipes.isEmpty {
+                            Text("\(userRecipeStore.recipes.count) imported")
+                                .foregroundStyle(.secondary)
+                        }
+                        Button("Import Recipe…") { importRecipe() }
+                            .controlSize(.small)
+                    }
+                }
             } header: {
                 Text("Compatibility")
             } footer: {
@@ -71,6 +83,20 @@ private struct GeneralSettingsTab: View {
     private func open(_ url: URL) {
         try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
         NSWorkspace.shared.open(url)
+    }
+
+    private func importRecipe() {
+        let panel = NSOpenPanel()
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        panel.allowedFileTypes = ["fablerecipe"]
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        do {
+            let recipe = try userRecipeStore.importRecipe(from: url)
+            toastCenter.success("Imported recipe: \(recipe.name)")
+        } catch {
+            toastCenter.error("Couldn't import that recipe file.")
+        }
     }
 }
 

@@ -5,7 +5,7 @@ import Foundation
 /// base — a recipe beats heuristics, and *adding a game is adding a line of
 /// data*, not writing code, so the catalog can grow from community/agent
 /// reports without touching logic.
-struct GameRecipe: Hashable, Sendable {
+struct GameRecipe: Codable, Hashable, Sendable {
     let name: String
     /// Lowercased executable basenames that identify this game.
     let executables: [String]

@@ -72,6 +72,18 @@ struct GameSettingsView: View {
                         .foregroundStyle(.secondary)
                 }
 
+                Section {
+                    Button {
+                        exportRecipe()
+                    } label: {
+                        Label("Export as Recipe…", systemImage: "square.and.arrow.up")
+                    }
+                } footer: {
+                    Text("Saves this game's backend + performance as a shareable .fablerecipe file. Anyone can import it so the setup auto-applies for them.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
                 if let errorMessage {
                     Text(errorMessage)
                         .font(.callout)
@@ -130,6 +142,22 @@ struct GameSettingsView: View {
         do {
             try bottleManager.updateGame(updated, in: bottle.id)
             dismiss()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    private func exportRecipe() {
+        // Capture the in-effect override the user may have just picked here.
+        var staged = game
+        staged.graphicsBackend = backendOverride
+        let recipe = UserRecipeStore.recipe(from: staged, in: bottle)
+        let panel = NSSavePanel()
+        panel.nameFieldStringValue = "\(game.name).fablerecipe"
+        panel.allowedContentTypes = []
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        do {
+            try UserRecipeStore.encoded(recipe).write(to: url, options: .atomic)
         } catch {
             errorMessage = error.localizedDescription
         }

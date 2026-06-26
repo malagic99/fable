@@ -23,6 +23,7 @@ struct FableApp: App {
     @StateObject private var redistInstaller = RedistInstaller()
     @StateObject private var thermalMonitor = ThermalMonitor()
     @StateObject private var quirkService = QuirkService()
+    @StateObject private var userRecipeStore = UserRecipeStore()
 
     init() {
         let appState = AppState()
@@ -122,6 +123,7 @@ struct FableApp: App {
                 .environmentObject(settingsManager)
                 .environmentObject(thermalMonitor)
                 .environmentObject(quirkService)
+                .environmentObject(userRecipeStore)
         }
         .windowToolbarStyle(.unified)
         .commands {
