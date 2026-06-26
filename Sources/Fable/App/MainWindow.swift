@@ -78,6 +78,9 @@ struct FableApp: App {
                         }
                     }
                     Task { await appUpdateChecker.checkIfDue() }
+                    // Keep wine launch logs from eating the disk (a single
+                    // spammy channel can balloon one log to tens of GB).
+                    Task.detached(priority: .utility) { LogPruner.prune() }
                 }
                 .environmentObject(appState)
                 .environmentObject(bottleManager)

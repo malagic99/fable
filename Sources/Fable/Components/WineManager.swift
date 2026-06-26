@@ -104,7 +104,7 @@ final class WineManager: ObservableObject {
     @discardableResult
     func openTool(_ tool: String, inPrefix prefix: URL) throws -> LaunchedProcess {
         var env = environment(forPrefix: prefix)
-        env["WINEDEBUG"] = "fixme-all"
+        env["WINEDEBUG"] = "fixme-all,-msync"
         return try ProcessRunner.start(
             try wineBinary(),
             arguments: [tool],
