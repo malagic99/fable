@@ -1,5 +1,72 @@
 # Changelog
 
+## v0.6.0 — 2026-06-27
+
+The big one. Free Steam doesn't just render now — it **installs and plays AAA
+games end to end**, your whole library lives in one place, the app picks the
+right backend and holds a steady frame rate on its own, and it tells you what's
+wrong when something breaks. This release rolls up the "bulletproof installs"
+(v0.5) and "your whole library" (v0.6) milestones.
+
+### Headline — free Steam that installs *and* plays AAA games
+
+- **Steam installs end to end.** `WINEMSYNC=1` kills the IOCP syscall spin that
+  throttled big downloads to ~0 Mbps; `SteamInstallCommitter` finishes installs
+  stalled on the dead-WoW64 commit step (auto-heals on bottle open and on Steam
+  exit); and Fable now auto-runs the VC++/DirectX redistributables Steam unpacks
+  into `_CommonRedist` but never executes — no more missing-`vcruntime140.dll`
+  crashes on first launch.
+- **DEATHLOOP (30 GB D3D12 AAA) runs stable**, validating the whole chain.
+
+### Library + import
+
+- **Library view** — every game across every bottle in one searchable grid,
+  one click to play, cover art from the game's own icon.
+- **Import from Heroic** — pulls installed Epic / GOG / Amazon games into a
+  bottle (symlinked, no copy), filtering out uninstalled, mac-native, and
+  redistributable entries.
+
+### Smart Bottle gets smarter
+
+- **Auto backend pick** — an untouched bottle picks the right backend the first
+  time you press Play (validated recipe, or modern-D3D compatibility markers).
+- **Quirk system** — preemptive per-game verdicts in the compatibility banner:
+  the offline **anti-cheat database** (Apex/Valorant/etc. flag "won't run on
+  Wine" by name, pre-install) and **ProtonDB** community ratings (opt-in,
+  cached, off by default — it sends a Steam app ID to a third party).
+- **Shareable recipes** — export a tuned game as a `.fablerecipe`; import one
+  and it overrides the built-in catalog so the setup auto-applies.
+
+### Stability + diagnostics
+
+- **The "rubber mat"** — games launch at high QoS (performance cores), Fable
+  gets out of the way during play (no `ps` sampling while you're in-game, no
+  disk walks mid-session), a one-click **Rock Solid** preset (60 fps cap +
+  MetalFX), and a thermal nudge when the Mac starts throttling.
+- **Fable Doctor** — "Diagnose Last Run…" reads a game's Wine log and explains
+  what went wrong (missing runtime, anti-cheat, backend mismatch) in plain
+  language.
+- **Controller support** (PlayStation DualSense / DualShock 4) and runaway-log
+  protection (the msync flood that wrote 25 GB logs is silenced; a pruner caps
+  the rest).
+
+### Under the hood
+
+- **Agent-maintainable core** — the scattered Wine env fixes and Steam paths are
+  centralized in `WineEnv` / `SteamPaths`, every quirk mapped in
+  `docs/wine-quirks.md` with its rationale and how to change it.
+- ~280 tests across ~68 suites, all passing.
+
+### Known limitations
+
+- Distribution is still the gate to 1.0: builds aren't yet notarized/signed
+  (needs an Apple Developer ID), so first launch needs right-click → Open.
+- HDR output isn't exposed — a running Wine game's Metal layer is owned by
+  D3DMetal in the subprocess, with no Fable-side lever to force it.
+- Kernel anti-cheat games (EAC/BattlEye/Vanguard) can't run under any macOS
+  Wine; the quirk system now flags them up front instead of letting you find
+  out the hard way.
+
 ## v0.4.1 — 2026-06-15
 
 Compatibility release. Headline is a free fix that unblocks a whole
