@@ -10,6 +10,8 @@ struct MainContentView: View {
             NavigationStack {
                 BottleListView()
             }
+        case .library:
+            LibraryView()
         case .components:
             ComponentsView()
         case .settings:
