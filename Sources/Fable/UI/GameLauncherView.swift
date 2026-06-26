@@ -151,18 +151,28 @@ struct GameLauncherView: View {
     }
 
     private func launch() {
-        do {
-            try gameLauncher.launch(
-                game,
-                in: bottle,
-                bottleManager: bottleManager,
-                wineManager: wineManager,
-                gptkManager: gptkManager,
-                crossOverManager: crossOverManager,
-                sikarugirManager: sikarugirManager
+        Task {
+            // Smart Bottle auto-picks a backend for an untouched bottle before
+            // launch (no-op once configured), then we launch with the fresh config.
+            let prepared = await bottleManager.prepareSmartBackend(
+                for: game, in: bottle,
+                crossOverAvailable: crossOverManager.isInstalled,
+                sikarugirAvailable: sikarugirManager.isDiscovered
             )
-        } catch {
-            launchError = error.localizedDescription
+            let fresh = bottleManager.bottle(with: bottle.id) ?? bottle
+            do {
+                try gameLauncher.launch(
+                    prepared,
+                    in: fresh,
+                    bottleManager: bottleManager,
+                    wineManager: wineManager,
+                    gptkManager: gptkManager,
+                    crossOverManager: crossOverManager,
+                    sikarugirManager: sikarugirManager
+                )
+            } catch {
+                launchError = error.localizedDescription
+            }
         }
     }
 

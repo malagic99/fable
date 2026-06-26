@@ -342,6 +342,68 @@ final class BottleManager: ObservableObject {
         return applyPerformanceIfDefault(PerformanceOptions.recommended(for: bottle.graphicsBackend), for: id)
     }
 
+    /// Auto-picks a graphics backend for a game about to launch from an
+    /// untouched bottle, so unconfigured bottles "just work". Persists the pick
+    /// as a per-game override (+ matching performance preset) and returns the
+    /// game to launch. A near-instant no-op once a bottle has any deliberate
+    /// backend or the game has an explicit override — see SmartBackendSelector
+    /// for the (conservative) decision rules.
+    func prepareSmartBackend(
+        for game: Game,
+        in bottle: Bottle,
+        crossOverAvailable: Bool,
+        sikarugirAvailable: Bool
+    ) async -> Game {
+        guard SmartBackendSelector.canAutoPick(game: game, bottleBackend: bottle.graphicsBackend) else {
+            return game
+        }
+
+        // 1. A validated recipe is authoritative and needs no scan.
+        if let backend = SmartBackendSelector.recipeBackend(game: game, bottleBackend: bottle.graphicsBackend) {
+            return applyAutoBackend(
+                backend,
+                recipe: GameRecipeCatalog.recipe(forExecutablePath: game.executablePath),
+                to: game, in: bottle
+            )
+        }
+
+        // 2. Otherwise scan for markers that demand a modern backend (off-main).
+        let installDir = driveCDirectory(for: bottle)
+            .appending(path: (game.executablePath as NSString).deletingLastPathComponent)
+        let findings = await Task.detached(priority: .userInitiated) {
+            CompatibilityScanner.scan(gameDirectory: installDir)
+        }.value
+        if let backend = SmartBackendSelector.markerBackend(
+            game: game, bottleBackend: bottle.graphicsBackend, findings: findings,
+            crossOverAvailable: crossOverAvailable, sikarugirAvailable: sikarugirAvailable
+        ) {
+            return applyAutoBackend(backend, recipe: nil, to: game, in: bottle)
+        }
+        return game
+    }
+
+    /// Persists an auto-picked backend as the game's override plus the matching
+    /// performance preset (the recipe's exact tuning when known, else the
+    /// backend's steady-FPS default). Returns the updated game, or the original
+    /// unchanged if the write failed.
+    private func applyAutoBackend(
+        _ backend: GraphicsBackend, recipe: GameRecipe?, to game: Game, in bottle: Bottle
+    ) -> Game {
+        var updated = game
+        updated.graphicsBackend = backend
+        do {
+            try updateGame(updated, in: bottle.id)
+            if let recipe {
+                applyPerformanceIfDefault(recipe.performance, for: bottle.id)
+            } else if backend == .sikarugir || backend == .gptk {
+                applyRecommendedPerformanceIfDefault(for: bottle.id)
+            }
+            return updated
+        } catch {
+            return game
+        }
+    }
+
     func setWinetricksVerbInstalled(_ slug: String, for id: Bottle.ID) throws {
         guard let index = bottles.firstIndex(where: { $0.id == id }) else {
             throw BottleError.notFound
