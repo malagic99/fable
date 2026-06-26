@@ -30,6 +30,12 @@ enum AppPaths {
         applicationSupport.appending(path: "Logs", directoryHint: .isDirectory)
     }
 
+    /// Cached external compatibility data (anti-cheat DB, ProtonDB) that the
+    /// quirk system fetches and reuses offline.
+    static var quirkCache: URL {
+        applicationSupport.appending(path: "QuirkCache", directoryHint: .isDirectory)
+    }
+
     static func ensureDirectoriesExist() throws {
         for url in [applicationSupport, bottles, components, downloads, logs] {
             try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)

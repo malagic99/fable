@@ -24,6 +24,7 @@ regression or upgrading the Wine build is a lookup, not an archaeology dig.
 | `ViewModels/ThermalMonitor.swift` | Detecting sustained throttling and nudging toward Rock Solid. |
 | `Components/SteamInstallCommitter.swift` | Finishing WoW64-stalled Steam installs. |
 | `Components/SteamRedistInstaller.swift` | Running Steam's bundled `_CommonRedist`. |
+| `Components/AntiCheatDatabase.swift` + `ViewModels/QuirkService.swift` | Preemptive per-game quirks (anti-cheat verdicts now, ProtonDB next) surfaced in the compatibility banner *before* you install. Offline by default; online sources will need opt-in + caching. |
 | `Utilities/LogPruner.swift` | Capping runaway Wine logs. |
 
 ## The quirks
