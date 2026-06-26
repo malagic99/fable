@@ -80,8 +80,7 @@ final class RedistInstaller: ObservableObject {
         wineManager: WineManager
     ) async throws {
         let prefix = bottleManager.prefixDirectory(for: bottle)
-        var environment = wineManager.environment(forPrefix: prefix)
-        environment["WINEDEBUG"] = "fixme-all,-msync"
+        let environment = WineEnv.withDiagnosticDebug(wineManager.environment(forPrefix: prefix))
         let wine = try wineManager.wineBinary()
 
         if kind == .directX {

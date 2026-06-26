@@ -31,7 +31,7 @@ enum SteamRedistInstaller {
         steamRoot: URL,
         fileManager fm: FileManager = .default
     ) -> [PendingRedist] {
-        let common = steamRoot.appending(path: "steamapps/common", directoryHint: .isDirectory)
+        let common = SteamPaths.appsCommon(inClientRoot: steamRoot)
         guard fm.fileExists(atPath: common.path),
               let games = try? fm.contentsOfDirectory(
                 at: common,

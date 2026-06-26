@@ -112,7 +112,7 @@ enum BottleTemplateCatalog {
             gamesToRegister: [
                 GameRegistration(
                     name: "Steam",
-                    executablePath: "Program Files (x86)/Steam/Steam.exe",
+                    executablePath: SteamPaths.exeRelative,
                     arguments: "-no-cef-sandbox -cef-disable-gpu-compositing -language english"
                 )
             ]

@@ -86,11 +86,9 @@ final class GameLauncher: ObservableObject {
             throw GameLaunchError.executableMissing(game.executablePath)
         }
 
-        var environment = wineManager.environment(forPrefix: prefix)
-        // Keep real errors for crash diagnosis, but silence fixmes AND the
-        // msync channel — `err:msync:server_register_wait` floods per-frame
-        // (25 GB for one DEATHLOOP session) yet is harmless noise.
-        environment["WINEDEBUG"] = "fixme-all,-msync"
+        // Keep real errors for crash diagnosis but silence the msync flood —
+        // see WineEnv.debugDiagnostic for the why.
+        var environment = WineEnv.withDiagnosticDebug(wineManager.environment(forPrefix: prefix))
 
         let log = AppPaths.logs.appending(path: GameInstaller.logName(bottle.name, game.name))
         let baseOverrides = environment["WINEDLLOVERRIDES"] ?? ""

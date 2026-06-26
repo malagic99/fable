@@ -167,8 +167,8 @@ final class BottleManager: ObservableObject {
     func steamDonorBottle(excluding excludeID: Bottle.ID?) -> Bottle? {
         let candidates = bottles.filter { candidate in
             candidate.id != excludeID && candidate.status == .ready
-                && FileManager.default.fileExists(atPath: driveCDirectory(for: candidate)
-                    .appending(path: "Program Files (x86)/Steam/steamui.dll").path)
+                && FileManager.default.fileExists(
+                    atPath: SteamPaths.uiMarker(inDriveC: driveCDirectory(for: candidate)).path)
         }
         // Prefer a donor that already has the shared "Steamworks Common
         // Redistributables" installed, so the clone inherits a working redist
@@ -178,8 +178,8 @@ final class BottleManager: ObservableObject {
 
     /// Whether a bottle's Steam has the shared redistributables committed.
     func hasSteamworksRedist(_ bottle: Bottle) -> Bool {
-        FileManager.default.fileExists(atPath: driveCDirectory(for: bottle)
-            .appending(path: "Program Files (x86)/Steam/steamapps/common/Steamworks Shared/_CommonRedist").path)
+        FileManager.default.fileExists(
+            atPath: SteamPaths.sharedRedist(inDriveC: driveCDirectory(for: bottle)).path)
     }
 
     /// Replaces `targetID`'s freshly-initialized prefix with a clone of
@@ -222,10 +222,9 @@ final class BottleManager: ObservableObject {
     /// The Steam client root inside this bottle, if Steam is installed
     /// (the dir holding `steamapps/` + `depotcache/`). nil for non-Steam bottles.
     func steamRoot(for bottle: Bottle) -> URL? {
-        let root = driveCDirectory(for: bottle)
-            .appending(path: "Program Files (x86)/Steam", directoryHint: .isDirectory)
-        return FileManager.default.fileExists(atPath: root.appending(path: "steamui.dll").path)
-            ? root : nil
+        let driveC = driveCDirectory(for: bottle)
+        return FileManager.default.fileExists(atPath: SteamPaths.uiMarker(inDriveC: driveC).path)
+            ? SteamPaths.clientRoot(inDriveC: driveC) : nil
     }
 
     /// Finishes any Steam install that downloaded + extracted but stalled on

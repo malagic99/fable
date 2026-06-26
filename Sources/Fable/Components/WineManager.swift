@@ -74,37 +74,17 @@ final class WineManager: ObservableObject {
         )
     }
 
+    /// The base Wine environment for a prefix — the prefix path plus Fable's
+    /// always-on quirk fixes. Every fix is documented in one place: `WineEnv`.
     func environment(forPrefix prefix: URL) -> [String: String] {
-        [
-            "WINEPREFIX": prefix.path,
-            "WINEDEBUG": "-all",
-            // Skip Mono/Gecko installer dialogs — prefix creation must
-            // never block on UI. Games that need .NET get it via the
-            // bottle later.
-            "WINEDLLOVERRIDES": "mscoree,mshtml=",
-            // Make Rosetta 2 advertise AVX/AVX2/FMA/BMI2 to the
-            // translated x86 process (and its children — i.e. the game).
-            // Default Rosetta hides these, so any game whose CPU check
-            // requires AVX aborts with int3 before it ever renders, for
-            // no visible reason. macOS 15+/26 Rosetta supports them
-            // behind this opt-in. No-op on native-arm64 Wine. Verified
-            // 2026-06-15: unset → AVX=0; =1 → AVX=1,AVX2=1,FMA=1,BMI2=1.
-            "ROSETTA_ADVERTISE_AVX": "1",
-            // PlayStation controllers (DualSense / DualShock 4): enable SDL's
-            // dedicated HIDAPI drivers so SDL-based games recognize the pad
-            // and its layout correctly. Harmless for Xbox/other pads (Wine
-            // maps those to XInput natively) and for non-controller runs.
-            "SDL_JOYSTICK_HIDAPI_PS4": "1",
-            "SDL_JOYSTICK_HIDAPI_PS5": "1",
-        ]
+        WineEnv.base(prefix: prefix)
     }
 
     /// Launches a Wine GUI tool (winecfg, regedit, taskmgr, …) in a
     /// prefix without waiting for it.
     @discardableResult
     func openTool(_ tool: String, inPrefix prefix: URL) throws -> LaunchedProcess {
-        var env = environment(forPrefix: prefix)
-        env["WINEDEBUG"] = "fixme-all,-msync"
+        let env = WineEnv.withDiagnosticDebug(environment(forPrefix: prefix))
         return try ProcessRunner.start(
             try wineBinary(),
             arguments: [tool],
