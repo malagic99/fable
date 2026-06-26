@@ -141,6 +141,18 @@ import Testing
     }
 
     @Test
+    func cleanInstallPrefersSikarugirThenCrossOverThenGptk() {
+        // No findings → the free flagship (Sikarugir) when present, CrossOver
+        // next, GPTK (Wine 7.7) only as the legacy fallback.
+        func rec(sik: Bool, cx: Bool) -> GraphicsBackend? {
+            CompatibilityScanner.recommendedBackend(for: [], crossOverAvailable: cx, sikarugirAvailable: sik)
+        }
+        #expect(rec(sik: true, cx: true) == .sikarugir)
+        #expect(rec(sik: false, cx: true) == .crossover)
+        #expect(rec(sik: false, cx: false) == .gptk)
+    }
+
+    @Test
     func compositeRealisticInstallShowsMultipleFindings() throws {
         // Mirrors the actual 007 First Light install — combination of
         // signals we saw in production. Each rule fires once.

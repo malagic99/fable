@@ -70,9 +70,12 @@ enum CompatibilityScanner {
             return .dxvk
         }
 
-        // Clean install, no concerning markers. GPTK is fine for the
-        // games it was designed around; the picker takes over if the
-        // user disagrees.
+        // Clean install, no concerning markers. Prefer the free flagship
+        // (Sikarugir: modern Wine + D3DMetal, handles D3D9–12) when it's
+        // installed; GPTK (Wine 7.7) is the legacy fallback. The picker takes
+        // over if the user disagrees.
+        if sikarugirAvailable { return .sikarugir }
+        if crossOverAvailable { return .crossover }
         return .gptk
     }
 

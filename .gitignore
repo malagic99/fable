@@ -4,22 +4,30 @@
 *.xcodeproj
 xcuserdata/
 DerivedData/
-Fable.app/
+*.app/
+# wine-crossover source build staging (1.5GB+, never commit).
+# NOTE: gitignore has no inline comments, so the pattern lives on its own line —
+# the old "build/   # comment" form silently ignored nothing.
+build/
 
 # macOS
 .DS_Store
 
-# Sorted artifact folders (component cache / release zips / scratch+personal)
+# Artifact / scratch / personal folders
 vendor/
 dist/
 misc/
 
-# Loose artifacts, belt-and-suspenders if dropped in root
+# Loose artifacts + personal files dropped in the repo root
 *.tar.xz
 *.tar.gz
 *.dmg
-Fable-*.zip
-crossover-*.zip
+*.zip
+*.iso
+*.docx
 *.pptx
 *.pdf
 *.xlsx
+*.JPG
+*.jpg
+Htz.eVisitor*
