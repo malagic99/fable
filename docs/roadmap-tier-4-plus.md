@@ -1,5 +1,13 @@
 # Fable roadmap — Tier 4 and beyond (Days 59+)
 
+> **Status — 2026-06-26:** v0.5.0-equivalent work ("bulletproof free Steam
+> installs") is largely **done on branch `gptk4-heroic-patcher`** but not yet
+> tagged — see the status box atop `roadmap-tier-1-3.md`. The structure here
+> still holds: **Stage A (Apple Developer ID → signing/notarization/Sparkle)
+> remains the hard gate to v0.6 and the real path to v1.0.** That gate has not
+> cleared yet, so Stage A is still on hold; near-term work stays in the
+> un-gated lanes (Smart Bottle backend auto-pick, Library view, recipe catalog).
+
 Picks up where `roadmap-tier-1-3.md` ends (v0.5.0 shipped). The
 structure shifts here: Tier 4 onward is **less prescriptive by design**
 because each step depends on external events Fable doesn't control —
