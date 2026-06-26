@@ -25,6 +25,7 @@ regression or upgrading the Wine build is a lookup, not an archaeology dig.
 | `Components/SteamInstallCommitter.swift` | Finishing WoW64-stalled Steam installs. |
 | `Components/SteamRedistInstaller.swift` | Running Steam's bundled `_CommonRedist`. |
 | `Components/AntiCheatDatabase.swift` + `ViewModels/QuirkService.swift` | Preemptive per-game quirks (anti-cheat verdicts now, ProtonDB next) surfaced in the compatibility banner *before* you install. Offline by default; online sources will need opt-in + caching. |
+| `Components/GameDoctor.swift` | Fable Doctor — matching a game's log against known failure signatures and saying what to do. Data-driven rules; adding a diagnosis is adding one. |
 | `Utilities/LogPruner.swift` | Capping runaway Wine logs. |
 
 ## The quirks
