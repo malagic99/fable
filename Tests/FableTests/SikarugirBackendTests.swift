@@ -134,13 +134,15 @@ import Testing
     }
 
     @Test
-    func cleanInstallStillRecommendsGPTKRegardlessOfSikarugir() {
+    func cleanInstallPrefersSikarugirWhenAvailable() {
         let result = CompatibilityScanner.recommendedBackend(
             for: [],
             crossOverAvailable: true,
             sikarugirAvailable: true
         )
-        #expect(result == .gptk, "No D3D12 markers → GPTK default; Sikarugir reserved for the hard cases")
+        // Sikarugir is the modern flagship (handles D3D9–12); GPTK (Wine 7.7)
+        // is now only the legacy fallback when Sikarugir isn't installed.
+        #expect(result == .sikarugir)
     }
 
     @Test

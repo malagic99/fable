@@ -28,7 +28,7 @@ import Testing
         let steam = try #require(
             BottleTemplateCatalog.all.first { $0.id == "steam-ready" }
         )
-        #expect(steam.graphicsBackend == .dxmt)
+        #expect(steam.graphicsBackend == .sikarugir)
         // Sanity: the macOS Steam install needs vcredist + corefonts; the
         // winetricks `steam` verb handles the actual download.
         #expect(steam.dependencyIDs.contains("vcredist-x64"))

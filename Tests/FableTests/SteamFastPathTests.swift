@@ -27,6 +27,8 @@ import Testing
     func steamTemplateIsEligibleForFastPath() {
         let steam = BottleTemplateCatalog.all.first { $0.id == "steam-ready" }
         #expect(steam?.installsSteam == true)
+        // Steam needs Sikarugir to render its CEF login (not DXMT).
+        #expect(steam?.graphicsBackend == .sikarugir)
         // A non-Steam template is not eligible.
         let vanilla = BottleTemplateCatalog.all.first { $0.isVanilla }
         #expect(vanilla?.installsSteam == false)

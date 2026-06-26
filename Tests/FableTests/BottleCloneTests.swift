@@ -96,9 +96,9 @@ import Testing
     }
 
     @Test
-    func steamReadyTemplateUsesDXMTBackend() throws {
+    func steamReadyTemplateUsesSikarugirBackend() throws {
         let steam = try #require(BottleTemplateCatalog.all.first { $0.id == "steam-ready" })
-        #expect(steam.graphicsBackend == .dxmt)
+        #expect(steam.graphicsBackend == .sikarugir)
         #expect(steam.winetricksVerbs.contains("steam"))
     }
 }

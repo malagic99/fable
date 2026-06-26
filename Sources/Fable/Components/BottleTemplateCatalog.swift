@@ -87,8 +87,11 @@ enum BottleTemplateCatalog {
         BottleTemplate(
             id: "steam-ready",
             name: "Steam Ready",
-            summary: "Steam client + Visual C++ + corefonts + DXMT.",
-            graphicsBackend: .dxmt,
+            summary: "Steam client + Visual C++ + corefonts on Sikarugir (renders Steam's CEF, free).",
+            // Sikarugir is the only free backend that renders Steam's CEF login.
+            // The clone fast-path already inherits it; this fixes a from-scratch
+            // Steam install landing on the wrong (DXMT) backend.
+            graphicsBackend: .sikarugir,
             dependencyIDs: ["vcredist-x64", "vcredist-x86"],
             winetricksVerbs: ["corefonts", "steam"],
             // Steam installs to "Program Files (x86)/Steam/Steam.exe" by
