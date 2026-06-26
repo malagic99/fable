@@ -5,7 +5,7 @@ import Foundation
 /// would have performed.
 @MainActor
 final class RedistInstaller: ObservableObject {
-    enum Kind: Equatable {
+    enum Kind: Equatable, Sendable {
         case openAL
         case vcRedist
         case directX
@@ -17,6 +17,17 @@ final class RedistInstaller: ObservableObject {
             case .vcRedist: "Visual C++ runtime"
             case .directX: "DirectX runtime (June 2010)"
             case .generic: "Installer"
+            }
+        }
+
+        /// Install order when running a batch: VC++ first (nearly every game
+        /// links it), then DirectX, then OpenAL.
+        var installRank: Int {
+            switch self {
+            case .vcRedist: 0
+            case .directX: 1
+            case .openAL: 2
+            case .generic: 3
             }
         }
     }
