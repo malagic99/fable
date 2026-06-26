@@ -17,6 +17,8 @@ struct GameLauncherView: View {
     @State private var launchError: String?
     @State private var isShowingSettings = false
     @State private var logToView: URL?
+    @State private var isShowingDoctor = false
+    @State private var doctorFindings: [CompatibilityFinding] = []
     @State private var icon: NSImage?
 
     private var isRunning: Bool {
@@ -68,6 +70,8 @@ struct GameLauncherView: View {
                     .help("A double-clickable app on your Desktop that launches this game directly")
                 if let log = gameLauncher.lastLog[game.id] {
                     Button("View Last Log") { logToView = log }
+                    Button("Diagnose Last Run…") { doctorFindings = GameDoctor.diagnose(logFile: log); isShowingDoctor = true }
+                        .help("Fable Doctor reads the log and explains what went wrong")
                 }
                 Button("Reveal in Finder") {
                     let exe = bottleManager.driveCDirectory(for: bottle)
@@ -95,6 +99,9 @@ struct GameLauncherView: View {
         }
         .sheet(item: $logToView) { log in
             LogViewerView(logURL: log)
+        }
+        .sheet(isPresented: $isShowingDoctor) {
+            DoctorSheet(gameName: game.name, findings: doctorFindings)
         }
         .task(id: game.executablePath) {
             let exe = bottleManager.driveCDirectory(for: bottle)
