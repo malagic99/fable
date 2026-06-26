@@ -21,6 +21,7 @@ struct FableApp: App {
     @StateObject private var toastCenter = ToastCenter()
     @StateObject private var settingsManager = SettingsManager()
     @StateObject private var redistInstaller = RedistInstaller()
+    @StateObject private var thermalMonitor = ThermalMonitor()
 
     init() {
         let appState = AppState()
@@ -89,6 +90,13 @@ struct FableApp: App {
                             }
                         }
                     }
+                    // When the Mac starts thermal-throttling mid-session (the
+                    // "great for an hour, then it slips" cause), nudge toward
+                    // Rock Solid — only if a game is actually running.
+                    thermalMonitor.onThrottleOnset = { [weak gameLauncher, weak toastCenter] in
+                        guard let gameLauncher, !gameLauncher.running.isEmpty else { return }
+                        toastCenter?.error("Your Mac is thermal-throttling. Open the bottle's Performance section and tap Rock Solid to hold a steadier frame rate.")
+                    }
                     Task { await appUpdateChecker.checkIfDue() }
                     // Keep wine launch logs from eating the disk (a single
                     // spammy channel can balloon one log to tens of GB).
@@ -111,6 +119,7 @@ struct FableApp: App {
                 .environmentObject(gameLauncher)
                 .environmentObject(toastCenter)
                 .environmentObject(settingsManager)
+                .environmentObject(thermalMonitor)
         }
         .windowToolbarStyle(.unified)
         .commands {

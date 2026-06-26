@@ -10,6 +10,7 @@ struct BottleCard: View {
 
     @EnvironmentObject private var diskUsageStore: BottleDiskUsageStore
     @EnvironmentObject private var bottleManager: BottleManager
+    @EnvironmentObject private var gameLauncher: GameLauncher
     @State private var icon: NSImage?
 
     /// The bottle's first game — its icon becomes the card's cover art.
@@ -83,9 +84,12 @@ struct BottleCard: View {
         .scaleEffect(isHovering ? 1.02 : 1)
         .animation(.spring(duration: 0.2), value: isHovering)
         .task {
-            // First-visit scan. The store coalesces concurrent requests,
-            // and the walk runs at utility priority off the main actor.
-            if diskUsageStore.size(for: bottle.id) == nil {
+            // First-visit scan. The store coalesces concurrent requests, and
+            // the walk runs at utility priority off the main actor — but it
+            // still defers entirely while a game is running so a multi-GB tree
+            // walk never contends with the session.
+            if diskUsageStore.size(for: bottle.id) == nil,
+               Stability.mayRunHeavyBackgroundWork(gameRunning: !gameLauncher.running.isEmpty) {
                 diskUsageStore.scan(bottle, manager: bottleManager)
             }
         }

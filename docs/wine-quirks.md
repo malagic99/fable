@@ -19,7 +19,9 @@ regression or upgrading the Wine build is a lookup, not an archaeology dig.
 | `Components/WineEnv.swift` | Every always-on Wine env var (AVX, msync debug, controllers, dialog-skip). One source of truth. |
 | `Components/SteamPaths.swift` | The `Program Files (x86)/Steam/…` on-disk layout. |
 | `Components/<Backend>Manager.swift` | Backend-specific renderer env (D3DMetal path, DXVK/DXMT overrides). Stays with the backend — it's not global. |
-| `Components/PerformanceOptions.swift` | Frame-rate cap + MetalFX + Metal HUD env. |
+| `Components/PerformanceOptions.swift` | Frame-rate cap + MetalFX + Metal HUD env; the Rock Solid preset. |
+| `Components/Stability.swift` | The "rubber mat" — game QoS + getting out of the game's way during play. |
+| `ViewModels/ThermalMonitor.swift` | Detecting sustained throttling and nudging toward Rock Solid. |
 | `Components/SteamInstallCommitter.swift` | Finishing WoW64-stalled Steam installs. |
 | `Components/SteamRedistInstaller.swift` | Running Steam's bundled `_CommonRedist`. |
 | `Utilities/LogPruner.swift` | Capping runaway Wine logs. |
@@ -42,6 +44,23 @@ regression or upgrading the Wine build is a lookup, not an archaeology dig.
 | **MetalFX + 60 fps cap** | AAA D3DMetal FPS decays over a session (unified-memory creep) | `D3DM_USE_METALFX_UPSCALER=1` + `D3DM_FRAME_RATE_LIMIT` | `PerformanceOptions` / recipes | `fable-current-state` |
 | **GOG/Inno installers** | InnoSetup installer SIGKILLs WoW64 | Extract via bundled `innoextract`; quarantine xattr → SIGKILL | `GameInstaller` | `fable-wow64-gog-installers` |
 | **runaway logs** | A spammy channel balloons one log to tens of GB | Per-file 200 MB + 500 MB total budget, skip active logs | `LogPruner` | `fable-msync-iocp-spin` |
+
+## Performance stability — the "rubber mat"
+
+Steady FPS, not peak FPS. The levers, and which are real vs advisory:
+
+| Lever | What it does | Lives in |
+|---|---|---|
+| **Game QoS** | Launch the game at `.userInteractive` → P-core priority over background work | `Stability.gameQoS` → `ProcessRunner.start` |
+| **Get out of the way** | Skip the per-interval `ps` metrics sample while Fable is backgrounded (you're in-game); defer disk-usage tree walks while any game runs | `Stability.shouldSampleMetrics` / `.mayRunHeavyBackgroundWork` |
+| **Rock Solid preset** | One click → 60 fps cap + MetalFX (where supported); a locked cap beats a flapping rate fighting vsync | `PerformanceOptions.rockSolid` |
+| **Thermal nudge** | Detects the cool→throttling edge and nudges toward Rock Solid *while a game runs* | `ThermalMonitor` |
+
+> **Hard constraint:** a running Wine game reads its frame cap from the env at
+> launch — Fable can't re-cap a live process. So thermal handling is
+> detect-and-advise (+ recommend a lower cap next launch), never silent live
+> re-capping. Don't try to wire a dynamic cap to a running game; the channel
+> doesn't exist.
 
 ## Known dead ends (don't re-attempt blindly)
 

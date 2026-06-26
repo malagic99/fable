@@ -59,11 +59,15 @@ enum ProcessRunner {
         arguments: [String] = [],
         environment: [String: String]? = nil,
         currentDirectory: URL? = nil,
-        redirectingOutputTo logFile: URL? = nil
+        redirectingOutputTo logFile: URL? = nil,
+        qualityOfService: QualityOfService = .default
     ) throws -> LaunchedProcess {
         let process = Process()
         process.executableURL = executable
         process.arguments = arguments
+        // Bias the scheduler: a game launches at .userInteractive (P-cores),
+        // installers/tools keep the default. See Stability.gameQoS.
+        process.qualityOfService = qualityOfService
         if let environment {
             process.environment = ProcessInfo.processInfo.environment
                 .merging(environment) { _, override in override }

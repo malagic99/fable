@@ -38,6 +38,21 @@ struct PerformanceOptions: Codable, Hashable, Sendable {
         }
     }
 
+    /// The most stable config Fable knows for a backend — the one-click "Rock
+    /// Solid" button. A 60 fps cap holds frame pacing steady (a locked 60 beats
+    /// a flapping 60→72→55 fighting vsync), plus MetalFX on the D3DMetal path to
+    /// ease GPU + unified-memory pressure over long sessions. Unlike
+    /// ``recommended(for:)``, this is applied on demand even to a tuned bottle.
+    static func rockSolid(for backend: GraphicsBackend) -> PerformanceOptions {
+        switch backend {
+        case .sikarugir, .gptk:
+            return PerformanceOptions(metalHUD: false, metalFXUpscaling: true, frameRateCap: 60)
+        case .dxmt, .dxvk, .off, .crossover:
+            // MetalFX is D3DMetal-only; the cap still steadies everything else.
+            return PerformanceOptions(metalHUD: false, metalFXUpscaling: false, frameRateCap: 60)
+        }
+    }
+
     /// Env additions that apply regardless of backend.
     func backendAgnosticEnvironment() -> [String: String] {
         metalHUD ? ["MTL_HUD_ENABLED": "1"] : [:]
