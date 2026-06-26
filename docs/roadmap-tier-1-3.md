@@ -1,5 +1,61 @@
 # Fable roadmap — Tiers 1 → 3 (Days 21–58)
 
+> ## ⟳ Status — 2026-06-26 (read this first)
+>
+> **The day-by-day plan below was overtaken by events and is now historical.**
+> The original Tier 1–3 plan assumed steady QoL work toward v0.5.0. Instead,
+> mid-stream we cracked the thing no free wrapper had: **Steam's CEF UI renders,
+> installs, AND plays AAA D3D12 games on Apple Silicon for free** (Sikarugir
+> wine-10 + D3DMetal). That breakthrough rewrote the product's identity and
+> consumed the calendar — so progress is measured against *that* now, not the
+> Day-N grid.
+>
+> ### Where we actually are
+> - **Shipped & released:** v0.1.0 → **v0.4.1** (see CHANGELOG). Six graphics
+>   backends (off / dxmt / gptk / dxvk / crossover / **sikarugir**), AVX free
+>   fix, Smart Bottle compatibility scanner, first-launch wizard, en/es.
+> - **Done on branch `gptk4-heroic-patcher` (the de-facto v0.5 "bulletproof
+>   installs", not yet tagged):**
+>   - Free Steam CEF rendering via Sikarugir + D3DMetal.
+>   - Steam **installs** end-to-end: `WINEMSYNC=1` (kills the IOCP download
+>     spin) + `SteamInstallCommitter` (finishes WoW64-stalled commits) +
+>     auto-commit on Steam exit.
+>   - **DEATHLOOP (30 GB D3D12 AAA) runs stable** — 60fps cap + MetalFX recipe.
+>   - `GameRecipeCatalog` — data-driven per-game known-good setups (Balatro,
+>     DEATHLOOP, System Shock 2 seeded).
+>   - Self-contained DXVK (auto-installs the verb), per-bottle Retina toggle,
+>     grid quick-launch, desktop-shortcut generator, PlayStation controller
+>     support, simple/advanced UI split.
+>   - **Auto-run Steam's bundled `_CommonRedist`** so games stop crashing for a
+>     missing `vcruntime140.dll`; runaway-log fix (msync flood silenced +
+>     `LogPruner`).
+>
+> ### Map of the old plan → reality
+> | Old Tier-1–3 item | Status |
+> |---|---|
+> | Bottle export/import (`.fbottle`) | `BottleArchive` shipped (utility + tests); full drop-to-import UI still partial |
+> | Custom Wine builds + per-bottle pinning | **Superseded** — six discoverable backends + per-bottle/per-game backend pick covers the need; the "drop a .tar.xz wine" flow was never built and may not be needed |
+> | Heroic / GOG library bridge | GOG installer extraction (innoextract) shipped; Heroic library parser not built |
+> | Cross-bottle Library view | **Still queued** (next-tier candidate) |
+> | ARM64 Wine experiments | Research-only, parked — no usable open-source arm64 macOS Wine yet |
+> | Cover art / IGDB | Partial — bottle cards show the game's exe icon; no IGDB metadata |
+> | Gamepad UI navigation | Partial — controller *detection* + Steam Input guidance shipped; full d-pad focus engine not built |
+> | Save backup, A/B benchmark, log-pattern matcher | Not built; ad-hoc `sample`-based diagnosis used instead (the "fable doctor" seed) |
+>
+> ### Real near-term queue (supersedes the Day grid)
+> 1. **Smart Bottle auto-pick the backend for clean, recipe-less games** ← in progress
+> 2. Cross-bottle **Library view** (covers, Recent/Pinned)
+> 3. **Grow the recipe catalog** — the moat; pure data, agent-maintainable
+> 4. Tag/release the branch as **v0.5.0**, refresh CHANGELOG
+> 5. *(parked)* Steam in-game overlay — CrossOver-level Wine patch territory
+> 6. **v0.6 = distribution**: Apple Developer ID → signing + notarization +
+>    Sparkle (the real gate to v1.0 — see `roadmap-tier-4-plus.md`)
+>
+> Everything below this box is the **original plan, kept for the model-swap
+> protocol and historical intent**. Don't follow the Day numbers literally.
+
+---
+
 Day-by-day plan covering all of Tier 1 (strategic), Tier 2 (major QoL),
 and Tier 3 (diagnostics). Designed for a working pace of ~1 productive
 session per day. Numbered days are the headline scope; lettered days
