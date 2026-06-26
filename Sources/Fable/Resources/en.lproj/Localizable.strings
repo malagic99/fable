@@ -3,6 +3,7 @@
 
 // MARK: Sidebar
 "sidebar.bottles"             = "Bottles";
+"sidebar.library"             = "Library";
 "sidebar.components"          = "Components";
 "sidebar.settings"            = "Settings";
 

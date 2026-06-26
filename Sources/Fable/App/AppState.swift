@@ -3,6 +3,7 @@ import SwiftUI
 /// Top-level sections reachable from the sidebar.
 enum AppSection: String, CaseIterable, Identifiable, Hashable {
     case bottles
+    case library
     case components
     case settings
 
@@ -27,6 +28,7 @@ enum AppSection: String, CaseIterable, Identifiable, Hashable {
     var systemImage: String {
         switch self {
         case .bottles: "wineglass"
+        case .library: "square.grid.2x2"
         case .components: "shippingbox"
         case .settings: "gearshape"
         }
