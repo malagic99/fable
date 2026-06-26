@@ -13,6 +13,7 @@ struct CompatibilityBanner: View {
     @EnvironmentObject private var toastCenter: ToastCenter
     @EnvironmentObject private var winetricksManager: WinetricksManager
     @EnvironmentObject private var wineManager: WineManager
+    @EnvironmentObject private var quirkService: QuirkService
     @State private var findings: [CompatibilityFinding] = []
     @State private var recommendation: GraphicsBackend?
     @State private var recipe: GameRecipe?
@@ -38,21 +39,28 @@ struct CompatibilityBanner: View {
                 .appending(path: gameInstallDirectory(for: game))
             let crossOverAvailable = crossOverManager.isInstalled
             let sikarugirAvailable = sikarugirManager.isDiscovered
+            // Preemptive external quirks (anti-cheat verdicts today, ProtonDB
+            // later) — known by name, so they surface even pre-install.
+            let quirks = quirkService.findings(forGameNamed: game.name)
             let scanned = await Task.detached(priority: .utility) {
                 CompatibilityScanner.scan(gameDirectory: installDir)
             }.value
+            // Quirks lead (a Denied anti-cheat is the headline); the filesystem
+            // scan follows. Pass the merged set to the recommender so a known
+            // blocker correctly suppresses any backend suggestion.
+            let external = quirks + scanned
             // A known recipe is authoritative: surface it as an info note and
             // let it drive the recommendation; otherwise fall back to the
             // heuristic decision tree.
             if let match = GameRecipeCatalog.recipe(forExecutablePath: game.executablePath) {
                 recipe = match
-                findings = [match.finding] + scanned
+                findings = [match.finding] + external
                 recommendation = match.backend
             } else {
                 recipe = nil
-                findings = scanned
+                findings = external
                 recommendation = CompatibilityScanner.recommendedBackend(
-                    for: scanned,
+                    for: external,
                     crossOverAvailable: crossOverAvailable,
                     sikarugirAvailable: sikarugirAvailable
                 )
