@@ -166,6 +166,29 @@ final class WinetricksManager: ObservableObject {
         try bottleManager.setWinetricksVerbInstalled(verb.id, for: bottle.id)
     }
 
+    /// Whether a bottle still needs DXVK installed before the DXVK backend
+    /// will render (no `dxvk` verb recorded yet).
+    func needsDXVK(in bottle: Bottle, bottleManager: BottleManager) -> Bool {
+        let current = bottleManager.bottle(with: bottle.id) ?? bottle
+        return !current.installedWinetricksVerbs.contains("dxvk")
+    }
+
+    /// Installs the `dxvk` winetricks verb into a bottle if it isn't already —
+    /// so selecting the DXVK backend (or applying a DXVK recipe) is fully
+    /// self-contained, with no manual `winetricks dxvk` step. No-op when
+    /// already installed.
+    func installDXVKIfNeeded(
+        in bottle: Bottle, bottleManager: BottleManager, wineManager: WineManager
+    ) async throws {
+        guard needsDXVK(in: bottle, bottleManager: bottleManager) else { return }
+        try await ensureInstalled()
+        guard let verb = verbs.first(where: { $0.id == "dxvk" }) else {
+            throw WinetricksError.notInCatalog
+        }
+        let current = bottleManager.bottle(with: bottle.id) ?? bottle
+        try await install(verb: verb, in: current, bottleManager: bottleManager, wineManager: wineManager)
+    }
+
     /// Upper bound on a single winetricks verb (seconds). Generous so a
     /// legitimate Steam client download isn't cut off, tight enough that a
     /// dead-mirror hang doesn't look permanent.

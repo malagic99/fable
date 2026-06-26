@@ -166,4 +166,20 @@ import Testing
         try WinetricksManager.seedCache(at: cache, from: [URL(filePath: "/no/such/seed")])
         #expect(((try? fm.contentsOfDirectory(at: cache, includingPropertiesForKeys: nil)) ?? []).isEmpty)
     }
+
+    @MainActor
+    @Test
+    func needsDXVKReflectsInstalledVerbs() throws {
+        // The gate behind the self-contained DXVK auto-install: true until the
+        // dxvk verb is recorded on the bottle, false after.
+        let wt = WinetricksManager(componentManager: ComponentManager(), catalog: VersionCatalog(components: [:]))
+        let dir = FileManager.default.temporaryDirectory.appending(path: "dxvk-\(UUID().uuidString)", directoryHint: .isDirectory)
+        let bm = BottleManager(bottlesDirectory: dir)
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let bottle = try bm.createBottle(name: "B")
+        #expect(wt.needsDXVK(in: bottle, bottleManager: bm) == true)
+        try bm.setWinetricksVerbInstalled("dxvk", for: bottle.id)
+        #expect(wt.needsDXVK(in: bottle, bottleManager: bm) == false)
+    }
 }

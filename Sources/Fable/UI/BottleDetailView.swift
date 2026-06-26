@@ -14,6 +14,7 @@ struct BottleDetailView: View {
     @EnvironmentObject private var diskUsageStore: BottleDiskUsageStore
     @EnvironmentObject private var toastCenter: ToastCenter
     @EnvironmentObject private var settingsManager: SettingsManager
+    @EnvironmentObject private var winetricksManager: WinetricksManager
     @Environment(\.dismiss) private var dismiss
 
     /// When off, the bottle page is a clean click-and-play view; when on,
@@ -503,10 +504,16 @@ struct BottleDetailView: View {
                 case .gptk:
                     try await gptkManager.ensureInstalled()
                 case .dxvk:
-                    // DXVK is installed via the existing Winetricks UI:
-                    // bottle's Dependencies → "More from Winetricks…" → dxvk.
-                    // Just persist the backend choice here.
-                    break
+                    // Self-contained: install DXVK (winetricks) if the bottle
+                    // doesn't have it yet, so picking the backend just works —
+                    // no manual "winetricks dxvk" step.
+                    if winetricksManager.needsDXVK(in: bottle, bottleManager: bottleManager) {
+                        toastCenter.success("Installing DXVK… this takes about a minute.")
+                        try await winetricksManager.installDXVKIfNeeded(
+                            in: bottle, bottleManager: bottleManager, wineManager: wineManager
+                        )
+                        toastCenter.success("DXVK installed.")
+                    }
                 case .crossover:
                     // CrossOver is auto-detected; nothing to install on our side.
                     crossOverManager.refresh()
