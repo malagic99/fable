@@ -11,6 +11,8 @@ struct CompatibilityBanner: View {
     @EnvironmentObject private var crossOverManager: CrossOverManager
     @EnvironmentObject private var sikarugirManager: SikarugirManager
     @EnvironmentObject private var toastCenter: ToastCenter
+    @EnvironmentObject private var winetricksManager: WinetricksManager
+    @EnvironmentObject private var wineManager: WineManager
     @State private var findings: [CompatibilityFinding] = []
     @State private var recommendation: GraphicsBackend?
     @State private var recipe: GameRecipe?
@@ -143,8 +145,27 @@ struct CompatibilityBanner: View {
                 bottleManager.applyRecommendedPerformanceIfDefault(for: bottle.id)
             }
             toastCenter.success("\(game.name) will use \(backend.shortName)")
+            // DXVK needs its DLLs in the bottle — install them automatically so
+            // applying the recommendation is self-contained (no terminal step).
+            if backend == .dxvk, winetricksManager.needsDXVK(in: bottle, bottleManager: bottleManager) {
+                installDXVK()
+            }
         } catch {
             toastCenter.error(error.localizedDescription)
+        }
+    }
+
+    private func installDXVK() {
+        toastCenter.success("Installing DXVK… this takes about a minute.")
+        Task {
+            do {
+                try await winetricksManager.installDXVKIfNeeded(
+                    in: bottle, bottleManager: bottleManager, wineManager: wineManager
+                )
+                toastCenter.success("DXVK installed — launch \(game.name).")
+            } catch {
+                toastCenter.error("DXVK install failed: \(error.localizedDescription)")
+            }
         }
     }
 
