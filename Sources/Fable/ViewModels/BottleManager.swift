@@ -275,6 +275,37 @@ final class BottleManager: ObservableObject {
         try save(bottles[index])
     }
 
+    /// Imports installed Heroic games into a bottle by symlinking each game's
+    /// install directory under `drive_c/Heroic/<folder>` (no copy — even a
+    /// multi-GB game is instant) and registering its exe. Idempotent: skips a
+    /// game whose exe path is already registered. Returns the titles imported.
+    @discardableResult
+    func importHeroicGames(_ games: [HeroicGame], into id: Bottle.ID) throws -> [String] {
+        guard let index = bottles.firstIndex(where: { $0.id == id }) else {
+            throw BottleError.notFound
+        }
+        let fm = FileManager.default
+        let heroicDir = driveCDirectory(for: bottles[index])
+            .appending(path: "Heroic", directoryHint: .isDirectory)
+        try fm.createDirectory(at: heroicDir, withIntermediateDirectories: true)
+
+        var imported: [String] = []
+        for game in games {
+            let folder = game.folderName ?? game.installPath.lastPathComponent
+            let link = heroicDir.appending(path: folder, directoryHint: .isDirectory)
+            // Symlink the install dir in (leave an existing link/dir as-is).
+            if !fm.fileExists(atPath: link.path) {
+                try fm.createSymbolicLink(at: link, withDestinationURL: game.installPath)
+            }
+            let exePath = "Heroic/\(folder)/\(game.executable)"
+            guard !bottles[index].games.contains(where: { $0.executablePath == exePath }) else { continue }
+            bottles[index].games.append(Game(name: game.title, executablePath: exePath))
+            imported.append(game.title)
+        }
+        if !imported.isEmpty { try save(bottles[index]) }
+        return imported
+    }
+
     func updateGame(_ game: Game, in id: Bottle.ID) throws {
         guard let bottleIndex = bottles.firstIndex(where: { $0.id == id }),
               let gameIndex = bottles[bottleIndex].games.firstIndex(where: { $0.id == game.id })
