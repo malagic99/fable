@@ -10,6 +10,11 @@ struct AppSettings: Codable, Equatable, Sendable {
     /// when on, the full backend/performance/storage/troubleshooting panels.
     var advancedMode: Bool = false
 
+    /// Opt-in: look up per-game compatibility online (ProtonDB). Off by default
+    /// because a lookup sends the game's Steam appid to a third party. The
+    /// offline anti-cheat database always works regardless.
+    var onlineCompatibilityLookups: Bool = false
+
     init() {}
 
     init(from decoder: Decoder) throws {
@@ -22,6 +27,8 @@ struct AppSettings: Codable, Equatable, Sendable {
             .decodeIfPresent(DXMTConfig.self, forKey: .defaultDXMTConfig) ?? DXMTConfig()
         advancedMode = try container
             .decodeIfPresent(Bool.self, forKey: .advancedMode) ?? false
+        onlineCompatibilityLookups = try container
+            .decodeIfPresent(Bool.self, forKey: .onlineCompatibilityLookups) ?? false
     }
 }
 
