@@ -59,7 +59,7 @@ final class GameInstaller: ObservableObject {
     ) async throws -> Int32 {
         let prefix = bottleManager.prefixDirectory(for: bottle)
         var environment = wineManager.environment(forPrefix: prefix)
-        environment["WINEDEBUG"] = "fixme-all"
+        environment["WINEDEBUG"] = "fixme-all,-msync"
 
         let compat: CompatibilityRuntime? =
             PEInfo.architecture(of: installerExe) == .pe32

@@ -87,8 +87,10 @@ final class GameLauncher: ObservableObject {
         }
 
         var environment = wineManager.environment(forPrefix: prefix)
-        // Keep real errors in the log without drowning it in fixmes.
-        environment["WINEDEBUG"] = "fixme-all"
+        // Keep real errors for crash diagnosis, but silence fixmes AND the
+        // msync channel — `err:msync:server_register_wait` floods per-frame
+        // (25 GB for one DEATHLOOP session) yet is harmless noise.
+        environment["WINEDEBUG"] = "fixme-all,-msync"
 
         let log = AppPaths.logs.appending(path: GameInstaller.logName(bottle.name, game.name))
         let baseOverrides = environment["WINEDLLOVERRIDES"] ?? ""

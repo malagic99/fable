@@ -70,7 +70,7 @@ final class RedistInstaller: ObservableObject {
     ) async throws {
         let prefix = bottleManager.prefixDirectory(for: bottle)
         var environment = wineManager.environment(forPrefix: prefix)
-        environment["WINEDEBUG"] = "fixme-all"
+        environment["WINEDEBUG"] = "fixme-all,-msync"
         let wine = try wineManager.wineBinary()
 
         if kind == .directX {
