@@ -5,6 +5,7 @@ import SwiftUI
 struct LibraryView: View {
     @EnvironmentObject private var bottleManager: BottleManager
     @State private var searchText = ""
+    @State private var isShowingHeroicImport = false
 
     private let columns = [GridItem(.adaptive(minimum: 200, maximum: 260), spacing: 18)]
 
@@ -24,6 +25,9 @@ struct LibraryView: View {
                         Label("No Games Yet", systemImage: "square.grid.2x2")
                     } description: {
                         Text("Add games to a bottle and they'll appear here, ready to launch.")
+                    } actions: {
+                        Button("Import from Heroic…") { isShowingHeroicImport = true }
+                            .buttonStyle(.borderedProminent)
                     }
                 } else if filteredEntries.isEmpty {
                     ContentUnavailableView.search(text: searchText)
@@ -42,6 +46,19 @@ struct LibraryView: View {
             .searchable(text: $searchText, prompt: "Search games")
             .navigationDestination(for: Bottle.ID.self) { id in
                 BottleDetailView(bottleID: id)
+            }
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        isShowingHeroicImport = true
+                    } label: {
+                        Label("Import from Heroic…", systemImage: "square.and.arrow.down")
+                    }
+                    .help("Import installed games from the Heroic Games Launcher")
+                }
+            }
+            .sheet(isPresented: $isShowingHeroicImport) {
+                HeroicImportView()
             }
         }
     }
