@@ -20,6 +20,7 @@ struct FableApp: App {
     @StateObject private var gameLauncher = GameLauncher()
     @StateObject private var toastCenter = ToastCenter()
     @StateObject private var settingsManager = SettingsManager()
+    @StateObject private var redistInstaller = RedistInstaller()
 
     init() {
         let appState = AppState()
@@ -67,13 +68,24 @@ struct FableApp: App {
                         }
                     }
                     // Quitting Steam is the moment to finish any install stuck
-                    // on the WoW64 commit step — no-op for non-Steam bottles.
-                    gameLauncher.onGameFullyExited = { [weak bottleManager, weak toastCenter] bottleID in
+                    // on the WoW64 commit step, then run the runtimes Steam
+                    // unpacked but never executed — both no-ops for non-Steam
+                    // bottles and idempotent once done.
+                    gameLauncher.onGameFullyExited = { [weak bottleManager, weak toastCenter, weak wineManager, weak redistInstaller] bottleID in
                         guard let bottleManager, let bottle = bottleManager.bottle(with: bottleID) else { return }
                         Task {
                             let committed = await bottleManager.commitStuckSteamInstalls(in: bottle)
                             if !committed.isEmpty {
                                 toastCenter?.success("Finished installing: \(committed.joined(separator: ", "))")
+                            }
+                            // Run any bundled VC++/DirectX redists the install left behind.
+                            if let wineManager, let redistInstaller {
+                                let runtimes = await bottleManager.installPendingSteamRedists(
+                                    in: bottle, redistInstaller: redistInstaller, wineManager: wineManager
+                                )
+                                if !runtimes.isEmpty {
+                                    toastCenter?.success("Installed game runtimes: \(runtimes.joined(separator: ", "))")
+                                }
                             }
                         }
                     }

@@ -239,6 +239,34 @@ final class BottleManager: ObservableObject {
         }.value
     }
 
+    /// Runs the VC++/DirectX/OpenAL redistributables Steam unpacked into a
+    /// game's `_CommonRedist` but never executed (the WoW64 dead-service gap —
+    /// see SteamRedistInstaller). Idempotent: a per-prefix marker records what's
+    /// already run, so this is a cheap no-op after the first pass. Returns the
+    /// human names of the runtimes installed this pass (empty if none pending).
+    /// Caller must ensure Steam isn't running for this bottle.
+    func installPendingSteamRedists(
+        in bottle: Bottle,
+        redistInstaller: RedistInstaller,
+        wineManager: WineManager
+    ) async -> [String] {
+        guard let root = steamRoot(for: bottle) else { return [] }
+        let pending = await Task.detached(priority: .utility) {
+            SteamRedistInstaller.pendingRedists(steamRoot: root)
+        }.value
+        guard !pending.isEmpty else { return [] }
+        do {
+            try await redistInstaller.install(
+                pending.map(\.url), bottle: bottle,
+                bottleManager: self, wineManager: wineManager
+            )
+            SteamRedistInstaller.markInstalled(pending.map(\.key), steamRoot: root)
+            return Array(Set(pending.map { $0.kind.displayName })).sorted()
+        } catch {
+            return []  // couldn't spawn the installer — leave it pending to retry next exit
+        }
+    }
+
     func addGame(_ game: Game, to id: Bottle.ID) throws {
         guard let index = bottles.firstIndex(where: { $0.id == id }) else {
             throw BottleError.notFound
