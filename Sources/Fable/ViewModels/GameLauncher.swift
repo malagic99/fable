@@ -208,7 +208,9 @@ final class GameLauncher: ObservableObject {
             arguments: plan.wineArguments,
             environment: plan.environment,
             currentDirectory: plan.workingDirectory,
-            redirectingOutputTo: plan.logFile
+            redirectingOutputTo: plan.logFile,
+            // Claim the performance cores — the game is the foreground workload.
+            qualityOfService: Stability.gameQoS
         )
 
         running[game.id] = process

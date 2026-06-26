@@ -184,6 +184,13 @@ struct BottleDetailView: View {
             }
 
             Section {
+                Button {
+                    applyRockSolid(bottle: bottle)
+                } label: {
+                    Label("Rock Solid", systemImage: "checkmark.shield")
+                }
+                .help("One click for a steady frame rate: 60 fps cap + MetalFX where supported. Best for long sessions that slowly slip.")
+
                 Toggle("Metal Performance HUD", isOn: Binding(
                     get: { bottle.performance.metalHUD },
                     set: { setMetalHUD($0, bottle: bottle) }
@@ -581,6 +588,13 @@ struct BottleDetailView: View {
         var perf = bottle.performance
         perf.frameRateCap = cap
         try? bottleManager.setPerformance(perf, for: bottle.id)
+    }
+
+    private func applyRockSolid(bottle: Bottle) {
+        try? bottleManager.setPerformance(
+            .rockSolid(for: bottle.graphicsBackend), for: bottle.id
+        )
+        toastCenter.success("Rock Solid applied: 60 fps cap\(bottle.graphicsBackend == .gptk || bottle.graphicsBackend == .sikarugir ? " + MetalFX" : "").")
     }
 
     private func setMetalHUD(_ enabled: Bool, bottle: Bottle) {
