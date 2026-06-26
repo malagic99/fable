@@ -14,6 +14,7 @@ struct CompatibilityBanner: View {
     @EnvironmentObject private var winetricksManager: WinetricksManager
     @EnvironmentObject private var wineManager: WineManager
     @EnvironmentObject private var quirkService: QuirkService
+    @EnvironmentObject private var settingsManager: SettingsManager
     @State private var findings: [CompatibilityFinding] = []
     @State private var recommendation: GraphicsBackend?
     @State private var recipe: GameRecipe?
@@ -39,12 +40,21 @@ struct CompatibilityBanner: View {
                 .appending(path: gameInstallDirectory(for: game))
             let crossOverAvailable = crossOverManager.isInstalled
             let sikarugirAvailable = sikarugirManager.isDiscovered
-            // Preemptive external quirks (anti-cheat verdicts today, ProtonDB
-            // later) — known by name, so they surface even pre-install.
-            let quirks = quirkService.findings(forGameNamed: game.name)
+            // Preemptive external quirks (anti-cheat verdicts) — known by name,
+            // so they surface even pre-install.
+            var quirks = quirkService.findings(forGameNamed: game.name)
             let scanned = await Task.detached(priority: .utility) {
                 CompatibilityScanner.scan(gameDirectory: installDir)
             }.value
+            // ProtonDB — only when the user opted into online lookups, and only
+            // for a resolvable Steam appid. This is the single guarded call site
+            // that ever reaches the network.
+            if settingsManager.settings.onlineCompatibilityLookups,
+               let steamRoot = bottleManager.steamRoot(for: bottle),
+               let appID = SteamAppManifest.appID(forExecutablePath: game.executablePath, steamRoot: steamRoot),
+               let protonFinding = await quirkService.protonDBFinding(appID: appID) {
+                quirks.append(protonFinding)
+            }
             // Quirks lead (a Denied anti-cheat is the headline); the filesystem
             // scan follows. Pass the merged set to the recommender so a known
             // blocker correctly suppresses any backend suggestion.

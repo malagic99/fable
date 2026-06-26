@@ -31,6 +31,16 @@ private struct GeneralSettingsTab: View {
                     .foregroundStyle(.secondary)
             }
 
+            Section {
+                Toggle("Look Up Compatibility Online (ProtonDB)", isOn: $settingsManager.settings.onlineCompatibilityLookups)
+            } header: {
+                Text("Compatibility")
+            } footer: {
+                Text("Off by default. When on, Fable sends a game's Steam app ID to ProtonDB to fetch its community rating, shown in the compatibility banner. The offline anti-cheat database always works regardless of this setting.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
             Section("New Bottle Defaults") {
                 Picker("Windows Version", selection: $settingsManager.settings.defaultWindowsVersion) {
                     ForEach(WindowsVersion.allCases) { version in
