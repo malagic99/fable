@@ -36,6 +36,11 @@ enum AppPaths {
         applicationSupport.appending(path: "QuirkCache", directoryHint: .isDirectory)
     }
 
+    /// User-imported shareable game recipes (`.fablerecipe` files).
+    static var recipes: URL {
+        applicationSupport.appending(path: "Recipes", directoryHint: .isDirectory)
+    }
+
     static func ensureDirectoriesExist() throws {
         for url in [applicationSupport, bottles, components, downloads, logs] {
             try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
