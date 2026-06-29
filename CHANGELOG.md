@@ -1,5 +1,32 @@
 # Changelog
 
+## v0.7.0 — 2026-06-29
+
+Shader cache management. (Version is just "where we stand" — the publication/
+distribution track is parked; Fable is a polished personal tool.)
+
+### New — durable, offloadable shader cache
+
+- **Shaders survive a reboot now.** D3DMetal compiles its Metal pipelines during
+  play — the reason a game smooths out after its first hour — but those live in
+  macOS's volatile darwin cache, which a reboot/cleanup purges (bringing the
+  first-run stutter back). Fable now keeps a durable copy and **restores it
+  automatically at startup** when the live cache was purged.
+- **Offload to external storage.** Settings → Shader Cache shows the saved size
+  and lets you back the cache up to an external drive to reclaim local space,
+  then bring it back on demand.
+- Automatic snapshot after each session + auto-restore at startup; manual
+  back-up / bring-back in Settings.
+
+### Honest scope
+
+- Metal compiles shaders on-demand during play — there's **no pre-build**
+  (no Fossilize/Steam-precache equivalent), so the cache fills as you play and
+  pays off from the second run on.
+- Unlike Proton's portable per-game `.dxvk-cache`, the D3DMetal cache is Apple's
+  per-app Metal cache; Fable manages it per-machine for the backend, never
+  touching Apple/system or the shared global Metal cache.
+
 ## v0.6.1 — 2026-06-27
 
 Bug-fix pass from real-world testing (Ready or Not running flawlessly — fans
