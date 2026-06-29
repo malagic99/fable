@@ -28,6 +28,7 @@ struct BottleDetailView: View {
     @State private var installerExe: URL?
     @State private var importExe: URL?
     @State private var gogInstallerExe: URL?
+    @State private var isShowingWinetricks = false
     @State private var isRepairing = false
 
     var body: some View {
@@ -110,6 +111,9 @@ struct BottleDetailView: View {
                                 Button("Wine Settings…") { openTool("winecfg") }
                                     .controlSize(.small)
                                     .help("Audio, graphics, drive mappings, Windows version (winecfg)")
+                                Button("Winetricks…") { isShowingWinetricks = true }
+                                    .controlSize(.small)
+                                    .help("Install runtimes, fonts, and components (vcredist, corefonts, …) — and retry any that didn't finish")
                                 Button("Registry Editor…") { openTool("regedit") }
                                     .controlSize(.small)
                                     .help("Edit this bottle's Windows registry (regedit)")
@@ -338,6 +342,9 @@ struct BottleDetailView: View {
                     errorMessage = error.localizedDescription
                 }
             }
+        }
+        .sheet(isPresented: $isShowingWinetricks) {
+            WinetricksSheetView(bottle: bottle)
         }
         .sheet(item: $installerExe) { exe in
             GameInstallerView(bottle: bottle, installerExe: exe)

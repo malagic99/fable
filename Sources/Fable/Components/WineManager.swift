@@ -175,5 +175,33 @@ final class WineManager: ObservableObject {
         guard FileManager.default.fileExists(atPath: driveC.path) else {
             throw WineError.prefixCreationFailed("prefix has no drive_c after wineboot")
         }
+
+        reconcileDrives(at: prefix)
+    }
+
+    /// Ensures the standard DOS drive mappings exist: `C:` → `drive_c` and
+    /// `Z:` → the filesystem root. wineboot creates these, but a partial init,
+    /// a cloned/seeded prefix, or a stray cleanup can leave `Z:` missing — and
+    /// then Wine can't resolve any path outside `C:` (the "Wine keeps looking
+    /// for the Z: drive it can't find" symptom when running exes/installers from
+    /// anywhere on the Mac). Idempotent and cheap; safe to call on every launch.
+    /// Never removes a real directory — only repairs missing or wrong symlinks.
+    func reconcileDrives(at prefix: URL) {
+        let fm = FileManager.default
+        let dosdevices = prefix.appending(path: "dosdevices", directoryHint: .isDirectory)
+        guard (try? fm.createDirectory(at: dosdevices, withIntermediateDirectories: true)) != nil
+        else { return }
+        ensureSymlink(at: dosdevices.appending(path: "c:"), to: "../drive_c", fileManager: fm)
+        ensureSymlink(at: dosdevices.appending(path: "z:"), to: "/", fileManager: fm)
+    }
+
+    private func ensureSymlink(at link: URL, to destination: String, fileManager fm: FileManager) {
+        if let current = try? fm.destinationOfSymbolicLink(atPath: link.path) {
+            if current == destination { return }     // already correct
+            try? fm.removeItem(at: link)             // wrong target → replace
+        } else if fm.fileExists(atPath: link.path) {
+            return                                   // a real file/dir lives here — don't touch
+        }
+        try? fm.createSymbolicLink(atPath: link.path, withDestinationPath: destination)
     }
 }

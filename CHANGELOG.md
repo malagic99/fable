@@ -1,5 +1,28 @@
 # Changelog
 
+## v0.6.1 — 2026-06-27
+
+Bug-fix pass from real-world testing (Ready or Not running flawlessly — fans
+near-silent and temps barely above room after the first hour).
+
+### Fixes
+
+- **A failed winetricks verb no longer destroys the bottle.** Bottle creation
+  used to abort *and self-delete* if any verb failed — so a `corefonts` download
+  hitting a dead SourceForge mirror nuked the whole bottle on every retry. Verbs
+  are now best-effort: a failure is recorded and surfaced ("retry from the
+  bottle's Winetricks button"), and the bottle is still created.
+- **Wine drive self-heal.** Fable now ensures the standard `C:` → `drive_c` and
+  `Z:` → `/` mappings exist before every launch (and on prefix creation). Fixes
+  the "Wine keeps looking for the Z: drive it can't find" failure when running an
+  exe or installer located anywhere outside `C:`.
+
+### New
+
+- **"Winetricks…" button** in a bottle's Wine Tools, next to Wine Settings —
+  browse/install runtimes, fonts, and components, and retry anything that didn't
+  finish during setup.
+
 ## v0.6.0 — 2026-06-27
 
 The big one. Free Steam doesn't just render now — it **installs and plays AAA

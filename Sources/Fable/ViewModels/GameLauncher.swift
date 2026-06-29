@@ -187,6 +187,10 @@ final class GameLauncher: ObservableObject {
     ) throws {
         guard running[game.id] == nil else { return }
 
+        // Self-heal the standard drive mappings (esp. Z: → /) before launch, so
+        // an exe anywhere outside C: resolves. Cheap + idempotent.
+        wineManager.reconcileDrives(at: bottleManager.prefixDirectory(for: bottle))
+
         let plan = try makeLaunchPlan(
             game, in: bottle,
             bottleManager: bottleManager, wineManager: wineManager,

@@ -20,6 +20,7 @@ struct CreateBottleView: View {
     @EnvironmentObject private var gptkManager: GPTKManager
     @EnvironmentObject private var winetricksManager: WinetricksManager
     @EnvironmentObject private var settingsManager: SettingsManager
+    @EnvironmentObject private var toastCenter: ToastCenter
     @Environment(\.dismiss) private var dismiss
 
     private enum Phase: Equatable {
@@ -35,6 +36,9 @@ struct CreateBottleView: View {
     @State private var template: BottleTemplate = BottleTemplateCatalog.default
     @State private var errorMessage: String?
     @State private var phase: Phase = .form
+    /// Non-essential winetricks verbs that failed during setup (e.g. a font
+    /// pack when its mirror was down) — surfaced as a warning, not a hard fail.
+    @State private var verbFailures: [String] = []
     @State private var provisionTask: Task<Void, Never>?
 
     private var trimmedName: String {
@@ -244,6 +248,9 @@ struct CreateBottleView: View {
                 try await applyTemplate(chosenTemplate, to: bottle)
 
                 try bottleManager.setStatus(.ready, for: bottle.id)
+                if !verbFailures.isEmpty {
+                    toastCenter.error("Bottle ready, but some optional setup didn't finish (a download mirror was likely down): \(verbFailures.joined(separator: ", ")). Retry it from the bottle's Winetricks button.")
+                }
                 dismiss()
             } catch is CancellationError {
                 try? bottleManager.deleteBottle(bottle.id)
@@ -322,10 +329,20 @@ struct CreateBottleView: View {
             for slug in template.winetricksVerbs {
                 guard let verb = winetricksManager.verbs.first(where: { $0.id == slug }) else { continue }
                 phase = .installingDependencies("Winetricks \(verb.id)")
-                try await winetricksManager.install(
-                    verb: verb, in: updated,
-                    bottleManager: bottleManager, wineManager: wineManager
-                )
+                do {
+                    try await winetricksManager.install(
+                        verb: verb, in: updated,
+                        bottleManager: bottleManager, wineManager: wineManager
+                    )
+                } catch is CancellationError {
+                    throw CancellationError()   // user cancelled → abort + clean up
+                } catch {
+                    // A single verb failing (e.g. corefonts when a SourceForge
+                    // mirror is down) must NOT destroy the whole bottle. Record
+                    // it, keep going, and surface it so the user can retry from
+                    // the bottle's Winetricks button.
+                    verbFailures.append(verb.id)
+                }
             }
         }
 
