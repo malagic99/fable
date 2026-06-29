@@ -9,9 +9,9 @@
     <key>CFBundleIdentifier</key>
     <string>com.markoalagic.fable</string>
     <key>CFBundleVersion</key>
-    <string>7</string>
+    <string>8</string>
     <key>CFBundleShortVersionString</key>
-    <string>0.6.1</string>
+    <string>0.7.0</string>
     <key>CFBundleExecutable</key>
     <string>Fable</string>
     <key>CFBundleIconFile</key>

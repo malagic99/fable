@@ -19,6 +19,7 @@ struct SettingsView: View {
 private struct GeneralSettingsTab: View {
     @EnvironmentObject private var settingsManager: SettingsManager
     @EnvironmentObject private var userRecipeStore: UserRecipeStore
+    @EnvironmentObject private var shaderCacheStore: ShaderCacheStore
     @EnvironmentObject private var toastCenter: ToastCenter
 
     var body: some View {
@@ -53,6 +54,29 @@ private struct GeneralSettingsTab: View {
                     .foregroundStyle(.secondary)
             }
 
+            Section {
+                LabeledContent("Saved Shaders",
+                               value: shaderCacheStore.localBytes > 0 ? BottleDiskUsage.formatted(shaderCacheStore.localBytes) : "—")
+                if let external = shaderCacheStore.externalLocation {
+                    LabeledContent("Offloaded To") {
+                        Text(external.path).lineLimit(1).truncationMode(.middle).foregroundStyle(.secondary)
+                    }
+                    Button("Bring Shaders Back to Mac") {
+                        Task { await shaderCacheStore.bringBack(); toastCenter.success("Shaders restored to this Mac.") }
+                    }
+                    .disabled(shaderCacheStore.isWorking)
+                } else {
+                    Button("Back Up Shaders to External…") { backUpShaders() }
+                        .disabled(shaderCacheStore.isWorking || (shaderCacheStore.localBytes == 0 && shaderCacheStore.liveBytes == 0))
+                }
+            } header: {
+                Text("Shader Cache")
+            } footer: {
+                Text("D3DMetal compiles shaders during play. Fable keeps a durable copy so they survive a reboot — no first-run stutter again — and restores it automatically at startup. Offload it to an external drive to reclaim local space, then bring it back when you want to play.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
             Section("New Bottle Defaults") {
                 Picker("Windows Version", selection: $settingsManager.settings.defaultWindowsVersion) {
                     ForEach(WindowsVersion.allCases) { version in
@@ -83,6 +107,20 @@ private struct GeneralSettingsTab: View {
     private func open(_ url: URL) {
         try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
         NSWorkspace.shared.open(url)
+    }
+
+    private func backUpShaders() {
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.allowsMultipleSelection = false
+        panel.prompt = "Back Up Here"
+        guard panel.runModal() == .OK, let dir = panel.url else { return }
+        Task {
+            await shaderCacheStore.snapshot()       // capture the latest warmed shaders first
+            await shaderCacheStore.offload(to: dir)
+            toastCenter.success("Shaders backed up to \(dir.lastPathComponent).")
+        }
     }
 
     private func importRecipe() {

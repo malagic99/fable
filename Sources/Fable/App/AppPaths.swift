@@ -41,6 +41,12 @@ enum AppPaths {
         applicationSupport.appending(path: "Recipes", directoryHint: .isDirectory)
     }
 
+    /// Durable snapshot of D3DMetal shader caches, so they survive macOS
+    /// purging the volatile darwin cache dir (and can be offloaded externally).
+    static var shaderCache: URL {
+        applicationSupport.appending(path: "ShaderCache", directoryHint: .isDirectory)
+    }
+
     static func ensureDirectoriesExist() throws {
         for url in [applicationSupport, bottles, components, downloads, logs] {
             try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)

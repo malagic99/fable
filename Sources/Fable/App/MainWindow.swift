@@ -24,6 +24,7 @@ struct FableApp: App {
     @StateObject private var thermalMonitor = ThermalMonitor()
     @StateObject private var quirkService = QuirkService()
     @StateObject private var userRecipeStore = UserRecipeStore()
+    @StateObject private var shaderCacheStore = ShaderCacheStore()
 
     init() {
         let appState = AppState()
@@ -90,6 +91,9 @@ struct FableApp: App {
                                     toastCenter?.success("Installed game runtimes: \(runtimes.joined(separator: ", "))")
                                 }
                             }
+                            // Persist the shaders this session warmed, so a macOS
+                            // purge of the volatile darwin cache can't lose them.
+                            await shaderCacheStore.snapshot()
                         }
                     }
                     // When the Mac starts thermal-throttling mid-session (the
@@ -100,6 +104,9 @@ struct FableApp: App {
                         toastCenter?.error("Your Mac is thermal-throttling. Open the bottle's Performance section and tap Rock Solid to hold a steadier frame rate.")
                     }
                     Task { await appUpdateChecker.checkIfDue() }
+                    // Restore warmed shaders if macOS purged the volatile darwin
+                    // cache since last run (e.g. across a reboot) — once at start.
+                    Task { await shaderCacheStore.restoreLiveIfPurged() }
                     // Keep wine launch logs from eating the disk (a single
                     // spammy channel can balloon one log to tens of GB).
                     Task.detached(priority: .utility) { LogPruner.prune() }
@@ -124,6 +131,7 @@ struct FableApp: App {
                 .environmentObject(thermalMonitor)
                 .environmentObject(quirkService)
                 .environmentObject(userRecipeStore)
+                .environmentObject(shaderCacheStore)
         }
         .windowToolbarStyle(.unified)
         .commands {
