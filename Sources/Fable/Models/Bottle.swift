@@ -30,6 +30,8 @@ struct Game: Codable, Identifiable, Hashable, Sendable {
     /// Per-game graphics override. nil = inherit the bottle's backend
     /// (lets a D3D9 and a D3D11 game share one bottle without fighting).
     var graphicsBackend: GraphicsBackend?
+    /// Per-game DualSense trigger override. nil = inherit the bottle's profile.
+    var triggerProfile: TriggerProfile?
 
     init(
         id: UUID = UUID(),
@@ -37,7 +39,8 @@ struct Game: Codable, Identifiable, Hashable, Sendable {
         executablePath: String,
         arguments: String = "",
         environment: [String: String] = [:],
-        graphicsBackend: GraphicsBackend? = nil
+        graphicsBackend: GraphicsBackend? = nil,
+        triggerProfile: TriggerProfile? = nil
     ) {
         self.id = id
         self.name = name
@@ -45,6 +48,7 @@ struct Game: Codable, Identifiable, Hashable, Sendable {
         self.arguments = arguments
         self.environment = environment
         self.graphicsBackend = graphicsBackend
+        self.triggerProfile = triggerProfile
     }
 
     init(from decoder: Decoder) throws {
@@ -55,6 +59,13 @@ struct Game: Codable, Identifiable, Hashable, Sendable {
         arguments = try container.decodeIfPresent(String.self, forKey: .arguments) ?? ""
         environment = try container.decodeIfPresent([String: String].self, forKey: .environment) ?? [:]
         graphicsBackend = try container.decodeIfPresent(GraphicsBackend.self, forKey: .graphicsBackend)
+        triggerProfile = try container.decodeIfPresent(TriggerProfile.self, forKey: .triggerProfile)
+    }
+
+    /// The trigger profile actually in effect: the game's override, else the
+    /// bottle's default.
+    func effectiveTriggerProfile(bottleDefault: TriggerProfile) -> TriggerProfile {
+        triggerProfile ?? bottleDefault
     }
 }
 
@@ -151,6 +162,9 @@ struct Bottle: Codable, Identifiable, Hashable, Sendable {
     /// but renders many non-HiDPI-aware games (SDL/GL) into a corner with
     /// mismatched input — so it defaults OFF, since the point is games.
     var retinaMode: Bool
+    /// Default DualSense adaptive-trigger profile for this bottle's games.
+    /// A per-game override on `Game` wins over this.
+    var triggerProfile: TriggerProfile
 
     init(
         id: UUID = UUID(),
@@ -163,7 +177,8 @@ struct Bottle: Codable, Identifiable, Hashable, Sendable {
         dxmtConfig: DXMTConfig = DXMTConfig(),
         performance: PerformanceOptions = PerformanceOptions(),
         installedWinetricksVerbs: Set<String> = [],
-        retinaMode: Bool = false
+        retinaMode: Bool = false,
+        triggerProfile: TriggerProfile = TriggerProfile()
     ) {
         self.id = id
         self.name = name
@@ -176,6 +191,7 @@ struct Bottle: Codable, Identifiable, Hashable, Sendable {
         self.performance = performance
         self.installedWinetricksVerbs = installedWinetricksVerbs
         self.retinaMode = retinaMode
+        self.triggerProfile = triggerProfile
     }
 
     private enum LegacyKeys: String, CodingKey {
@@ -214,5 +230,6 @@ struct Bottle: Codable, Identifiable, Hashable, Sendable {
         // Added post-launch; older bottles default to off (matches the
         // winemac.drv default and keeps existing games rendering correctly).
         retinaMode = try container.decodeIfPresent(Bool.self, forKey: .retinaMode) ?? false
+        triggerProfile = try container.decodeIfPresent(TriggerProfile.self, forKey: .triggerProfile) ?? TriggerProfile()
     }
 }

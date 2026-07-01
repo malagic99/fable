@@ -29,6 +29,7 @@ struct BottleDetailView: View {
     @State private var importExe: URL?
     @State private var gogInstallerExe: URL?
     @State private var isShowingWinetricks = false
+    @State private var isShowingTriggers = false
     @State private var isRepairing = false
 
     var body: some View {
@@ -153,6 +154,14 @@ struct BottleDetailView: View {
 
             Section {
                 ControllerStatusView(bottle: bottle)
+                Button {
+                    isShowingTriggers = true
+                } label: {
+                    Label(bottle.triggerProfile.isActive
+                          ? "DualSense Triggers: On" : "Configure DualSense Triggers…",
+                          systemImage: "l2.rectangle.roundedbottom")
+                }
+                .help("Set adaptive-trigger resistance (weapon-break, brake, etc.) for this bottle's games")
             } header: {
                 Text("Controllers")
             }
@@ -345,6 +354,11 @@ struct BottleDetailView: View {
         }
         .sheet(isPresented: $isShowingWinetricks) {
             WinetricksSheetView(bottle: bottle)
+        }
+        .sheet(isPresented: $isShowingTriggers) {
+            TriggerProfileSheet(title: "DualSense Triggers — \(bottle.name)", profile: bottle.triggerProfile) { profile in
+                try? bottleManager.setTriggerProfile(profile, for: bottle.id)
+            }
         }
         .sheet(item: $installerExe) { exe in
             GameInstallerView(bottle: bottle, installerExe: exe)

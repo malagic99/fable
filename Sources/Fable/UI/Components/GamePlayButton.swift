@@ -16,6 +16,7 @@ struct GamePlayButton: View {
     @EnvironmentObject private var gameLauncher: GameLauncher
     @EnvironmentObject private var activityMonitor: ActivityMonitor
     @EnvironmentObject private var toastCenter: ToastCenter
+    @EnvironmentObject private var triggerController: DualSenseTriggerController
 
     @State private var launchError: String?
 
@@ -76,6 +77,7 @@ struct GamePlayButton: View {
                     gptkManager: gptkManager, crossOverManager: crossOverManager,
                     sikarugirManager: sikarugirManager
                 )
+                triggerController.apply(prepared.effectiveTriggerProfile(bottleDefault: fresh.triggerProfile))
             } catch {
                 launchError = error.localizedDescription
             }

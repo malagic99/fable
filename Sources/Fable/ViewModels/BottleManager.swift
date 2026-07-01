@@ -334,6 +334,14 @@ final class BottleManager: ObservableObject {
         try save(bottles[index])
     }
 
+    func setTriggerProfile(_ profile: TriggerProfile, for id: Bottle.ID) throws {
+        guard let index = bottles.firstIndex(where: { $0.id == id }) else {
+            throw BottleError.notFound
+        }
+        bottles[index].triggerProfile = profile
+        try save(bottles[index])
+    }
+
     func setRetinaMode(_ enabled: Bool, for id: Bottle.ID) throws {
         guard let index = bottles.firstIndex(where: { $0.id == id }) else {
             throw BottleError.notFound
