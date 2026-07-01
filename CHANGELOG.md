@@ -1,5 +1,25 @@
 # Changelog
 
+## v0.7.1 — 2026-07-01
+
+Accurate Play/Stop state — Fable now knows what's *actually* running.
+
+### Fixes
+
+- **Real running detection.** Fable used to only know about games it launched
+  itself, so state was wrong in two common cases. It now scans the process table:
+  - A game launched **from inside Steam** shows as running.
+  - A process that **lingers after its window closes** is reflected correctly —
+    no more stale "running" that never clears (and no more Steam appearing idle
+    while a game runs, or vice-versa).
+- **Stop actually stops it.** For a game Fable didn't launch (or a lingering
+  one), Stop now falls back to killing the bottle's wine tree instead of doing
+  nothing.
+- **Steam prerequisite nudge.** Launching a Steam game (under
+  `steamapps/common`) while the Steam client isn't running now shows a clear
+  "start Steam first, then launch it from your Steam library" message instead of
+  a cryptic failure.
+
 ## v0.7.0 — 2026-06-29
 
 Shader cache management. (Version is just "where we stand" — the publication/
