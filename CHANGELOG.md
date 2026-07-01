@@ -1,5 +1,31 @@
 # Changelog
 
+## v0.8.0 — 2026-07-01
+
+Two controller/setup features.
+
+### DualSense adaptive triggers
+
+- Set a **static adaptive-trigger feel per bottle** — a resistance wall
+  (weapon), constant tension (feedback), or a buzz (vibration) on L2/R2 — with a
+  **per-game override**. Presets (Shooter, Racing, Heavy) get you started, and
+  the config panel **previews live** on the pad as you drag a slider. Applied
+  when a game launches, cleared when it exits. Validated on hardware over USB and
+  Bluetooth.
+- Honest scope: these are static profiles you set (like Steam Input's trigger
+  config) — a Wine game's *own* contextual trigger effects can't cross the Wine
+  boundary.
+
+### D3DMetal set-up in the first-run wizard
+
+- New **mandatory graphics step** in onboarding: detects Apple's D3DMetal (via
+  the free Sikarugir), shows its version, and offers **one-click set-up** — or
+  guides installing Sikarugir when it's missing. Makes the flagship backend
+  (Steam + D3D12) work out of the box for a new user, with an informed "continue
+  without it" escape for those who only want older D3D9 games.
+- **Sikarugir updates** are now detected and applied (it was install-once);
+  a newer engine on disk shows an "Update" action.
+
 ## v0.7.1 — 2026-07-01
 
 Accurate Play/Stop state — Fable now knows what's *actually* running.
