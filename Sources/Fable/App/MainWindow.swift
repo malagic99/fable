@@ -25,6 +25,7 @@ struct FableApp: App {
     @StateObject private var quirkService = QuirkService()
     @StateObject private var userRecipeStore = UserRecipeStore()
     @StateObject private var shaderCacheStore = ShaderCacheStore()
+    @StateObject private var activityMonitor = ActivityMonitor()
 
     init() {
         let appState = AppState()
@@ -107,6 +108,8 @@ struct FableApp: App {
                     // Restore warmed shaders if macOS purged the volatile darwin
                     // cache since last run (e.g. across a reboot) — once at start.
                     Task { await shaderCacheStore.restoreLiveIfPurged() }
+                    // Reflect games actually running (incl. Steam-launched ones).
+                    activityMonitor.start()
                     // Keep wine launch logs from eating the disk (a single
                     // spammy channel can balloon one log to tens of GB).
                     Task.detached(priority: .utility) { LogPruner.prune() }
@@ -132,6 +135,7 @@ struct FableApp: App {
                 .environmentObject(quirkService)
                 .environmentObject(userRecipeStore)
                 .environmentObject(shaderCacheStore)
+                .environmentObject(activityMonitor)
         }
         .windowToolbarStyle(.unified)
         .commands {

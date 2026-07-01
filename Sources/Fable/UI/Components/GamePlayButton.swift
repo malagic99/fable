@@ -14,14 +14,27 @@ struct GamePlayButton: View {
     @EnvironmentObject private var crossOverManager: CrossOverManager
     @EnvironmentObject private var sikarugirManager: SikarugirManager
     @EnvironmentObject private var gameLauncher: GameLauncher
+    @EnvironmentObject private var activityMonitor: ActivityMonitor
+    @EnvironmentObject private var toastCenter: ToastCenter
 
     @State private var launchError: String?
 
-    private var isRunning: Bool { gameLauncher.isRunning(game.id) }
+    /// Running if Fable launched it OR a live process for it is detected
+    /// (e.g. started from inside Steam, or lingering after its window closed).
+    private var isRunning: Bool {
+        gameLauncher.isRunning(game.id) || activityMonitor.isRunning(game, in: bottle)
+    }
+
+    /// A Steam game (under steamapps/common) that isn't Steam itself needs the
+    /// Steam client already running to launch.
+    private var needsSteamRunning: Bool {
+        let path = game.executablePath.lowercased().replacingOccurrences(of: "\\", with: "/")
+        return path.contains("steamapps/common") && !path.hasSuffix("steam.exe")
+    }
 
     var body: some View {
         Button {
-            if isRunning { gameLauncher.stop(game.id) } else { launch() }
+            if isRunning { stop() } else { launch() }
         } label: {
             Image(systemName: isRunning ? "stop.fill" : "play.fill")
                 .font(.system(size: size * 0.43, weight: .bold))
@@ -44,6 +57,11 @@ struct GamePlayButton: View {
     }
 
     private func launch() {
+        // Steam games need the Steam client up first — surface that instead of
+        // letting the raw exe fail cryptically.
+        if needsSteamRunning && !activityMonitor.isSteamRunning(in: bottle) {
+            toastCenter.error("“\(game.name)” is a Steam game — start Steam in this bottle first, then launch it from your Steam library.")
+        }
         Task {
             let prepared = await bottleManager.prepareSmartBackend(
                 for: game, in: bottle,
@@ -60,6 +78,18 @@ struct GamePlayButton: View {
                 )
             } catch {
                 launchError = error.localizedDescription
+            }
+        }
+    }
+
+    /// Stop what Fable launched; if the game is only *detected* (started
+    /// externally or lingering), fall back to killing the bottle's wine tree.
+    private func stop() {
+        if gameLauncher.isRunning(game.id) {
+            gameLauncher.stop(game.id)
+        } else {
+            Task {
+                try? await wineManager.forceKillPrefix(bottleManager.prefixDirectory(for: bottle))
             }
         }
     }

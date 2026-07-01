@@ -13,6 +13,7 @@ struct GameLauncherView: View {
     @EnvironmentObject private var sikarugirManager: SikarugirManager
     @EnvironmentObject private var gameLauncher: GameLauncher
     @EnvironmentObject private var metricsStore: RunningGameMetricsStore
+    @EnvironmentObject private var activityMonitor: ActivityMonitor
 
     @State private var launchError: String?
     @State private var isShowingSettings = false
@@ -22,7 +23,7 @@ struct GameLauncherView: View {
     @State private var icon: NSImage?
 
     private var isRunning: Bool {
-        gameLauncher.isRunning(game.id)
+        gameLauncher.isRunning(game.id) || activityMonitor.isRunning(game, in: bottle)
     }
 
     var body: some View {
@@ -49,7 +50,7 @@ struct GameLauncherView: View {
 
             if isRunning {
                 Button {
-                    gameLauncher.stop(game.id)
+                    stop()
                 } label: {
                     Label("Stop", systemImage: "stop.fill")
                 }
@@ -155,6 +156,15 @@ struct GameLauncherView: View {
         )
         let cpu = String(format: "%.0f%%", metric.cpuPercent)
         return "\(mem) · \(cpu) CPU"
+    }
+
+    private func stop() {
+        if gameLauncher.isRunning(game.id) {
+            gameLauncher.stop(game.id)
+        } else {
+            // Detected-but-not-Fable-launched (e.g. via Steam) → kill the tree.
+            Task { try? await wineManager.forceKillPrefix(bottleManager.prefixDirectory(for: bottle)) }
+        }
     }
 
     private func launch() {

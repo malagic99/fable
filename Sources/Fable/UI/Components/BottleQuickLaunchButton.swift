@@ -12,6 +12,7 @@ struct BottleQuickLaunchButton: View {
     @EnvironmentObject private var crossOverManager: CrossOverManager
     @EnvironmentObject private var sikarugirManager: SikarugirManager
     @EnvironmentObject private var gameLauncher: GameLauncher
+    @EnvironmentObject private var activityMonitor: ActivityMonitor
 
     @State private var launchError: String?
 
@@ -21,14 +22,14 @@ struct BottleQuickLaunchButton: View {
 
     private var isRunning: Bool {
         guard let primaryGame else { return false }
-        return gameLauncher.isRunning(primaryGame.id)
+        return gameLauncher.isRunning(primaryGame.id) || activityMonitor.isRunning(primaryGame, in: bottle)
     }
 
     var body: some View {
         if let primaryGame {
             Button {
                 if isRunning {
-                    gameLauncher.stop(primaryGame.id)
+                    stop(primaryGame)
                 } else {
                     launch(primaryGame)
                 }
@@ -56,6 +57,14 @@ struct BottleQuickLaunchButton: View {
             } message: {
                 Text(launchError ?? "")
             }
+        }
+    }
+
+    private func stop(_ game: Game) {
+        if gameLauncher.isRunning(game.id) {
+            gameLauncher.stop(game.id)
+        } else {
+            Task { try? await wineManager.forceKillPrefix(bottleManager.prefixDirectory(for: bottle)) }
         }
     }
 
