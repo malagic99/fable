@@ -13,6 +13,8 @@ struct GameSettingsView: View {
     @State private var arguments = ""
     @State private var environmentText = ""
     @State private var backendOverride: GraphicsBackend? = nil
+    @State private var triggerOverride: TriggerProfile? = nil
+    @State private var isShowingTriggers = false
     @State private var errorMessage: String?
 
     /// Tag used by the "inherit" row in the picker. None of the real
@@ -73,6 +75,23 @@ struct GameSettingsView: View {
                 }
 
                 Section {
+                    Toggle("Override bottle's DualSense triggers", isOn: Binding(
+                        get: { triggerOverride != nil },
+                        set: { triggerOverride = $0 ? (triggerOverride ?? bottle.triggerProfile) : nil }
+                    ))
+                    if triggerOverride != nil {
+                        Button("Configure This Game's Triggers…") { isShowingTriggers = true }
+                    }
+                } header: {
+                    Text("Adaptive Triggers")
+                } footer: {
+                    Text(triggerOverride == nil
+                         ? "Using the bottle's default trigger profile."
+                         : "This game uses its own trigger profile instead of the bottle default.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+
+                Section {
                     Button {
                         exportRecipe()
                     } label: {
@@ -110,6 +129,13 @@ struct GameSettingsView: View {
             arguments = game.arguments
             environmentText = ArgumentTokenizer.lines(fromEnvironment: game.environment)
             backendOverride = game.graphicsBackend
+            triggerOverride = game.triggerProfile
+        }
+        .sheet(isPresented: $isShowingTriggers) {
+            TriggerProfileSheet(title: "Triggers — \(game.name)",
+                                profile: triggerOverride ?? bottle.triggerProfile) { profile in
+                triggerOverride = profile
+            }
         }
     }
 
@@ -139,6 +165,7 @@ struct GameSettingsView: View {
         updated.arguments = arguments
         updated.environment = ArgumentTokenizer.environment(fromLines: environmentText)
         updated.graphicsBackend = backendOverride
+        updated.triggerProfile = triggerOverride
         do {
             try bottleManager.updateGame(updated, in: bottle.id)
             dismiss()

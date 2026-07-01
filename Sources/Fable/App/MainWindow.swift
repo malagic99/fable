@@ -26,6 +26,7 @@ struct FableApp: App {
     @StateObject private var userRecipeStore = UserRecipeStore()
     @StateObject private var shaderCacheStore = ShaderCacheStore()
     @StateObject private var activityMonitor = ActivityMonitor()
+    @StateObject private var triggerController = DualSenseTriggerController()
 
     init() {
         let appState = AppState()
@@ -65,11 +66,13 @@ struct FableApp: App {
                     gameLauncher.onAbnormalExit = { [weak toastCenter] message in
                         toastCenter?.error(message)
                     }
-                    gameLauncher.onProcessLifecycle = { [weak metricsStore] id, pid in
+                    gameLauncher.onProcessLifecycle = { [weak metricsStore, weak triggerController] id, pid in
                         if let pid {
                             metricsStore?.startTracking(id, rootPID: pid)
                         } else {
                             metricsStore?.stopTracking(id)
+                            // Clear any adaptive-trigger effect when the game exits.
+                            triggerController?.reset()
                         }
                     }
                     // Quitting Steam is the moment to finish any install stuck
@@ -136,6 +139,7 @@ struct FableApp: App {
                 .environmentObject(userRecipeStore)
                 .environmentObject(shaderCacheStore)
                 .environmentObject(activityMonitor)
+                .environmentObject(triggerController)
         }
         .windowToolbarStyle(.unified)
         .commands {

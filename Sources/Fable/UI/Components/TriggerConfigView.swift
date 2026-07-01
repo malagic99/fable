@@ -1,0 +1,85 @@
+import SwiftUI
+
+/// The embedded "Trigger Lab": edit a DualSense trigger profile with live
+/// preview — as you change a slider, the pad's triggers update so you can feel
+/// it. Used for a bottle's default and for a per-game override.
+struct TriggerConfigView: View {
+    @Binding var profile: TriggerProfile
+    @EnvironmentObject private var triggers: DualSenseTriggerController
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                Circle().fill(triggers.isDualSense ? .green : .secondary).frame(width: 8, height: 8)
+                Text(triggers.isDualSense ? "DualSense connected — changes preview live" : "Connect a DualSense to feel changes")
+                    .font(.caption).foregroundStyle(.secondary)
+                Spacer()
+                Menu("Presets") {
+                    ForEach(TriggerProfile.presets, id: \.name) { preset in
+                        Button(preset.name) { profile = preset.profile }
+                    }
+                }
+                .fixedSize()
+            }
+
+            HStack(alignment: .top, spacing: 16) {
+                TriggerEffectPanel(title: "L2", effect: $profile.left, live: triggers.leftValue)
+                TriggerEffectPanel(title: "R2", effect: $profile.right, live: triggers.rightValue)
+            }
+        }
+        .onAppear { triggers.apply(profile) }
+        .onChange(of: profile) { _, new in triggers.apply(new) }
+        .onDisappear { triggers.reset() }
+    }
+}
+
+private struct TriggerEffectPanel: View {
+    let title: String
+    @Binding var effect: TriggerEffect
+    let live: Float
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(title).font(.headline)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Pull: \(Int(live * 100))%").font(.caption2).monospacedDigit().foregroundStyle(.secondary)
+                ProgressView(value: Double(min(max(live, 0), 1))).tint(live > 0.01 ? .green : .gray)
+            }
+            Picker("Mode", selection: $effect.mode) {
+                ForEach(TriggerMode.allCases) { Text($0.label).tag($0) }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+
+            switch effect.mode {
+            case .off:
+                Text("No resistance.").font(.caption).foregroundStyle(.secondary)
+            case .feedback:
+                slider("Start", $effect.start)
+                slider("Strength", $effect.strength)
+            case .weapon:
+                slider("Start (wall)", $effect.start)
+                slider("End (release)", $effect.end)
+                slider("Strength", $effect.strength)
+            case .vibration:
+                slider("Start", $effect.start)
+                slider("Amplitude", $effect.amplitude)
+                slider("Frequency", $effect.frequency)
+            }
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 10))
+    }
+
+    private func slider(_ label: String, _ value: Binding<Float>) -> some View {
+        VStack(alignment: .leading, spacing: 1) {
+            HStack {
+                Text(label).font(.caption)
+                Spacer()
+                Text(String(format: "%.2f", value.wrappedValue)).font(.caption2).monospacedDigit().foregroundStyle(.secondary)
+            }
+            Slider(value: value, in: 0...1)
+        }
+    }
+}

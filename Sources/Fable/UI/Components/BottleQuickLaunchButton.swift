@@ -13,6 +13,7 @@ struct BottleQuickLaunchButton: View {
     @EnvironmentObject private var sikarugirManager: SikarugirManager
     @EnvironmentObject private var gameLauncher: GameLauncher
     @EnvironmentObject private var activityMonitor: ActivityMonitor
+    @EnvironmentObject private var triggerController: DualSenseTriggerController
 
     @State private var launchError: String?
 
@@ -89,6 +90,7 @@ struct BottleQuickLaunchButton: View {
                     crossOverManager: crossOverManager,
                     sikarugirManager: sikarugirManager
                 )
+                triggerController.apply(prepared.effectiveTriggerProfile(bottleDefault: fresh.triggerProfile))
             } catch {
                 launchError = error.localizedDescription
             }

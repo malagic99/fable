@@ -14,6 +14,7 @@ struct GameLauncherView: View {
     @EnvironmentObject private var gameLauncher: GameLauncher
     @EnvironmentObject private var metricsStore: RunningGameMetricsStore
     @EnvironmentObject private var activityMonitor: ActivityMonitor
+    @EnvironmentObject private var triggerController: DualSenseTriggerController
 
     @State private var launchError: String?
     @State private var isShowingSettings = false
@@ -187,6 +188,7 @@ struct GameLauncherView: View {
                     crossOverManager: crossOverManager,
                     sikarugirManager: sikarugirManager
                 )
+                triggerController.apply(prepared.effectiveTriggerProfile(bottleDefault: fresh.triggerProfile))
             } catch {
                 launchError = error.localizedDescription
             }
