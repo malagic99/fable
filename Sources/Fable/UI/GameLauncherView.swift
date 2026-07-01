@@ -34,11 +34,12 @@ struct GameLauncherView: View {
                     Image(nsImage: icon)
                         .resizable()
                         .interpolation(.high)
-                        .frame(width: 20, height: 20)
-                        .clipShape(RoundedRectangle(cornerRadius: 4))
+                        .frame(width: 26, height: 26)
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
                 } else {
                     Image(systemName: "gamecontroller")
                         .foregroundStyle(isRunning ? .green : .secondary)
+                        .frame(width: 26, height: 26)
                 }
             }
 

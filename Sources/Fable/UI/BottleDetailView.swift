@@ -60,67 +60,56 @@ struct BottleDetailView: View {
     @ViewBuilder
     private func detailContent(for bottle: Bottle) -> some View {
         Form {
-            // The bottle info section is power-user detail. In simple mode we
-            // only surface it when the bottle needs attention (setting up /
-            // repair); a ready bottle goes straight to its games.
-            if advanced || bottle.status != .ready {
-                Section("Bottle") {
-                    if advanced {
-                        LabeledContent("Name", value: bottle.name)
-                        LabeledContent("Windows Version", value: bottle.windowsVersion.displayName)
+            // Hero: what this bottle is and the one thing you do with it —
+            // play. Power-user detail lives at the bottom in "Details".
+            Section {
+                HStack(spacing: 16) {
+                    ExeIconView(bottle: bottle, game: bottle.games.first, size: 64)
+                    VStack(alignment: .leading, spacing: 7) {
+                        Text(bottle.name)
+                            .font(.largeTitle.bold())
+                            .lineLimit(1)
+                        HStack(spacing: 8) {
+                            heroStatusBadge(for: bottle)
+                            if bottle.status == .ready && bottle.graphicsBackend != .off {
+                                BackendBadge(backend: bottle.graphicsBackend)
+                            }
+                            Text(heroMeta(for: bottle))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                        }
                     }
-                    LabeledContent("Status") {
-                        switch bottle.status {
-                        case .ready:
-                            Label("Ready", systemImage: "checkmark.circle.fill")
-                                .foregroundStyle(.green)
-                        case .provisioning:
-                            Label("Setting up", systemImage: "clock")
+                    Spacer()
+                    if bottle.status == .ready, let primary = bottle.games.first {
+                        GamePlayButton(game: primary, bottle: bottle, size: 46)
+                    }
+                }
+                .padding(.vertical, 6)
+                .listRowBackground(Color.clear)
+                .listRowInsets(EdgeInsets(top: 6, leading: 2, bottom: 6, trailing: 2))
+            }
+
+            // A bottle that isn't ready needs attention before anything else.
+            if bottle.status != .ready {
+                Section {
+                    switch bottle.status {
+                    case .provisioning:
+                        Label("Setting up — hang tight.", systemImage: "clock")
+                            .foregroundStyle(.orange)
+                    case .broken:
+                        HStack {
+                            Label("Setup was interrupted", systemImage: "exclamationmark.triangle.fill")
                                 .foregroundStyle(.orange)
-                        case .broken:
-                            HStack {
-                                Label("Setup was interrupted", systemImage: "exclamationmark.triangle.fill")
-                                    .foregroundStyle(.orange)
-                                if isRepairing {
-                                    ProgressView().controlSize(.small)
-                                } else {
-                                    Button("Repair") { repair(bottle) }
-                                        .controlSize(.small)
-                                }
+                            Spacer()
+                            if isRepairing {
+                                ProgressView().controlSize(.small)
+                            } else {
+                                Button("Repair") { repair(bottle) }
                             }
                         }
-                    }
-                    if advanced {
-                        LabeledContent("Created") {
-                            Text(bottle.createdAt, format: .dateTime.day().month().year())
-                        }
-                        LabeledContent("Location") {
-                            HStack {
-                                Text(bottleManager.directory(for: bottle).path)
-                                    .truncationMode(.middle)
-                                    .lineLimit(1)
-                                Button("Show in Finder") {
-                                    NSWorkspace.shared.activateFileViewerSelecting(
-                                        [bottleManager.directory(for: bottle)]
-                                    )
-                                }
-                                .controlSize(.small)
-                            }
-                        }
-                        LabeledContent("Wine Tools") {
-                            HStack {
-                                Button("Wine Settings…") { openTool("winecfg") }
-                                    .controlSize(.small)
-                                    .help("Audio, graphics, drive mappings, Windows version (winecfg)")
-                                Button("Winetricks…") { isShowingWinetricks = true }
-                                    .controlSize(.small)
-                                    .help("Install runtimes, fonts, and components (vcredist, corefonts, …) — and retry any that didn't finish")
-                                Button("Registry Editor…") { openTool("regedit") }
-                                    .controlSize(.small)
-                                    .help("Edit this bottle's Windows registry (regedit)")
-                            }
-                        }
-                        .disabled(bottle.status != .ready)
+                    case .ready:
+                        EmptyView()
                     }
                 }
             }
@@ -298,6 +287,40 @@ struct BottleDetailView: View {
                     .foregroundStyle(.secondary)
             }
 
+            Section("Details") {
+                LabeledContent("Windows Version", value: bottle.windowsVersion.displayName)
+                LabeledContent("Created") {
+                    Text(bottle.createdAt, format: .dateTime.day().month().year())
+                }
+                LabeledContent("Location") {
+                    HStack {
+                        Text(bottleManager.directory(for: bottle).path)
+                            .truncationMode(.middle)
+                            .lineLimit(1)
+                        Button("Show in Finder") {
+                            NSWorkspace.shared.activateFileViewerSelecting(
+                                [bottleManager.directory(for: bottle)]
+                            )
+                        }
+                        .controlSize(.small)
+                    }
+                }
+                LabeledContent("Wine Tools") {
+                    HStack {
+                        Button("Wine Settings…") { openTool("winecfg") }
+                            .controlSize(.small)
+                            .help("Audio, graphics, drive mappings, Windows version (winecfg)")
+                        Button("Winetricks…") { isShowingWinetricks = true }
+                            .controlSize(.small)
+                            .help("Install runtimes, fonts, and components (vcredist, corefonts, …) — and retry any that didn't finish")
+                        Button("Registry Editor…") { openTool("regedit") }
+                            .controlSize(.small)
+                            .help("Edit this bottle's Windows registry (regedit)")
+                    }
+                }
+                .disabled(bottle.status != .ready)
+            }
+
             }  // end advanced sections
 
             if let errorMessage {
@@ -309,6 +332,10 @@ struct BottleDetailView: View {
             }
         }
         .formStyle(.grouped)
+        // A settings column stretched across a huge window reads as void;
+        // cap it and center for balance.
+        .frame(maxWidth: 820)
+        .frame(maxWidth: .infinity)
         .navigationTitle(bottle.name)
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
@@ -386,6 +413,28 @@ struct BottleDetailView: View {
         } message: {
             Text("This permanently removes the bottle and everything installed in it.")
         }
+    }
+
+    // MARK: Hero helpers
+
+    @ViewBuilder
+    private func heroStatusBadge(for bottle: Bottle) -> some View {
+        switch bottle.status {
+        case .ready: StatusBadge(text: "Ready", color: .green)
+        case .provisioning: StatusBadge(text: "Setting up", color: .orange)
+        case .broken: StatusBadge(text: "Needs repair", color: .red)
+        }
+    }
+
+    private func heroMeta(for bottle: Bottle) -> String {
+        var parts = [
+            bottle.windowsVersion.displayName,
+            "\(bottle.games.count) \(bottle.games.count == 1 ? "game" : "games")",
+        ]
+        if let bytes = diskUsageStore.size(for: bottle.id) {
+            parts.append(BottleDiskUsage.formatted(bytes))
+        }
+        return parts.joined(separator: " · ")
     }
 
     // MARK: Troubleshooting

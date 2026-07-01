@@ -1,5 +1,37 @@
 # Changelog
 
+## v0.9.0 — 2026-07-02
+
+UI redesign: fluid, clean, balanced. Reviewed live on screen, then rebuilt
+around one design language (`FableTheme`).
+
+### The bottle page is games-first now
+
+- **Hero header**: cover art, the bottle's name in large type, status +
+  backend chips, quick facts (Windows · games · size), and a prominent Play —
+  the one thing you actually do with a bottle. The wall of metadata that used
+  to sit above your games moved to a "Details" section at the bottom
+  (advanced mode).
+- The settings column is width-capped and centered so it no longer floats in
+  a void on large windows.
+
+### One card language
+
+- Bottle and Library tiles share one roomier card: bigger cover art, clearer
+  title, dot-separated quick facts, springier hover lift with a subtle glow.
+- **Backend badges stopped shouting.** Sikarugir was alarm-pink on every card —
+  red tones now mean actual problems; backends get quiet informative tints
+  (Sikarugir is indigo, matching the app's identity).
+- A dashed **New Bottle** tile joins the grid, so a sparse library reads as an
+  invitation instead of a void.
+
+### Identity
+
+- The wineglass-on-gradient mark (previously onboarding-only) now heads the
+  sidebar — the app carries its own identity.
+- `FableTheme` centralizes the gradient, card surface, and backend tints;
+  one shared `ExeIconView` replaced three copy-pasted icon loaders.
+
 ## v0.8.1 — 2026-07-02
 
 Backend surgery: one launch flow, a tested routing core, two trigger fixes.
