@@ -9,6 +9,7 @@ final class OnboardingState: ObservableObject {
     /// Linear step machine. Adding a step = bump the next/previous logic.
     enum Step: Int, CaseIterable {
         case welcome
+        case graphics       // detect / set up D3DMetal (the flagship backend's source)
         case source
         case firstBottle
         case done

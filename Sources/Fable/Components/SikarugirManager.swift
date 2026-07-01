@@ -62,6 +62,49 @@ final class SikarugirManager: ObservableObject {
         (try? wineBinary()) != nil
     }
 
+    /// D3DMetal setup state, for the onboarding step.
+    enum D3DMetalStatus: Equatable {
+        case missing                                  // no Sikarugir on the Mac
+        case notInstalled(available: String)          // found, not yet extracted into Fable
+        case ready(version: String)                   // installed and current
+        case updateAvailable(installed: String, available: String)
+    }
+
+    /// The D3DMetal version Sikarugir has on disk (from its engine tarball name).
+    nonisolated func availableVersion() -> String? {
+        (try? engineTarball()).map {
+            $0.deletingPathExtension().deletingPathExtension().lastPathComponent
+        }
+    }
+
+    /// The D3DMetal version Fable has extracted (newest installed component dir).
+    func installedVersion() -> String? {
+        componentManager.installedDirectory(for: Self.componentID)?.lastPathComponent
+    }
+
+    /// Resolves onboarding status from what's discovered vs. installed. Pure, so
+    /// the decision is unit-tested independently of the filesystem.
+    static func status(discovered: Bool, available: String?, installed: String?) -> D3DMetalStatus {
+        guard discovered, let available else { return .missing }
+        guard let installed else { return .notInstalled(available: available) }
+        return installed == available
+            ? .ready(version: installed)
+            : .updateAvailable(installed: installed, available: available)
+    }
+
+    func d3dMetalStatus() -> D3DMetalStatus {
+        Self.status(discovered: isDiscovered, available: availableVersion(), installed: installedVersion())
+    }
+
+    /// Human-friendly version label, e.g. "WS12WineSikarugir10.0_4" → "10.0_4".
+    static func displayVersion(_ raw: String) -> String {
+        if let range = raw.range(of: "Sikarugir") {
+            let tail = String(raw[range.upperBound...])
+            if !tail.isEmpty { return tail }
+        }
+        return raw
+    }
+
     // MARK: Discovery (Sikarugir's install on disk)
 
     /// The wine 10.0 engine tarball Sikarugir ships (extracted per-bottle
@@ -103,20 +146,23 @@ final class SikarugirManager: ObservableObject {
     /// is already extracted with the renderer present.
     func ensureInstalled() async throws {
         guard isDiscovered else { throw SikarugirError.notInstalled }
-        // Self-heal installs that predate comprehensive support-lib staging:
-        // if the engine is present but its lib is missing the TLS/font
-        // dylibs (libfreetype = blank Steam text, libgnutls = no QR/online),
-        // re-stage them from Sikarugir's renderer without a full reinstall.
-        if isInstalled {
-            try? backfillSupportLibs()
-            return
-        }
 
         let tarball = try engineTarball()
         let renderer = try d3dMetalRenderer()
-
         // Version label from the tarball name (WS12WineSikarugir10.0_4).
         let version = tarball.deletingPathExtension().deletingPathExtension().lastPathComponent
+
+        // Already on this exact version: just self-heal support libs (the
+        // engine's lib can be missing the TLS/font dylibs — libfreetype = blank
+        // Steam text, libgnutls = no QR/online) without a full reinstall.
+        if isInstalled, installedVersion() == version {
+            try? backfillSupportLibs()
+            return
+        }
+        // Otherwise this is a fresh install OR an update to a newer Sikarugir —
+        // extract into its own version dir; installedDirectory() resolves to the
+        // newest, so an update takes effect on the next launch.
+
         let installRoot = AppPaths.components
             .appending(path: Self.componentID, directoryHint: .isDirectory)
             .appending(path: version, directoryHint: .isDirectory)
