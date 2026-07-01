@@ -90,19 +90,19 @@ private struct LibraryGameCard: View {
     let entry: LibraryEntry
     var isHovering = false
 
-    @EnvironmentObject private var bottleManager: BottleManager
-    @State private var icon: NSImage?
-
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .top) {
-                cover
+                ExeIconView(bottle: entry.bottle, game: entry.game,
+                            size: 52, fallbackSymbol: "gamecontroller.fill")
                 Spacer()
-                backendBadge
+                BackendBadge(backend: entry.effectiveBackend)
             }
 
+            Spacer(minLength: 2)
+
             Text(entry.game.name)
-                .font(.headline)
+                .font(.title3.weight(.semibold))
                 .lineLimit(1)
 
             Label(entry.bottle.name, systemImage: "wineglass")
@@ -110,58 +110,10 @@ private struct LibraryGameCard: View {
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
                 // Keep the bottom-right corner clear for the play button.
-                .padding(.trailing, 40)
+                .padding(.trailing, 42)
         }
-        .padding(14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.quaternary.opacity(isHovering ? 0.8 : 0.5), in: RoundedRectangle(cornerRadius: 12))
-        .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .strokeBorder(.quaternary, lineWidth: 1)
-        )
-        .shadow(color: .black.opacity(isHovering ? 0.15 : 0.06), radius: isHovering ? 8 : 3, y: 2)
-        .scaleEffect(isHovering ? 1.02 : 1)
-        .animation(.spring(duration: 0.2), value: isHovering)
-        .task(id: entry.id) {
-            let exe = bottleManager.driveCDirectory(for: entry.bottle)
-                .appending(path: entry.game.executablePath)
-            let data = await Task.detached(priority: .utility) { () -> Data? in
-                guard let bytes = try? Data(contentsOf: exe, options: .alwaysMapped) else { return nil }
-                return ExeIconExtractor.icoData(from: bytes)
-            }.value
-            icon = data.flatMap { NSImage(data: $0) }
-        }
-    }
-
-    @ViewBuilder
-    private var cover: some View {
-        if let icon {
-            Image(nsImage: icon)
-                .resizable()
-                .interpolation(.high)
-                .frame(width: 44, height: 44)
-                .clipShape(RoundedRectangle(cornerRadius: 10))
-        } else {
-            Image(systemName: "gamecontroller.fill")
-                .font(.system(size: 20, weight: .medium))
-                .foregroundStyle(.white)
-                .frame(width: 44, height: 44)
-                .background(
-                    LinearGradient(colors: [.purple, .indigo], startPoint: .topLeading, endPoint: .bottomTrailing),
-                    in: RoundedRectangle(cornerRadius: 10)
-                )
-        }
-    }
-
-    @ViewBuilder
-    private var backendBadge: some View {
-        switch entry.effectiveBackend {
-        case .dxmt: StatusBadge(text: "DXMT", color: .blue)
-        case .gptk: StatusBadge(text: "GPTK", color: .purple)
-        case .dxvk: StatusBadge(text: "DXVK", color: .teal)
-        case .crossover: StatusBadge(text: "CrossOver", color: .green)
-        case .sikarugir: StatusBadge(text: "Sikarugir", color: .pink)
-        case .off: StatusBadge(text: "Wine", color: .secondary)
-        }
+        .padding(16)
+        .frame(maxWidth: .infinity, minHeight: 130, alignment: .leading)
+        .fableCard(isHovering: isHovering)
     }
 }

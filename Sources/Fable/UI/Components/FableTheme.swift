@@ -1,0 +1,127 @@
+import SwiftUI
+
+/// Fable's design language in one place: the brand gradient, card surface,
+/// backend tints, and the shared exe-icon view. Every grid card and hero uses
+/// these so the app reads as one hand, not thirty feature branches.
+enum FableTheme {
+    /// The identity: the wineglass purple→indigo from onboarding, carried
+    /// through the whole app.
+    static let accentGradient = LinearGradient(
+        colors: [.purple, .indigo],
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+    )
+
+    static let cardRadius: CGFloat = 14
+
+    /// One tint per backend — quiet, informative colors (never alarm-red;
+    /// red is reserved for actual problems).
+    static func tint(for backend: GraphicsBackend) -> Color {
+        switch backend {
+        case .dxmt: .blue
+        case .gptk: .purple
+        case .dxvk: .teal
+        case .crossover: .green
+        case .sikarugir: .indigo
+        case .off: .secondary
+        }
+    }
+
+    static func label(for backend: GraphicsBackend) -> String {
+        switch backend {
+        case .dxmt: "DXMT"
+        case .gptk: "GPTK"
+        case .dxvk: "DXVK"
+        case .crossover: "CrossOver"
+        case .sikarugir: "Sikarugir"
+        case .off: "Wine"
+        }
+    }
+}
+
+/// The one capsule for "which backend renders this" — replaces the two
+/// hand-rolled switch statements that had drifted (and the alarm-pink).
+struct BackendBadge: View {
+    let backend: GraphicsBackend
+
+    var body: some View {
+        StatusBadge(text: FableTheme.label(for: backend), color: FableTheme.tint(for: backend))
+    }
+}
+
+/// Shared card surface: soft material fill, hairline border, hover lift with
+/// a faint brand-tinted glow. Both grids and any future tiles use this.
+struct FableCard: ViewModifier {
+    var isHovering = false
+
+    func body(content: Content) -> some View {
+        content
+            .background(
+                .quaternary.opacity(isHovering ? 0.75 : 0.5),
+                in: RoundedRectangle(cornerRadius: FableTheme.cardRadius)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: FableTheme.cardRadius)
+                    .strokeBorder(
+                        isHovering ? AnyShapeStyle(.tertiary) : AnyShapeStyle(.quaternary),
+                        lineWidth: 1
+                    )
+            )
+            .shadow(
+                color: .black.opacity(isHovering ? 0.18 : 0.07),
+                radius: isHovering ? 10 : 4,
+                y: isHovering ? 4 : 2
+            )
+            .scaleEffect(isHovering ? 1.015 : 1)
+            .animation(.spring(duration: 0.25, bounce: 0.25), value: isHovering)
+    }
+}
+
+extension View {
+    func fableCard(isHovering: Bool = false) -> some View {
+        modifier(FableCard(isHovering: isHovering))
+    }
+}
+
+/// The one exe-icon view: loads a game's icon from its exe (off the main
+/// actor), falling back to a symbol on the brand gradient. Replaces the three
+/// copy-pasted loaders in BottleCard / LibraryGameCard / GameLauncherView.
+struct ExeIconView: View {
+    let bottle: Bottle
+    let game: Game?
+    var size: CGFloat = 44
+    var fallbackSymbol: String = "wineglass"
+
+    @EnvironmentObject private var bottleManager: BottleManager
+    @State private var icon: NSImage?
+
+    var body: some View {
+        Group {
+            if let icon {
+                Image(nsImage: icon)
+                    .resizable()
+                    .interpolation(.high)
+                    .frame(width: size, height: size)
+                    .clipShape(RoundedRectangle(cornerRadius: size * 0.22))
+            } else {
+                Image(systemName: fallbackSymbol)
+                    .font(.system(size: size * 0.46, weight: .medium))
+                    .foregroundStyle(.white)
+                    .frame(width: size, height: size)
+                    .background(
+                        FableTheme.accentGradient,
+                        in: RoundedRectangle(cornerRadius: size * 0.22)
+                    )
+            }
+        }
+        .task(id: game?.executablePath) {
+            guard let game else { icon = nil; return }
+            let exe = bottleManager.driveCDirectory(for: bottle).appending(path: game.executablePath)
+            let data = await Task.detached(priority: .utility) { () -> Data? in
+                guard let bytes = try? Data(contentsOf: exe, options: .alwaysMapped) else { return nil }
+                return ExeIconExtractor.icoData(from: bytes)
+            }.value
+            icon = data.flatMap { NSImage(data: $0) }
+        }
+    }
+}

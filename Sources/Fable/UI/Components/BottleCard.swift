@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// Bottle tile for the grid: icon, name, status, and quick facts, with
-/// a hover lift.
+/// Bottle tile for the grid: cover art, name, status, and quick facts, with
+/// a hover lift. Surface + badge styling come from FableTheme.
 struct BottleCard: View {
     let bottle: Bottle
     /// Driven by the parent grid item so the card's lift and the
@@ -11,78 +11,43 @@ struct BottleCard: View {
     @EnvironmentObject private var diskUsageStore: BottleDiskUsageStore
     @EnvironmentObject private var bottleManager: BottleManager
     @EnvironmentObject private var gameLauncher: GameLauncher
-    @State private var icon: NSImage?
 
     /// The bottle's first game — its icon becomes the card's cover art.
     private var primaryGame: Game? { bottle.games.first }
 
-    @ViewBuilder
-    private var bottleIcon: some View {
-        if let icon {
-            Image(nsImage: icon)
-                .resizable()
-                .interpolation(.high)
-                .frame(width: 44, height: 44)
-                .clipShape(RoundedRectangle(cornerRadius: 10))
-        } else {
-            Image(systemName: "wineglass")
-                .font(.system(size: 22, weight: .medium))
-                .foregroundStyle(.white)
-                .frame(width: 44, height: 44)
-                .background(
-                    LinearGradient(
-                        colors: [.purple, .indigo],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    ),
-                    in: RoundedRectangle(cornerRadius: 10)
-                )
-        }
-    }
-
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .top) {
-                bottleIcon
+                ExeIconView(bottle: bottle, game: primaryGame, size: 52)
                 Spacer()
                 statusBadge
             }
 
+            Spacer(minLength: 2)
+
             Text(bottle.name)
-                .font(.headline)
+                .font(.title3.weight(.semibold))
                 .lineLimit(1)
 
-            HStack(spacing: 10) {
-                Label("\(bottle.games.count)", systemImage: "gamecontroller")
-                    .help("\(bottle.games.count) game(s)")
+            HStack(spacing: 5) {
+                Text("\(bottle.games.count) \(bottle.games.count == 1 ? "game" : "games")")
+                dot
                 Text(bottle.windowsVersion.displayName)
                 if let bytes = diskUsageStore.size(for: bottle.id) {
-                    Label(BottleDiskUsage.formatted(bytes), systemImage: "internaldrive")
-                        .help("Prefix size on disk")
-                } else {
-                    Text(bottle.createdAt, format: .dateTime.day().month())
+                    dot
+                    Text(BottleDiskUsage.formatted(bytes))
                 }
                 // Keep the bottom-right corner clear for the quick-launch
                 // button that overlays the card in the grid.
-                Spacer(minLength: 46)
+                Spacer(minLength: 42)
             }
             .font(.caption)
             .foregroundStyle(.secondary)
             .lineLimit(1)
         }
-        .padding(14)
-        .background(.quaternary.opacity(isHovering ? 0.8 : 0.5), in: RoundedRectangle(cornerRadius: 12))
-        .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .strokeBorder(.quaternary, lineWidth: 1)
-        )
-        .shadow(
-            color: .black.opacity(isHovering ? 0.15 : 0.06),
-            radius: isHovering ? 8 : 3,
-            y: 2
-        )
-        .scaleEffect(isHovering ? 1.02 : 1)
-        .animation(.spring(duration: 0.2), value: isHovering)
+        .padding(16)
+        .frame(maxWidth: .infinity, minHeight: 130, alignment: .leading)
+        .fableCard(isHovering: isHovering)
         .task {
             // First-visit scan. The store coalesces concurrent requests, and
             // the walk runs at utility priority off the main actor — but it
@@ -93,16 +58,10 @@ struct BottleCard: View {
                 diskUsageStore.scan(bottle, manager: bottleManager)
             }
         }
-        .task(id: primaryGame?.executablePath) {
-            // Cover art from the primary game's exe icon (Steam, the game…).
-            guard let game = primaryGame else { icon = nil; return }
-            let exe = bottleManager.driveCDirectory(for: bottle).appending(path: game.executablePath)
-            let data = await Task.detached(priority: .utility) { () -> Data? in
-                guard let bytes = try? Data(contentsOf: exe, options: .alwaysMapped) else { return nil }
-                return ExeIconExtractor.icoData(from: bytes)
-            }.value
-            icon = data.flatMap { NSImage(data: $0) }
-        }
+    }
+
+    private var dot: some View {
+        Text("·").foregroundStyle(.tertiary)
     }
 
     @ViewBuilder
@@ -113,19 +72,8 @@ struct BottleCard: View {
         case .broken:
             StatusBadge(text: "Needs repair", color: .red)
         case .ready:
-            switch bottle.graphicsBackend {
-            case .dxmt:
-                StatusBadge(text: "DXMT", color: .blue)
-            case .gptk:
-                StatusBadge(text: "GPTK", color: .purple)
-            case .dxvk:
-                StatusBadge(text: "DXVK", color: .teal)
-            case .crossover:
-                StatusBadge(text: "CrossOver", color: .green)
-            case .sikarugir:
-                StatusBadge(text: "Sikarugir", color: .pink)
-            case .off:
-                EmptyView()
+            if bottle.graphicsBackend != .off {
+                BackendBadge(backend: bottle.graphicsBackend)
             }
         }
     }

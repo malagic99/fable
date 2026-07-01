@@ -31,6 +31,9 @@ struct BottleListView: View {
                         ForEach(bottleManager.bottles) { bottle in
                             BottleGridItem(bottle: bottle)
                         }
+                        // A quiet "add" tile keeps a sparse grid purposeful and
+                        // puts creation where the eye already is.
+                        NewBottleCard { isShowingCreateSheet = true }
                     }
                     .padding(24)
                     .frame(maxWidth: .infinity, alignment: .topLeading)
@@ -60,6 +63,38 @@ struct BottleListView: View {
         .navigationDestination(for: Bottle.ID.self) { id in
             BottleDetailView(bottleID: id)
         }
+    }
+}
+
+/// Dashed ghost tile that creates a new bottle — matches the card footprint
+/// so the grid stays rhythmic even with one bottle.
+private struct NewBottleCard: View {
+    let action: () -> Void
+    @State private var isHovering = false
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 10) {
+                Image(systemName: "plus")
+                    .font(.system(size: 22, weight: .medium))
+                Text("New Bottle")
+                    .font(.callout.weight(.medium))
+            }
+            .foregroundStyle(isHovering ? AnyShapeStyle(.primary) : AnyShapeStyle(.secondary))
+            .frame(maxWidth: .infinity, minHeight: 162)
+            .background(
+                RoundedRectangle(cornerRadius: FableTheme.cardRadius)
+                    .strokeBorder(
+                        isHovering ? AnyShapeStyle(.tertiary) : AnyShapeStyle(.quaternary),
+                        style: StrokeStyle(lineWidth: 1.5, dash: [6, 5])
+                    )
+            )
+            .contentShape(RoundedRectangle(cornerRadius: FableTheme.cardRadius))
+            .animation(.easeInOut(duration: 0.15), value: isHovering)
+        }
+        .buttonStyle(.plain)
+        .onHover { isHovering = $0 }
+        .help("Create a new bottle")
     }
 }
 
