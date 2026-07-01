@@ -56,6 +56,14 @@ final class DualSenseTriggerController: ObservableObject {
     /// Clears both triggers.
     func reset() { apply(.off) }
 
+    /// Previews a profile on the pad WITHOUT disturbing the session-applied
+    /// one — used by the config UI so closing the sheet mid-game restores the
+    /// running game's profile instead of killing it.
+    func preview(_ profile: TriggerProfile) { write(profile) }
+
+    /// Ends a preview: re-writes whatever profile launch last applied.
+    func endPreview() { write(applied) }
+
     private func write(_ profile: TriggerProfile) {
         guard let ds = dualsense else { return }
         set(ds.leftTrigger, profile.left)

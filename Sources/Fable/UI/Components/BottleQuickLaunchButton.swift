@@ -6,14 +6,8 @@ import SwiftUI
 struct BottleQuickLaunchButton: View {
     let bottle: Bottle
 
-    @EnvironmentObject private var bottleManager: BottleManager
-    @EnvironmentObject private var wineManager: WineManager
-    @EnvironmentObject private var gptkManager: GPTKManager
-    @EnvironmentObject private var crossOverManager: CrossOverManager
-    @EnvironmentObject private var sikarugirManager: SikarugirManager
     @EnvironmentObject private var gameLauncher: GameLauncher
     @EnvironmentObject private var activityMonitor: ActivityMonitor
-    @EnvironmentObject private var triggerController: DualSenseTriggerController
 
     @State private var launchError: String?
 
@@ -30,7 +24,7 @@ struct BottleQuickLaunchButton: View {
         if let primaryGame {
             Button {
                 if isRunning {
-                    stop(primaryGame)
+                    gameLauncher.stopSmart(primaryGame, in: bottle)
                 } else {
                     launch(primaryGame)
                 }
@@ -61,36 +55,10 @@ struct BottleQuickLaunchButton: View {
         }
     }
 
-    private func stop(_ game: Game) {
-        if gameLauncher.isRunning(game.id) {
-            gameLauncher.stop(game.id)
-        } else {
-            Task { try? await wineManager.forceKillPrefix(bottleManager.prefixDirectory(for: bottle)) }
-        }
-    }
-
     private func launch(_ game: Game) {
         Task {
-            // Let Smart Bottle pick a backend for an untouched bottle before we
-            // launch (no-op once the bottle is configured), then launch with the
-            // freshly-persisted config.
-            let prepared = await bottleManager.prepareSmartBackend(
-                for: game, in: bottle,
-                crossOverAvailable: crossOverManager.isInstalled,
-                sikarugirAvailable: sikarugirManager.isDiscovered
-            )
-            let fresh = bottleManager.bottle(with: bottle.id) ?? bottle
             do {
-                try gameLauncher.launch(
-                    prepared,
-                    in: fresh,
-                    bottleManager: bottleManager,
-                    wineManager: wineManager,
-                    gptkManager: gptkManager,
-                    crossOverManager: crossOverManager,
-                    sikarugirManager: sikarugirManager
-                )
-                triggerController.apply(prepared.effectiveTriggerProfile(bottleDefault: fresh.triggerProfile))
+                try await gameLauncher.launchSmart(game, in: bottle)
             } catch {
                 launchError = error.localizedDescription
             }
@@ -99,15 +67,7 @@ struct BottleQuickLaunchButton: View {
 
     private func createShortcut(_ game: Game) {
         do {
-            let plan = try gameLauncher.makeLaunchPlan(
-                game,
-                in: bottle,
-                bottleManager: bottleManager,
-                wineManager: wineManager,
-                gptkManager: gptkManager,
-                crossOverManager: crossOverManager,
-                sikarugirManager: sikarugirManager
-            )
+            let plan = try gameLauncher.makeLaunchPlan(game, in: bottle)
             let desktop = FileManager.default.urls(for: .desktopDirectory, in: .userDomainMask).first
                 ?? FileManager.default.homeDirectoryForCurrentUser.appending(path: "Desktop")
             let app = try ShortcutGenerator.createApp(named: "\(bottle.name) — \(game.name)", plan: plan, in: desktop)

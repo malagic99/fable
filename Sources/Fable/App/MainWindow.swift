@@ -63,6 +63,18 @@ struct FableApp: App {
         WindowGroup {
             MainWindow()
                 .onAppear {
+                    // Wire the launcher's collaborators once — every Play
+                    // control then runs the same launchSmart/stopSmart flow.
+                    gameLauncher.configure(.init(
+                        bottleManager: bottleManager,
+                        wineManager: wineManager,
+                        gptkManager: gptkManager,
+                        crossOverManager: crossOverManager,
+                        sikarugirManager: sikarugirManager,
+                        triggerController: triggerController,
+                        activityMonitor: activityMonitor,
+                        toastCenter: toastCenter
+                    ))
                     gameLauncher.onAbnormalExit = { [weak toastCenter] message in
                         toastCenter?.error(message)
                     }

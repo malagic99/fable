@@ -1,5 +1,34 @@
 # Changelog
 
+## v0.8.1 — 2026-07-02
+
+Backend surgery: one launch flow, a tested routing core, two trigger fixes.
+No user-facing behavior changes beyond the fixes.
+
+### Under the hood
+
+- **One launch flow.** The Play/Stop logic that was copy-pasted across three
+  controls (Library, grid quick-launch, game rows) now lives in one place —
+  `GameLauncher.launchSmart`/`stopSmart`, with the launcher's collaborators
+  wired once at startup. The Steam-prerequisite nudge now fires consistently
+  from every Play control (it was Library-only), and it no longer false-fires
+  in the window right after Fable itself started Steam.
+- **The launch-routing core is now tested.** Backend → wine binary / runtime
+  key / wineserver-drain, plus the environment layering (base → backend →
+  performance → per-game wins) were the most load-bearing untested lines in the
+  app. `composeLaunchPlan` gained a runtime-resolution seam and 10 tests lock
+  the whole table.
+
+### Fixes
+
+- **Closing the trigger config sheet no longer kills a running game's trigger
+  profile** — the config panel previews without disturbing the session-applied
+  profile, and restores it on close.
+- **Honest label on per-game trigger overrides**: they apply when a game is
+  launched from Fable; a game started from inside Steam keeps the bottle
+  default (that's a Wine-boundary constraint, now stated in the UI instead of
+  silently surprising you).
+
 ## v0.8.0 — 2026-07-01
 
 Two controller/setup features.

@@ -87,7 +87,7 @@ struct GameSettingsView: View {
                 } footer: {
                     Text(triggerOverride == nil
                          ? "Using the bottle's default trigger profile."
-                         : "This game uses its own trigger profile instead of the bottle default.")
+                         : "This game uses its own trigger profile instead of the bottle default. Applies when launched from Fable — a game started from inside Steam keeps the bottle default.")
                         .font(.caption).foregroundStyle(.secondary)
                 }
 
