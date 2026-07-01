@@ -27,9 +27,11 @@ struct TriggerConfigView: View {
                 TriggerEffectPanel(title: "R2", effect: $profile.right, live: triggers.rightValue)
             }
         }
-        .onAppear { triggers.apply(profile) }
-        .onChange(of: profile) { _, new in triggers.apply(new) }
-        .onDisappear { triggers.reset() }
+        .onAppear { triggers.preview(profile) }
+        .onChange(of: profile) { _, new in triggers.preview(new) }
+        // Restore whatever the session had applied (a running game's profile,
+        // or off) — closing the config sheet must not kill live triggers.
+        .onDisappear { triggers.endPreview() }
     }
 }
 

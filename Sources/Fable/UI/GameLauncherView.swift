@@ -7,14 +7,9 @@ struct GameLauncherView: View {
     let bottle: Bottle
 
     @EnvironmentObject private var bottleManager: BottleManager
-    @EnvironmentObject private var wineManager: WineManager
-    @EnvironmentObject private var gptkManager: GPTKManager
-    @EnvironmentObject private var crossOverManager: CrossOverManager
-    @EnvironmentObject private var sikarugirManager: SikarugirManager
     @EnvironmentObject private var gameLauncher: GameLauncher
     @EnvironmentObject private var metricsStore: RunningGameMetricsStore
     @EnvironmentObject private var activityMonitor: ActivityMonitor
-    @EnvironmentObject private var triggerController: DualSenseTriggerController
 
     @State private var launchError: String?
     @State private var isShowingSettings = false
@@ -160,35 +155,13 @@ struct GameLauncherView: View {
     }
 
     private func stop() {
-        if gameLauncher.isRunning(game.id) {
-            gameLauncher.stop(game.id)
-        } else {
-            // Detected-but-not-Fable-launched (e.g. via Steam) → kill the tree.
-            Task { try? await wineManager.forceKillPrefix(bottleManager.prefixDirectory(for: bottle)) }
-        }
+        gameLauncher.stopSmart(game, in: bottle)
     }
 
     private func launch() {
         Task {
-            // Smart Bottle auto-picks a backend for an untouched bottle before
-            // launch (no-op once configured), then we launch with the fresh config.
-            let prepared = await bottleManager.prepareSmartBackend(
-                for: game, in: bottle,
-                crossOverAvailable: crossOverManager.isInstalled,
-                sikarugirAvailable: sikarugirManager.isDiscovered
-            )
-            let fresh = bottleManager.bottle(with: bottle.id) ?? bottle
             do {
-                try gameLauncher.launch(
-                    prepared,
-                    in: fresh,
-                    bottleManager: bottleManager,
-                    wineManager: wineManager,
-                    gptkManager: gptkManager,
-                    crossOverManager: crossOverManager,
-                    sikarugirManager: sikarugirManager
-                )
-                triggerController.apply(prepared.effectiveTriggerProfile(bottleDefault: fresh.triggerProfile))
+                try await gameLauncher.launchSmart(game, in: bottle)
             } catch {
                 launchError = error.localizedDescription
             }
@@ -197,15 +170,7 @@ struct GameLauncherView: View {
 
     private func createShortcut() {
         do {
-            let plan = try gameLauncher.makeLaunchPlan(
-                game,
-                in: bottle,
-                bottleManager: bottleManager,
-                wineManager: wineManager,
-                gptkManager: gptkManager,
-                crossOverManager: crossOverManager,
-                sikarugirManager: sikarugirManager
-            )
+            let plan = try gameLauncher.makeLaunchPlan(game, in: bottle)
             let desktop = FileManager.default.urls(for: .desktopDirectory, in: .userDomainMask).first
                 ?? FileManager.default.homeDirectoryForCurrentUser.appending(path: "Desktop")
             let app = try ShortcutGenerator.createApp(named: game.name, plan: plan, in: desktop)

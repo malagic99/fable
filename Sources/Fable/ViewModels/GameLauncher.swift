@@ -3,6 +3,7 @@ import Foundation
 enum GameLaunchError: LocalizedError {
     case executableMissing(String)
     case runtimeConflict(String)
+    case notConfigured
 
     var errorDescription: String? {
         switch self {
@@ -10,8 +11,21 @@ enum GameLaunchError: LocalizedError {
             "The game's executable is missing from the bottle (C:\\\(path.replacingOccurrences(of: "/", with: "\\")))."
         case .runtimeConflict(let bottle):
             "Another game in “\(bottle)” is running on a different Wine runtime. Stop it first — one bottle can't run two Wine versions at once."
+        case .notConfigured:
+            "Fable's launcher isn't ready yet — try again in a moment."
         }
     }
+}
+
+/// Resolves the wine/wineserver binaries for a backend family. The seam that
+/// lets launch-plan composition be tested without real Wine installs on disk —
+/// the app adapts its managers; tests provide fixed URLs.
+@MainActor
+protocol RuntimeResolving {
+    func wineBinary(for backend: GraphicsBackend) throws -> URL
+    /// Alternate-runtime wineserver to drain after exit; nil for the default
+    /// runtime (whose wineserver needs no explicit drain).
+    func wineserverBinary(for backend: GraphicsBackend) -> URL?
 }
 
 /// Launches and stops games. App-wide so games keep running while you
@@ -46,6 +60,54 @@ final class GameLauncher: ObservableObject {
     private var runningRuntime: [Game.ID: String] = [:]
     private var runningBottle: [Game.ID: Bottle.ID] = [:]
 
+    // MARK: Dependencies
+
+    /// Everything the launch flow composes with, wired once at app startup so
+    /// call sites don't thread five managers apiece (behavior added at call
+    /// sites drifts — the per-game-trigger gap came from exactly that).
+    struct Dependencies {
+        let bottleManager: BottleManager
+        let wineManager: WineManager
+        let gptkManager: GPTKManager
+        let crossOverManager: CrossOverManager
+        let sikarugirManager: SikarugirManager
+        let triggerController: DualSenseTriggerController
+        let activityMonitor: ActivityMonitor
+        let toastCenter: ToastCenter
+    }
+
+    private var deps: Dependencies?
+
+    /// Wire the launcher's collaborators. Called once from the app root.
+    func configure(_ dependencies: Dependencies) {
+        deps = dependencies
+    }
+
+    /// Adapts the configured managers to the runtime-resolution seam.
+    private struct ManagerRuntimeResolver: RuntimeResolving {
+        let deps: Dependencies
+
+        func wineBinary(for backend: GraphicsBackend) throws -> URL {
+            switch backend {
+            case .gptk: try deps.gptkManager.wineBinary()
+            case .crossover: try deps.crossOverManager.wineBinary()
+            case .sikarugir: try deps.sikarugirManager.wineBinary()
+            case .off, .dxmt, .dxvk: try deps.wineManager.wineBinary()
+            }
+        }
+
+        func wineserverBinary(for backend: GraphicsBackend) -> URL? {
+            switch backend {
+            case .gptk: try? deps.gptkManager.wineserverBinary()
+            case .crossover: try? deps.crossOverManager.wineserverBinary()
+            case .sikarugir: try? deps.sikarugirManager.wineserverBinary()
+            case .off, .dxmt, .dxvk: nil
+            }
+        }
+    }
+
+    // MARK: Launch plan
+
     /// Everything needed to start a game: the resolved Wine binary, full
     /// argument vector, merged environment, and working directory. The
     /// single source of truth for *how* a game launches — used both by
@@ -68,69 +130,61 @@ final class GameLauncher: ObservableObject {
         var wineArguments: [String] { [executable.path] + arguments }
     }
 
-    /// Resolves the backend, Wine binary, and environment for a game without
-    /// starting it. Throws if the executable is missing.
-    func makeLaunchPlan(
-        _ game: Game,
-        in bottle: Bottle,
-        bottleManager: BottleManager,
-        wineManager: WineManager,
-        gptkManager: GPTKManager,
-        crossOverManager: CrossOverManager,
-        sikarugirManager: SikarugirManager
+    /// The routing + environment-composition core: backend → wine binary,
+    /// runtime key, and the layered environment. Pure except for the
+    /// executable-exists check and CrossOver's bottle-config write, so tests
+    /// lock the whole table with a stub resolver and a temp prefix.
+    ///
+    /// Environment precedence (later wins): base (WineEnv + prefix) →
+    /// backend-specific → performance backend-agnostic → per-game overrides.
+    static func composeLaunchPlan(
+        game: Game,
+        bottle: Bottle,
+        prefix: URL,
+        driveC: URL,
+        baseEnvironment: [String: String],
+        logFile: URL,
+        runtime: any RuntimeResolving
     ) throws -> LaunchPlan {
-        let prefix = bottleManager.prefixDirectory(for: bottle)
-        let executable = bottleManager.driveCDirectory(for: bottle)
-            .appending(path: game.executablePath)
+        let executable = driveC.appending(path: game.executablePath)
         guard FileManager.default.fileExists(atPath: executable.path) else {
             throw GameLaunchError.executableMissing(game.executablePath)
         }
 
         // Keep real errors for crash diagnosis but silence the msync flood —
         // see WineEnv.debugDiagnostic for the why.
-        var environment = WineEnv.withDiagnosticDebug(wineManager.environment(forPrefix: prefix))
-
-        let log = AppPaths.logs.appending(path: GameInstaller.logName(bottle.name, game.name))
+        var environment = WineEnv.withDiagnosticDebug(baseEnvironment)
         let baseOverrides = environment["WINEDLLOVERRIDES"] ?? ""
 
         // Per-game override wins over the bottle's default — lets a D3D9
         // and a D3D11 title share one bottle.
         let effectiveBackend = game.graphicsBackend ?? bottle.graphicsBackend
 
-        // Pick the Wine binary and graphics routing per backend.
-        let wine: URL
+        let wine = try runtime.wineBinary(for: effectiveBackend)
         let runtimeKey: String
-        var releaseWineserver: URL?
         switch effectiveBackend {
         case .gptk:
-            wine = try gptkManager.wineBinary()
             runtimeKey = "gptk"
-            releaseWineserver = try? gptkManager.wineserverBinary()
             environment.merge(
                 GPTKManager.launchEnvironment(baseOverrides: baseOverrides)
             ) { _, new in new }
             environment.merge(bottle.performance.gptkEnvironment()) { _, new in new }
         case .dxvk:
-            // DXVK runs on the modern wine (11.10) — same binary as .off/.dxmt
-            // but with d3d11/d3d12/dxgi routed to native so DXVK's prefix
-            // DLLs win over Wine's stubs.
-            wine = try wineManager.wineBinary()
+            // DXVK runs on the modern wine — same binary as .off/.dxmt but
+            // with d3d11/d3d12/dxgi routed to native so DXVK's prefix DLLs
+            // win over Wine's stubs.
             runtimeKey = "wine"
             environment.merge(DXVKManager.launchEnvironment(
                 baseOverrides: baseOverrides,
                 frameRateCap: bottle.performance.frameRateCap,
-                logFile: log
+                logFile: logFile
             )) { _, new in new }
         case .crossover:
             // CrossOver provides its own version-matched wine + D3DMetal.
-            // Different wineserver from our other backends, so it gets its
-            // own runtime key for the conflict check.
-            // CrossOver's wine wrapper resolves the bottle from CX_BOTTLE
-            // inside CX_BOTTLE_PATH and requires cxbottle.conf at that path.
+            // Its wine wrapper resolves the bottle from CX_BOTTLE inside
+            // CX_BOTTLE_PATH and requires cxbottle.conf at that path.
             try CrossOverManager.ensureBottleConfig(at: prefix)
-            wine = try crossOverManager.wineBinary()
             runtimeKey = "crossover"
-            releaseWineserver = try? crossOverManager.wineserverBinary()
             environment.merge(
                 CrossOverManager.launchEnvironment(prefix: prefix, baseOverrides: baseOverrides)
             ) { _, new in new }
@@ -139,16 +193,13 @@ final class GameLauncher: ObservableObject {
             // Forces the D3DMetal builtins so prefix natives don't shadow,
             // and points D3DMetal at its framework (the env that makes CEF
             // composite instead of black-squaring).
-            wine = try sikarugirManager.wineBinary()
             runtimeKey = "sikarugir"
-            releaseWineserver = try? sikarugirManager.wineserverBinary()
             let sikBundle = wine.deletingLastPathComponent().deletingLastPathComponent()
             environment.merge(
                 SikarugirManager.launchEnvironment(baseOverrides: baseOverrides, bundleRoot: sikBundle)
             ) { _, new in new }
             environment.merge(bottle.performance.gptkEnvironment()) { _, new in new }
         case .dxmt, .off:
-            wine = try wineManager.wineBinary()
             runtimeKey = "wine"
             // Frame-rate cap rides on DXMT's config when the backend is DXMT.
             var dxmtConfig = bottle.dxmtConfig
@@ -157,7 +208,7 @@ final class GameLauncher: ObservableObject {
                 enabled: effectiveBackend == .dxmt,
                 config: dxmtConfig,
                 baseOverrides: baseOverrides,
-                logFile: log
+                logFile: logFile
             )) { _, new in new }
         }
         environment.merge(bottle.performance.backendAgnosticEnvironment()) { _, new in new }
@@ -170,33 +221,102 @@ final class GameLauncher: ObservableObject {
             arguments: ArgumentTokenizer.tokenize(game.arguments),
             environment: environment,
             workingDirectory: executable.deletingLastPathComponent(),
-            logFile: log,
+            logFile: logFile,
             runtimeKey: runtimeKey,
-            releaseWineserver: releaseWineserver
+            releaseWineserver: runtime.wineserverBinary(for: effectiveBackend)
         )
     }
 
-    func launch(
-        _ game: Game,
-        in bottle: Bottle,
-        bottleManager: BottleManager,
-        wineManager: WineManager,
-        gptkManager: GPTKManager,
-        crossOverManager: CrossOverManager,
-        sikarugirManager: SikarugirManager
-    ) throws {
+    /// Resolves the backend, Wine binary, and environment for a game using the
+    /// configured managers. Throws if the executable is missing.
+    func makeLaunchPlan(_ game: Game, in bottle: Bottle) throws -> LaunchPlan {
+        guard let deps else {
+            assertionFailure("GameLauncher used before configure(_:)")
+            throw GameLaunchError.notConfigured
+        }
+        let prefix = deps.bottleManager.prefixDirectory(for: bottle)
+        return try Self.composeLaunchPlan(
+            game: game,
+            bottle: bottle,
+            prefix: prefix,
+            driveC: deps.bottleManager.driveCDirectory(for: bottle),
+            baseEnvironment: deps.wineManager.environment(forPrefix: prefix),
+            logFile: AppPaths.logs.appending(path: GameInstaller.logName(bottle.name, game.name)),
+            runtime: ManagerRuntimeResolver(deps: deps)
+        )
+    }
+
+    // MARK: The one launch flow
+
+    /// True for a Steam game (under steamapps/common) that isn't Steam itself —
+    /// those need the Steam client already running to launch directly.
+    static func needsSteamRunning(_ game: Game) -> Bool {
+        let path = game.executablePath.lowercased().replacingOccurrences(of: "\\", with: "/")
+        return path.contains("steamapps/common") && !path.hasSuffix("steam.exe")
+    }
+
+    /// The one-stop launch every Play control uses: Steam-prerequisite nudge,
+    /// Smart Bottle backend pick, launch, then trigger-profile application —
+    /// centralized so behavior can't drift between call sites.
+    func launchSmart(_ game: Game, in bottle: Bottle) async throws {
+        guard let deps else {
+            assertionFailure("GameLauncher used before configure(_:)")
+            throw GameLaunchError.notConfigured
+        }
+
+        // Steam games need the client up first — surface that instead of
+        // letting the raw exe fail cryptically. (Steam counts as running if
+        // Fable launched it, even before the next activity scan sees it.)
+        if Self.needsSteamRunning(game) {
+            let steamTracked = bottle.games.contains {
+                $0.executablePath.lowercased().hasSuffix("steam.exe") && isRunning($0.id)
+            }
+            if !steamTracked && !deps.activityMonitor.isSteamRunning(in: bottle) {
+                deps.toastCenter.error("“\(game.name)” is a Steam game — start Steam in this bottle first, then launch it from your Steam library.")
+            }
+        }
+
+        // Smart Bottle auto-picks a backend for an untouched bottle before
+        // launch (no-op once configured), then we launch with the fresh config.
+        let prepared = await deps.bottleManager.prepareSmartBackend(
+            for: game, in: bottle,
+            crossOverAvailable: deps.crossOverManager.isInstalled,
+            sikarugirAvailable: deps.sikarugirManager.isDiscovered
+        )
+        let fresh = deps.bottleManager.bottle(with: bottle.id) ?? bottle
+
+        try launch(prepared, in: fresh)
+        deps.triggerController.apply(
+            prepared.effectiveTriggerProfile(bottleDefault: fresh.triggerProfile)
+        )
+    }
+
+    /// Stop what Fable launched; for a game that's only *detected* (started
+    /// externally or lingering after close), kill the bottle's wine tree.
+    func stopSmart(_ game: Game, in bottle: Bottle) {
+        if isRunning(game.id) {
+            stop(game.id)
+        } else if let deps {
+            Task {
+                try? await deps.wineManager.forceKillPrefix(
+                    deps.bottleManager.prefixDirectory(for: bottle)
+                )
+            }
+        }
+    }
+
+    func launch(_ game: Game, in bottle: Bottle) throws {
+        guard let deps else {
+            assertionFailure("GameLauncher used before configure(_:)")
+            throw GameLaunchError.notConfigured
+        }
         guard running[game.id] == nil else { return }
 
         // Self-heal the standard drive mappings (esp. Z: → /) before launch, so
         // an exe anywhere outside C: resolves. Cheap + idempotent.
-        wineManager.reconcileDrives(at: bottleManager.prefixDirectory(for: bottle))
+        deps.wineManager.reconcileDrives(at: deps.bottleManager.prefixDirectory(for: bottle))
 
-        let plan = try makeLaunchPlan(
-            game, in: bottle,
-            bottleManager: bottleManager, wineManager: wineManager,
-            gptkManager: gptkManager, crossOverManager: crossOverManager,
-            sikarugirManager: sikarugirManager
-        )
+        let plan = try makeLaunchPlan(game, in: bottle)
 
         // Version-mismatched wineservers can't share a prefix: refuse
         // to mix runtimes within one bottle while games are running.
@@ -226,7 +346,7 @@ final class GameLauncher: ObservableObject {
 
         let gameName = game.name
         let bottleID = bottle.id
-        let prefixPath = bottleManager.prefixDirectory(for: bottle).path
+        let prefixPath = deps.bottleManager.prefixDirectory(for: bottle).path
         let releaseWineserver = plan.releaseWineserver
         Task { [weak self] in
             let code = await process.waitForExit()
