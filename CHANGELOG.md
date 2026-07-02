@@ -1,5 +1,26 @@
 # Changelog
 
+## v0.13.3 — 2026-07-03
+
+Adaptive triggers survive the game taking focus.
+
+- **Resistance no longer dies when the game grabs the controller.** Two causes,
+  both fixed:
+  - Fable now opts into `GCController.shouldMonitorBackgroundEvents`, so it can
+    keep writing to the DualSense while the game window is frontmost and Fable
+    is in the background (previously the system stopped delivering our writes
+    the instant the game took focus).
+  - A **keep-alive** re-asserts the active profile once a second while a
+    profiled game is running, so if the game (or Steam Input) clears the
+    triggers on launch/focus, the resistance is restored within a second and
+    stays stacked — instead of Fable's "unchanged" cache leaving it dead.
+- Config-sheet previews pause the keep-alive so they don't fight the effect
+  you're auditioning.
+
+Note: if a game is driving the pad through **Steam Input**, Steam may own the
+triggers outright — turn Steam Input off for that controller so Fable's
+resistance can hold.
+
 ## v0.13.2 — 2026-07-03
 
 Themes now reach the classic views.
