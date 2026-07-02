@@ -216,6 +216,8 @@ struct MainWindow: View {
         }
         .tint(skin.accent ?? .accentColor)
         .environment(\.fableGradient, skin.gradient)
+        .environment(\.fableWindowTinted,
+                     skin.windowTint != nil || settingsManager.settings.customBackgroundPath != nil)
         .preferredColorScheme(settingsManager.settings.appearance.colorScheme)
         .toastOverlay()
         .frame(minWidth: 800, minHeight: 520)

@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.13.2 — 2026-07-03
+
+Themes now reach the classic views.
+
+- **Grouped forms let the window wash through** — Settings, bottle details,
+  game tuning, Components, and the create/install sheets used to paint their
+  own opaque grouped-form panel *over* the theme background, which flattened
+  a themed wash (most visibly Pitch Black — the OLED black was covered by a
+  lighter panel). When a theme paints a window wash (Midnight, OG Steam, Pitch
+  Black) or a custom background is set, those forms now drop their backing so
+  the wash shows through. The default (untinted) look is unchanged.
+
 ## v0.13.1 — 2026-07-02
 
 Late-night polish.

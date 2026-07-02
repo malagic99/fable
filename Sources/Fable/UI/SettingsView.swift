@@ -165,6 +165,7 @@ private struct GeneralSettingsTab: View {
             }
         }
         .formStyle(.grouped)
+        .fableThemedFormBackground()
     }
 
     private func open(_ url: URL) {
@@ -277,6 +278,7 @@ private struct PerformanceSettingsTab: View {
             }
         }
         .formStyle(.grouped)
+        .fableThemedFormBackground()
     }
 }
 
@@ -353,5 +355,6 @@ private struct AboutTab: View {
             }
         }
         .formStyle(.grouped)
+        .fableThemedFormBackground()
     }
 }

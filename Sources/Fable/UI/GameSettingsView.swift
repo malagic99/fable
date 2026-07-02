@@ -110,6 +110,7 @@ struct GameSettingsView: View {
                 }
             }
             .formStyle(.grouped)
+            .fableThemedFormBackground()
 
             Divider()
 

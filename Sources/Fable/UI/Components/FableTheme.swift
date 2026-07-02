@@ -118,11 +118,42 @@ private struct FableGradientKey: EnvironmentKey {
     static let defaultValue = FableTheme.accentGradient
 }
 
+/// True when the active theme paints a window wash (Midnight, OG Steam, Pitch
+/// Black, or a custom background). Grouped forms/lists read this to drop their
+/// own opaque backing so the wash — e.g. Pitch Black's pure #000000 — shows
+/// through instead of being covered by a lighter panel.
+private struct FableWindowTintedKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
 extension EnvironmentValues {
     var fableGradient: LinearGradient {
         get { self[FableGradientKey.self] }
         set { self[FableGradientKey.self] = newValue }
     }
+
+    var fableWindowTinted: Bool {
+        get { self[FableWindowTintedKey.self] }
+        set { self[FableWindowTintedKey.self] = newValue }
+    }
+}
+
+private struct ThemedFormBackground: ViewModifier {
+    @Environment(\.fableWindowTinted) private var tinted
+    func body(content: Content) -> some View {
+        if tinted {
+            content.scrollContentBackground(.hidden)
+        } else {
+            content
+        }
+    }
+}
+
+extension View {
+    /// Lets the themed window wash show through a grouped `Form`/`List` when a
+    /// tinted theme is active; a no-op otherwise, so the default look is
+    /// unchanged. Apply after `.formStyle(.grouped)` / `.listStyle(...)`.
+    func fableThemedFormBackground() -> some View { modifier(ThemedFormBackground()) }
 }
 
 /// The one exe-icon view: loads a game's icon from its exe (off the main
