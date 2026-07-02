@@ -1,5 +1,25 @@
 # Changelog
 
+## v0.13.5 — 2026-07-03
+
+Trigger resistance now survives *any* app being frontmost — raw HID.
+
+- **Root cause found:** macOS's GameController framework silently drops trigger
+  *output* writes whenever Fable isn't the frontmost app. v0.13.3's keep-alive
+  was firing every second, but the writes went nowhere until Fable was clicked
+  back into focus (which is exactly the "turns back on when I click Fable"
+  symptom).
+- **Fix: Fable now writes trigger effects straight to the DualSense over raw
+  HID** (IOHIDManager) — the same path Steam Input and SDL use — which has no
+  focus gate. USB report `0x02` and CRC-sealed Bluetooth report `0x31`, with
+  the community-standard effect encoding (feedback/weapon/vibration). Only the
+  trigger flags are ever set, so the game's rumble and lightbar are never
+  touched. GameController remains the fallback writer and still provides pad
+  detection and the live pull readout in the Trigger Lab.
+- Together with the keep-alive: the profile is re-asserted once a second over a
+  channel that works in the background, so resistance holds while the game is
+  frontmost.
+
 ## v0.13.4 — 2026-07-03
 
 - **Trigger editor layout fixed properly.** v0.13.1's attempt (a scroll view
