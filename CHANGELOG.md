@@ -1,5 +1,36 @@
 # Changelog
 
+## v0.11.0 — 2026-07-02
+
+Real box art everywhere, and the Gamer interface goes Big Picture.
+
+### Cover art pipeline
+
+- **Tiles show real box art now.** Covers resolve in order: the game's Steam
+  app ID from its bottle (official CDN portrait, keyless) → a keyless Steam
+  store search by name (so Epic/GOG/Heroic copies of Steam titles get art too)
+  → SteamGridDB when you add a free API key (Settings → Artwork) → the game's
+  own exe icon as the offline fallback.
+- Cached on disk after one fetch per title; a name match is required before
+  art is accepted (wrong art is worse than no art); the Steam client itself is
+  excluded. One toggle turns the whole pipeline off for a fully offline app.
+- **Legible at any size**: on the wide Bottle/Library cards the art fills the
+  tile behind a bottom-heavy dark scrim, with text switched to white — names,
+  facts, and badges stay readable over any artwork.
+
+### Gamer interface — Big Picture layout
+
+- Navigation moved to a **horizontal bar across the top** (identity left,
+  sections beside it, now-playing chip right) — no sidebar at all; content
+  runs full-bleed underneath. Steam Big Picture's shape in Fable's language.
+
+### Consistency
+
+- The **tile-size slider is now the same control in the same place** on all
+  three grids — inline above the Bottles grid, the Library grid, and the Gamer
+  cover wall (it lived in the window toolbar on Bottles and was missing from
+  Library entirely; Library tiles now actually resize too).
+
 ## v0.10.1 — 2026-07-02
 
 Gamer-interface polish and always-on triggers.

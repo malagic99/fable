@@ -1,12 +1,41 @@
 import SwiftUI
 
-/// The Gamer interface: games first. A cover wall of every game across every
-/// bottle, a confidence dot on each cover (will it run?), and an inspector
-/// showing how the selected game runs. The rail is the app's ONE navigation —
-/// Play plus the workshop destinations — so there's no second sidebar to wade
-/// through.
+/// The Gamer interface: games first, Big-Picture style. One horizontal bar
+/// across the top carries the identity and all navigation — no sidebar at all —
+/// and the content below runs full-bleed: the cover wall with its inspector,
+/// or the workshop sections.
 struct GamerHomeView: View {
-    private enum Section: Hashable { case play, bottles, components, settings }
+    private enum Tab: String, CaseIterable, Identifiable {
+        case play, bottles, components, settings
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .play: "Play"
+            case .bottles: "Bottles"
+            case .components: "Components"
+            case .settings: "Settings"
+            }
+        }
+
+        var symbol: String {
+            switch self {
+            case .play: "play.fill"
+            case .bottles: "square.stack.3d.up"
+            case .components: "shippingbox"
+            case .settings: "gearshape"
+            }
+        }
+
+        var appSection: AppSection? {
+            switch self {
+            case .play: nil
+            case .bottles: .bottles
+            case .components: .components
+            case .settings: .settings
+            }
+        }
+    }
 
     @EnvironmentObject private var appState: AppState
     @EnvironmentObject private var bottleManager: BottleManager
@@ -14,7 +43,7 @@ struct GamerHomeView: View {
     @EnvironmentObject private var activityMonitor: ActivityMonitor
     @EnvironmentObject private var settingsManager: SettingsManager
 
-    @State private var section: Section = .play
+    @State private var tab: Tab = .play
     @State private var searchText = ""
     @State private var selectedID: LibraryEntry.ID?
 
@@ -35,10 +64,10 @@ struct GamerHomeView: View {
     }
 
     var body: some View {
-        HStack(spacing: 0) {
-            rail
+        VStack(spacing: 0) {
+            topBar
             Divider()
-            if section == .play {
+            if tab == .play {
                 playSurface
             } else {
                 MainContentView()
@@ -46,71 +75,73 @@ struct GamerHomeView: View {
         }
     }
 
-    // MARK: Rail — the one navigation
+    // MARK: Top bar — the one navigation, horizontal
 
-    private var rail: some View {
-        VStack(alignment: .leading, spacing: 3) {
+    private var topBar: some View {
+        HStack(spacing: 18) {
             HStack(spacing: 9) {
                 Image(systemName: "wineglass")
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(.white)
-                    .frame(width: 28, height: 28)
+                    .frame(width: 26, height: 26)
                     .background(FableTheme.accentGradient, in: RoundedRectangle(cornerRadius: 7))
-                Text("Fable").font(.title3.weight(.bold))
-            }
-            .padding(.horizontal, 10)
-            .padding(.top, 14)
-            .padding(.bottom, 14)
-
-            railButton("Play", symbol: "play.fill", active: section == .play) { section = .play }
-            if let nowPlaying {
-                railButton(nowPlaying.game.name, symbol: "waveform", active: false) {
-                    section = .play
-                    selectedID = nowPlaying.id
-                }
-                .overlay(alignment: .trailing) {
-                    Circle().fill(.green).frame(width: 7, height: 7).padding(.trailing, 14)
-                }
+                Text("Fable").font(.headline.weight(.bold))
             }
 
-            Divider().padding(.vertical, 8).padding(.horizontal, 12)
-
-            railButton("Bottles", symbol: "square.stack.3d.up", active: section == .bottles) { go(.bottles, .bottles) }
-            railButton("Components", symbol: "shippingbox", active: section == .components) { go(.components, .components) }
-            railButton("Settings", symbol: "gearshape", active: section == .settings) { go(.settings, .settings) }
+            HStack(spacing: 4) {
+                ForEach(Tab.allCases) { item in
+                    tabButton(item)
+                }
+            }
 
             Spacer()
+
+            if let nowPlaying {
+                Button {
+                    tab = .play
+                    selectedID = nowPlaying.id
+                } label: {
+                    HStack(spacing: 6) {
+                        Circle().fill(.green).frame(width: 7, height: 7)
+                        Text(nowPlaying.game.name)
+                            .font(.callout.weight(.medium))
+                            .lineLimit(1)
+                    }
+                    .padding(.horizontal, 11)
+                    .padding(.vertical, 5)
+                    .background(.green.opacity(0.14), in: Capsule())
+                }
+                .buttonStyle(.plain)
+                .help("Now playing — jump to it")
+            }
         }
-        .frame(width: 178)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 9)
         .background(.background.secondary)
     }
 
-    private func go(_ section: Section, _ appSection: AppSection) {
-        self.section = section
-        appState.selectedSection = appSection
-    }
-
-    private func railButton(_ title: String, symbol: String, active: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            HStack(spacing: 9) {
-                Image(systemName: symbol)
-                    .font(.system(size: 12, weight: .semibold))
-                    .frame(width: 16)
-                Text(title).lineLimit(1)
-                Spacer(minLength: 0)
+    private func tabButton(_ item: Tab) -> some View {
+        let active = tab == item
+        return Button {
+            tab = item
+            if let section = item.appSection { appState.selectedSection = section }
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: item.symbol)
+                    .font(.system(size: 11, weight: .semibold))
+                Text(item.title)
             }
             .font(.callout.weight(active ? .semibold : .regular))
             .foregroundStyle(active ? AnyShapeStyle(.primary) : AnyShapeStyle(.secondary))
-            .padding(.horizontal, 10)
-            .padding(.vertical, 7)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
             .background(
                 active ? AnyShapeStyle(.quaternary.opacity(0.8)) : AnyShapeStyle(.clear),
-                in: RoundedRectangle(cornerRadius: 8)
+                in: Capsule()
             )
-            .contentShape(RoundedRectangle(cornerRadius: 8))
+            .contentShape(Capsule())
         }
         .buttonStyle(.plain)
-        .padding(.horizontal, 8)
     }
 
     // MARK: Play surface (cover wall + inspector)
@@ -132,7 +163,7 @@ struct GamerHomeView: View {
                     .padding(.vertical, 6)
                     .background(.quaternary.opacity(0.5), in: Capsule())
                 }
-                .padding(.top, 18)
+                .padding(.top, 16)
 
                 if entries.isEmpty {
                     ContentUnavailableView {
@@ -143,8 +174,11 @@ struct GamerHomeView: View {
                              : "Nothing matches “\(searchText)”.")
                     } actions: {
                         if searchText.isEmpty {
-                            Button("Open Bottles") { go(.bottles, .bottles) }
-                                .buttonStyle(.borderedProminent)
+                            Button("Open Bottles") {
+                                tab = .bottles
+                                appState.selectedSection = .bottles
+                            }
+                            .buttonStyle(.borderedProminent)
                         }
                     }
                     .frame(maxHeight: .infinity)
@@ -196,8 +230,8 @@ struct GamerHomeView: View {
 
 // MARK: - Cover card
 
-/// One game on the wall: cover art (exe icon on the brand-dark surface),
-/// confidence dot, playing chip, name.
+/// One game on the wall: cover art (fetched artwork when available, else the
+/// exe icon on the brand-dark surface), confidence dot, playing chip, name.
 private struct GameCoverCard: View {
     let entry: LibraryEntry
     let isSelected: Bool
@@ -205,6 +239,9 @@ private struct GameCoverCard: View {
 
     @EnvironmentObject private var quirkService: QuirkService
     @EnvironmentObject private var userRecipeStore: UserRecipeStore
+    @EnvironmentObject private var artworkStore: ArtworkStore
+    @EnvironmentObject private var bottleManager: BottleManager
+    @EnvironmentObject private var settingsManager: SettingsManager
     @State private var isHovering = false
 
     private var confidence: GameConfidence {
@@ -216,33 +253,40 @@ private struct GameCoverCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 7) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 10)
-                    .fill(.quaternary.opacity(0.6))
-                ExeIconView(bottle: entry.bottle, game: entry.game,
-                            size: 64, fallbackSymbol: "gamecontroller.fill")
-            }
-            .aspectRatio(3 / 4, contentMode: .fit)
-            .overlay(alignment: .topTrailing) {
-                Circle()
-                    .fill(confidence.tint)
-                    .frame(width: 10, height: 10)
-                    .padding(4)
-                    .background(.background.opacity(0.6), in: Circle())
-                    .padding(6)
-                    .help(confidence.label)
-            }
-            .overlay(alignment: .bottomLeading) {
-                if isRunning {
-                    Label("Playing", systemImage: "play.fill")
-                        .font(.caption2.weight(.medium))
-                        .padding(.horizontal, 7)
-                        .padding(.vertical, 3)
-                        .background(.green.opacity(0.25), in: Capsule())
-                        .foregroundStyle(.green)
-                        .padding(6)
+            RoundedRectangle(cornerRadius: 10)
+                .fill(.quaternary.opacity(0.6))
+                .overlay {
+                    if let art = artworkStore.image(for: entry.game) {
+                        Image(nsImage: art)
+                            .resizable()
+                            .scaledToFill()
+                    } else {
+                        ExeIconView(bottle: entry.bottle, game: entry.game,
+                                    size: 64, fallbackSymbol: "gamecontroller.fill")
+                    }
                 }
-            }
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .aspectRatio(3 / 4, contentMode: .fit)
+                .overlay(alignment: .topTrailing) {
+                    Circle()
+                        .fill(confidence.tint)
+                        .frame(width: 10, height: 10)
+                        .padding(4)
+                        .background(.black.opacity(0.45), in: Circle())
+                        .padding(6)
+                        .help(confidence.label)
+                }
+                .overlay(alignment: .bottomLeading) {
+                    if isRunning {
+                        Label("Playing", systemImage: "play.fill")
+                            .font(.caption2.weight(.medium))
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 3)
+                            .background(.black.opacity(0.55), in: Capsule())
+                            .foregroundStyle(.green)
+                            .padding(6)
+                    }
+                }
 
             Text(entry.game.name)
                 .font(.callout.weight(.medium))
@@ -262,6 +306,12 @@ private struct GameCoverCard: View {
         .animation(.spring(duration: 0.25, bounce: 0.25), value: isHovering)
         .onHover { isHovering = $0 }
         .help("Click to inspect · double-click to play")
+        .task(id: entry.id) {
+            await artworkStore.fetchIfNeeded(
+                game: entry.game, bottle: entry.bottle,
+                bottleManager: bottleManager, settings: settingsManager.settings
+            )
+        }
     }
 }
 

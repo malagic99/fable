@@ -31,6 +31,14 @@ struct BottleListView: View {
                 }
             } else {
                 ScrollView {
+                    // Same inline resizer as the Library and the Gamer wall.
+                    HStack {
+                        Spacer()
+                        TileSizeControl(scale: $settingsManager.settings.tileScale)
+                    }
+                    .padding(.horizontal, 24)
+                    .padding(.top, 14)
+
                     LazyVGrid(columns: columns, spacing: 18) {
                         ForEach(bottleManager.bottles) { bottle in
                             BottleGridItem(bottle: bottle)
@@ -42,14 +50,10 @@ struct BottleListView: View {
                             createSteam: { isShowingSteamSheet = true }
                         )
                     }
-                    .padding(24)
+                    .padding([.horizontal, .bottom], 24)
+                    .padding(.top, 10)
                     .frame(maxWidth: .infinity, alignment: .topLeading)
                 }
-            }
-        }
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                TileSizeControl(scale: $settingsManager.settings.tileScale)
             }
         }
         .sheet(isPresented: $isShowingCreateSheet) {

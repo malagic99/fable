@@ -27,6 +27,7 @@ struct FableApp: App {
     @StateObject private var shaderCacheStore = ShaderCacheStore()
     @StateObject private var activityMonitor = ActivityMonitor()
     @StateObject private var triggerController = DualSenseTriggerController()
+    @StateObject private var artworkStore = ArtworkStore()
 
     init() {
         let appState = AppState()
@@ -159,6 +160,7 @@ struct FableApp: App {
                 .environmentObject(shaderCacheStore)
                 .environmentObject(activityMonitor)
                 .environmentObject(triggerController)
+                .environmentObject(artworkStore)
         }
         .windowToolbarStyle(.unified)
         .commands {
