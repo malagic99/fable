@@ -24,8 +24,22 @@ final class DualSenseTriggerController: ObservableObject {
 
     private weak var dualsense: GCDualSenseGamepad?
     private var applied: TriggerProfile = .off
+    /// Re-asserts the active profile on an interval so a game that clears the
+    /// triggers when it takes focus (Steam Input reconfiguring the pad, the
+    /// game re-initializing it) doesn't leave the resistance dead — Fable keeps
+    /// stacking it back on. Runs only while a game with an active profile runs.
+    private var keepAlive: Timer?
+    /// While a config-sheet preview is up, pause the keep-alive so it doesn't
+    /// fight the previewed effect.
+    private var isPreviewing = false
+    /// How often the keep-alive re-writes the active profile.
+    private let keepAliveInterval: TimeInterval = 1.0
 
     init() {
+        // Keep controlling the pad while a game is frontmost and Fable is in
+        // the background — otherwise the system stops delivering our trigger
+        // writes and the resistance vanishes the instant the game takes focus.
+        GCController.shouldMonitorBackgroundEvents = true
         NotificationCenter.default.addObserver(self, selector: #selector(connect(_:)), name: .GCControllerDidConnect, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(disconnect(_:)), name: .GCControllerDidDisconnect, object: nil)
         GCController.startWirelessControllerDiscovery {}
@@ -35,6 +49,7 @@ final class DualSenseTriggerController: ObservableObject {
     @objc private func connect(_ note: Notification) { (note.object as? GCController).map { attach($0) } }
     @objc private func disconnect(_ note: Notification) {
         isConnected = false; isDualSense = false; dualsense = nil; leftValue = 0; rightValue = 0
+        updateKeepAlive()
     }
 
     private func attach(_ controller: GCController) {
@@ -45,16 +60,19 @@ final class DualSenseTriggerController: ObservableObject {
         ds.leftTrigger.valueChangedHandler = { [weak self] _, v, _ in Task { @MainActor in self?.leftValue = v } }
         ds.rightTrigger.valueChangedHandler = { [weak self] _, v, _ in Task { @MainActor in self?.rightValue = v } }
         write(applied)  // re-apply the active profile to a freshly-connected pad
+        updateKeepAlive()
     }
 
     /// Applies a profile to the pad (and remembers it, so a reconnect re-applies).
     /// A no-op when the same profile is already applied — the activity-driven
     /// refresh calls this every scan, and we don't want redundant hardware
-    /// writes (a tiny hitch risk) every few seconds.
+    /// writes (a tiny hitch risk) every few seconds. The keep-alive, not this,
+    /// handles re-asserting a profile a game has cleared.
     func apply(_ profile: TriggerProfile) {
         guard profile != applied else { return }
         applied = profile
         write(profile)
+        updateKeepAlive()
     }
 
     /// Clears both triggers.
@@ -63,10 +81,46 @@ final class DualSenseTriggerController: ObservableObject {
     /// Previews a profile on the pad WITHOUT disturbing the session-applied
     /// one — used by the config UI so closing the sheet mid-game restores the
     /// running game's profile instead of killing it.
-    func preview(_ profile: TriggerProfile) { write(profile) }
+    func preview(_ profile: TriggerProfile) {
+        isPreviewing = true
+        write(profile)
+    }
 
     /// Ends a preview: re-writes whatever profile launch last applied.
-    func endPreview() { write(applied) }
+    func endPreview() {
+        isPreviewing = false
+        write(applied)
+    }
+
+    // MARK: Keep-alive
+
+    /// Runs the re-assert timer only while an active profile is applied to a
+    /// connected pad; tears it down otherwise.
+    /// The keep-alive runs only for an active profile on a connected DualSense
+    /// — never an empty timer with nothing to re-assert or no pad to write to.
+    nonisolated static func shouldKeepAlive(profileActive: Bool, isDualSense: Bool) -> Bool {
+        profileActive && isDualSense
+    }
+
+    private func updateKeepAlive() {
+        let shouldRun = Self.shouldKeepAlive(profileActive: applied.isActive, isDualSense: isDualSense)
+        if shouldRun {
+            guard keepAlive == nil else { return }
+            keepAlive = Timer.scheduledTimer(withTimeInterval: keepAliveInterval, repeats: true) { [weak self] _ in
+                Task { @MainActor in self?.reassert() }
+            }
+        } else {
+            keepAlive?.invalidate()
+            keepAlive = nil
+        }
+    }
+
+    /// Re-writes the active profile so a game that cleared the triggers on
+    /// focus/launch gets the resistance restored within a second.
+    private func reassert() {
+        guard applied.isActive, !isPreviewing else { return }
+        write(applied)
+    }
 
     private func write(_ profile: TriggerProfile) {
         guard let ds = dualsense else { return }

@@ -31,6 +31,17 @@ import Testing
     }
 
     @Test
+    @MainActor
+    func keepAliveRunsOnlyForAnActiveProfileOnADualSense() {
+        // The re-assert timer that keeps resistance alive after a game clears
+        // the triggers must not spin with nothing to write or no pad present.
+        #expect(DualSenseTriggerController.shouldKeepAlive(profileActive: true, isDualSense: true))
+        #expect(!DualSenseTriggerController.shouldKeepAlive(profileActive: false, isDualSense: true))
+        #expect(!DualSenseTriggerController.shouldKeepAlive(profileActive: true, isDualSense: false))
+        #expect(!DualSenseTriggerController.shouldKeepAlive(profileActive: false, isDualSense: false))
+    }
+
+    @Test
     func bottleAndGameProfilesSurviveACodableRoundTrip() throws {
         var bottle = Bottle(name: "B")
         bottle.triggerProfile = .shooter
