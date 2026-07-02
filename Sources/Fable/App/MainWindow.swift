@@ -29,6 +29,7 @@ struct FableApp: App {
     @StateObject private var triggerController = DualSenseTriggerController()
     @StateObject private var artworkStore = ArtworkStore()
     @StateObject private var themeStore = ThemeStore()
+    @StateObject private var nativeGamesStore = NativeGamesStore()
 
     init() {
         let appState = AppState()
@@ -163,6 +164,7 @@ struct FableApp: App {
                 .environmentObject(triggerController)
                 .environmentObject(artworkStore)
                 .environmentObject(themeStore)
+                .environmentObject(nativeGamesStore)
         }
         .windowToolbarStyle(.unified)
         .commands {

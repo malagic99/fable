@@ -18,24 +18,43 @@ final class ArtworkStore: ObservableObject {
 
     /// Cached artwork for a game, if any (memory-only read — cheap per frame).
     func image(for game: Game) -> NSImage? {
-        images[GameArtwork.cacheKey(for: game.name)]
+        image(named: game.name)
     }
 
-    /// Ensures artwork for a game: disk cache → Steam CDN (via appid) → keyless
-    /// store search → SteamGridDB (when a key is set). No-op when disabled,
-    /// already loaded, known-missing, or in flight.
+    /// Same, keyed by title — used for native games.
+    func image(named name: String) -> NSImage? {
+        images[GameArtwork.cacheKey(for: name)]
+    }
+
+    /// Ensures artwork for a Wine game: disk cache → Steam CDN (via the
+    /// bottle's manifest appid) → keyless store search → SteamGridDB.
     func fetchIfNeeded(
         game: Game,
         bottle: Bottle,
         bottleManager: BottleManager,
         settings: AppSettings
     ) async {
-        let key = GameArtwork.cacheKey(for: game.name)
+        guard !GameArtwork.isSteamClient(game) else { return }
+        let manifestAppID = bottleManager.steamRoot(for: bottle).flatMap {
+            SteamAppManifest.appID(forExecutablePath: game.executablePath, steamRoot: $0)
+        }
+        await fetchIfNeeded(name: game.name, knownAppID: manifestAppID, settings: settings)
+    }
+
+    /// Ensures artwork for a native game — a native Steam title carries its
+    /// appid, so its cover comes straight off the CDN.
+    func fetchIfNeeded(native game: NativeGame, settings: AppSettings) async {
+        await fetchIfNeeded(name: game.name, knownAppID: game.steamAppID, settings: settings)
+    }
+
+    /// The shared pipeline core. No-op when disabled, already loaded,
+    /// known-missing, or in flight.
+    private func fetchIfNeeded(name: String, knownAppID: Int?, settings: AppSettings) async {
+        let key = GameArtwork.cacheKey(for: name)
         guard !key.isEmpty,
               images[key] == nil,
               !misses.contains(key),
-              !inFlight.contains(key),
-              !GameArtwork.isSteamClient(game)
+              !inFlight.contains(key)
         else { return }
 
         inFlight.insert(key)
@@ -51,11 +70,7 @@ final class ArtworkStore: ObservableObject {
 
         guard settings.onlineArtwork else { return }
 
-        // 2. Resolve the best remote URL for this title.
-        let manifestAppID = bottleManager.steamRoot(for: bottle).flatMap {
-            SteamAppManifest.appID(forExecutablePath: game.executablePath, steamRoot: $0)
-        }
-        let name = game.name
+        let manifestAppID = knownAppID
         let sgdbKey = settings.steamGridDBKey.trimmingCharacters(in: .whitespaces)
 
         let data = await Task.detached(priority: .utility) { () -> Data? in
@@ -101,7 +116,12 @@ final class ArtworkStore: ObservableObject {
     /// Sets a user-picked image as a game's cover — copied into the cache so
     /// it persists and wins over anything the pipeline would fetch.
     func setCustomArt(for game: Game, from url: URL) {
-        let key = GameArtwork.cacheKey(for: game.name)
+        setCustomArt(named: game.name, from: url)
+    }
+
+    /// Same, keyed by title — used for native games.
+    func setCustomArt(named name: String, from url: URL) {
+        let key = GameArtwork.cacheKey(for: name)
         guard let data = try? Data(contentsOf: url), let image = NSImage(data: data) else { return }
         images[key] = image
         misses.remove(key)

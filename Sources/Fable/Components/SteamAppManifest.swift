@@ -45,6 +45,37 @@ enum SteamAppManifest {
         return appID(forInstallDir: dirName, steamRoot: steamRoot)
     }
 
+    /// Every installed app in a Steam library (works on the native macOS
+    /// client's `~/Library/Application Support/Steam` too): appid + display
+    /// name per `appmanifest_*.acf`. Steam's own tooling entries (redists,
+    /// SteamVR, …) are left in — the import UI lets the user choose.
+    static func installedApps(steamRoot: URL) -> [(appID: Int, name: String)] {
+        let steamapps = steamRoot.appending(path: "steamapps", directoryHint: .isDirectory)
+        guard let entries = try? FileManager.default.contentsOfDirectory(
+            at: steamapps, includingPropertiesForKeys: nil
+        ) else { return [] }
+
+        var apps: [(appID: Int, name: String)] = []
+        for acf in entries where acf.lastPathComponent.hasPrefix("appmanifest_")
+            && acf.pathExtension == "acf" {
+            guard let text = try? String(contentsOf: acf, encoding: .utf8),
+                  let appID = value(of: "appid", in: text).flatMap(Int.init),
+                  let name = value(of: "name", in: text), !name.isEmpty
+            else { continue }
+            apps.append((appID, name))
+        }
+        return apps.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+    }
+
+    /// The native macOS Steam client's root, when present.
+    static func nativeSteamRoot(
+        home: URL = FileManager.default.homeDirectoryForCurrentUser
+    ) -> URL? {
+        let root = home.appending(path: "Library/Application Support/Steam", directoryHint: .isDirectory)
+        let steamapps = root.appending(path: "steamapps", directoryHint: .isDirectory)
+        return FileManager.default.fileExists(atPath: steamapps.path) ? root : nil
+    }
+
     /// Extracts the quoted value following a quoted `key` on a VDF line:
     /// `"installdir"    "DEATHLOOP"` → `DEATHLOOP`.
     static func value(of key: String, in text: String) -> String? {
