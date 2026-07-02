@@ -24,6 +24,11 @@ final class DualSenseTriggerController: ObservableObject {
 
     private weak var dualsense: GCDualSenseGamepad?
     private var applied: TriggerProfile = .off
+    /// Raw-HID output path. GameController drops output writes while Fable is
+    /// backgrounded (the moment a game takes focus), so trigger effects go
+    /// straight to the pad over HID; GC remains the fallback and still provides
+    /// detection + live pull values.
+    private let hid = DualSenseHIDWriter()
     /// Re-asserts the active profile on an interval so a game that clears the
     /// triggers when it takes focus (Steam Input reconfiguring the pad, the
     /// game re-initializing it) doesn't leave the resistance dead — Fable keeps
@@ -123,6 +128,8 @@ final class DualSenseTriggerController: ObservableObject {
     }
 
     private func write(_ profile: TriggerProfile) {
+        // Raw HID first: it works regardless of which app is frontmost.
+        if hid.write(profile) { return }
         guard let ds = dualsense else { return }
         set(ds.leftTrigger, profile.left)
         set(ds.rightTrigger, profile.right)
