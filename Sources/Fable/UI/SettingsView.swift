@@ -25,11 +25,17 @@ private struct GeneralSettingsTab: View {
     var body: some View {
         Form {
             Section {
+                Picker("Style", selection: $settingsManager.settings.interfaceStyle) {
+                    ForEach(InterfaceStyle.allCases) { style in
+                        Text(style.displayName).tag(style)
+                    }
+                }
+                .pickerStyle(.segmented)
                 Toggle("Advanced Mode", isOn: $settingsManager.settings.advancedMode)
             } header: {
                 Text("Interface")
             } footer: {
-                Text("Off: a clean click-and-play view of each bottle's games. On: the full graphics backend, performance, dependency, storage, and troubleshooting panels.")
+                Text("Gamer puts your games up front as a cover wall (tools live in the Workshop); Classic is the bottles-first utility. Advanced Mode — off: a clean click-and-play view of each bottle's games; on: the full backend, performance, dependency, storage, and troubleshooting panels.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

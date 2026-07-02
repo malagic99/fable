@@ -1,5 +1,32 @@
 # Changelog
 
+## v0.10.0 — 2026-07-02
+
+Two faces, your pick: the new **Gamer** interface joins Classic, chosen on
+first launch and switchable any time.
+
+### The Gamer interface — games first
+
+- **Cover wall**: every game across every bottle as covers. Single-click to
+  inspect, double-click to play. Search built in.
+- **Confidence dots** on every cover — will it run, before you click:
+  green = a verified recipe matches, amber = known caveats, red = anti-cheat
+  won't run under Wine, gray = honestly untested. Powered by the recipe
+  catalogs + the quirk system's anti-cheat database.
+- **Inspector**: how the selected game runs — health, backend, frame cap,
+  MetalFX, and its adaptive-trigger L2/R2 profile — with Play and Tune right
+  there. You play and tune without ever thinking about bottles.
+- **Workshop**: the complete Classic app, one rail-click away. Nothing was
+  removed — bottles, components, settings, and all tools live there.
+- **Now playing** appears in the rail while a game runs.
+
+### Choosing
+
+- New **onboarding step**: pick Classic or Gamer as your default on first
+  launch, with sketch previews of each.
+- **Settings → Interface → Style** switches live, any time, both directions.
+- Existing setups keep Classic — nothing changes until you choose.
+
 ## v0.9.0 — 2026-07-02
 
 UI redesign: fluid, clean, balanced. Reviewed live on screen, then rebuilt

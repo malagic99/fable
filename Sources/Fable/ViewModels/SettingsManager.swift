@@ -1,5 +1,29 @@
 import Foundation
 
+/// Which face Fable wears. Classic is the utility (bottles + settings first);
+/// Gamer is the cover wall (games first, tools one level down). Chosen on
+/// first launch, switchable in Settings → Interface.
+enum InterfaceStyle: String, Codable, CaseIterable, Identifiable, Sendable {
+    case classic
+    case gamer
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .classic: "Classic"
+        case .gamer: "Gamer"
+        }
+    }
+
+    var blurb: String {
+        switch self {
+        case .classic: "Bottles and tools up front — the workshop."
+        case .gamer: "Your games as a cover wall — play first, tools one click away."
+        }
+    }
+}
+
 /// Global app configuration, persisted to Application Support/config.json.
 struct AppSettings: Codable, Equatable, Sendable {
     /// Defaults applied to newly created bottles.
@@ -15,6 +39,10 @@ struct AppSettings: Codable, Equatable, Sendable {
     /// offline anti-cheat database always works regardless.
     var onlineCompatibilityLookups: Bool = false
 
+    /// The app's face — classic utility or games-first cover wall. Picked in
+    /// onboarding; existing configs decode to .classic (no surprise change).
+    var interfaceStyle: InterfaceStyle = .classic
+
     init() {}
 
     init(from decoder: Decoder) throws {
@@ -29,6 +57,8 @@ struct AppSettings: Codable, Equatable, Sendable {
             .decodeIfPresent(Bool.self, forKey: .advancedMode) ?? false
         onlineCompatibilityLookups = try container
             .decodeIfPresent(Bool.self, forKey: .onlineCompatibilityLookups) ?? false
+        interfaceStyle = try container
+            .decodeIfPresent(InterfaceStyle.self, forKey: .interfaceStyle) ?? .classic
     }
 }
 
