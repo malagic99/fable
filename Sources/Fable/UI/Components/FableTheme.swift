@@ -39,6 +39,35 @@ enum FableTheme {
     }
 }
 
+/// Tile sizing driven by `AppSettings.tileScale`, so the same slider grows both
+/// the portrait cover wall (Gamer) and the wider bottle cards (Classic) —
+/// laptop-tight to couch-distance.
+enum TileMetrics {
+    static let range: ClosedRange<Double> = 0.7...1.8
+    static func clamp(_ v: Double) -> Double { min(max(v, range.lowerBound), range.upperBound) }
+
+    /// Adaptive minimum for a portrait game cover.
+    static func coverMin(_ scale: Double) -> CGFloat { 132 * clamp(scale) }
+    /// Adaptive minimum for a wide bottle card.
+    static func cardMin(_ scale: Double) -> CGFloat { 224 * clamp(scale) }
+}
+
+/// The Finder-style tile resizer: two glyphs bracketing a slider. Bound to the
+/// scale so both grids resize live.
+struct TileSizeControl: View {
+    @Binding var scale: Double
+
+    var body: some View {
+        HStack(spacing: 7) {
+            Image(systemName: "square.grid.3x3").font(.caption2).foregroundStyle(.secondary)
+            Slider(value: $scale, in: TileMetrics.range)
+                .frame(width: 96)
+            Image(systemName: "square.grid.2x2").font(.footnote).foregroundStyle(.secondary)
+        }
+        .help("Resize tiles")
+    }
+}
+
 /// The one capsule for "which backend renders this" — replaces the two
 /// hand-rolled switch statements that had drifted (and the alarm-pink).
 struct BackendBadge: View {

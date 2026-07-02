@@ -3,13 +3,17 @@ import SwiftUI
 /// Grid of all bottles with creation entry point. Root of the Bottles section.
 struct BottleListView: View {
     @EnvironmentObject private var bottleManager: BottleManager
+    @EnvironmentObject private var settingsManager: SettingsManager
     @State private var isShowingCreateSheet = false
     @State private var isShowingSteamSheet = false
 
     private static let steamTemplate = BottleTemplateCatalog.all
         .first { $0.id == "steam-ready" } ?? BottleTemplateCatalog.default
 
-    private let columns = [GridItem(.adaptive(minimum: 248, maximum: 320), spacing: 18)]
+    private var columns: [GridItem] {
+        let min = TileMetrics.cardMin(settingsManager.settings.tileScale)
+        return [GridItem(.adaptive(minimum: min, maximum: min * 1.3), spacing: 18)]
+    }
 
     var body: some View {
         Group {
@@ -31,9 +35,12 @@ struct BottleListView: View {
                         ForEach(bottleManager.bottles) { bottle in
                             BottleGridItem(bottle: bottle)
                         }
-                        // A quiet "add" tile keeps a sparse grid purposeful and
-                        // puts creation where the eye already is.
-                        NewBottleCard { isShowingCreateSheet = true }
+                        // The one creation entry point: a choice tile — plain or
+                        // Steam bottle. (No toolbar "+", per the games-first flow.)
+                        NewBottleCard(
+                            createBottle: { isShowingCreateSheet = true },
+                            createSteam: { isShowingSteamSheet = true }
+                        )
                     }
                     .padding(24)
                     .frame(maxWidth: .infinity, alignment: .topLeading)
@@ -42,13 +49,7 @@ struct BottleListView: View {
         }
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
-                Menu {
-                    Button("bottle.list.new") { isShowingCreateSheet = true }
-                    Button("bottle.list.new_steam") { isShowingSteamSheet = true }
-                } label: {
-                    Label("bottle.list.create", systemImage: "plus")
-                }
-                .help("Create a new bottle")
+                TileSizeControl(scale: $settingsManager.settings.tileScale)
             }
         }
         .sheet(isPresented: $isShowingCreateSheet) {
@@ -66,14 +67,18 @@ struct BottleListView: View {
     }
 }
 
-/// Dashed ghost tile that creates a new bottle — matches the card footprint
-/// so the grid stays rhythmic even with one bottle.
+/// Dashed ghost tile that creates a new bottle — a menu offering a plain or a
+/// Steam bottle. Matches the card footprint so the grid stays rhythmic.
 private struct NewBottleCard: View {
-    let action: () -> Void
+    let createBottle: () -> Void
+    let createSteam: () -> Void
     @State private var isHovering = false
 
     var body: some View {
-        Button(action: action) {
+        Menu {
+            Button("New Bottle", systemImage: "wineglass") { createBottle() }
+            Button("New Steam Bottle", systemImage: "gamecontroller") { createSteam() }
+        } label: {
             VStack(spacing: 10) {
                 Image(systemName: "plus")
                     .font(.system(size: 22, weight: .medium))
@@ -81,7 +86,7 @@ private struct NewBottleCard: View {
                     .font(.callout.weight(.medium))
             }
             .foregroundStyle(isHovering ? AnyShapeStyle(.primary) : AnyShapeStyle(.secondary))
-            .frame(maxWidth: .infinity, minHeight: 162)
+            .frame(maxWidth: .infinity, minHeight: 150)
             .background(
                 RoundedRectangle(cornerRadius: FableTheme.cardRadius)
                     .strokeBorder(
@@ -92,7 +97,8 @@ private struct NewBottleCard: View {
             .contentShape(RoundedRectangle(cornerRadius: FableTheme.cardRadius))
             .animation(.easeInOut(duration: 0.15), value: isHovering)
         }
-        .buttonStyle(.plain)
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
         .onHover { isHovering = $0 }
         .help("Create a new bottle")
     }
