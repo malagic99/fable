@@ -1,5 +1,23 @@
 # Changelog
 
+## v0.13.0 — 2026-07-02
+
+One wall for everything: native macOS games join the library.
+
+### Native games
+
+- **Import from native Steam** — Fable reads the macOS Steam client's install
+  manifests and imports your native games (Steam's own tooling — redists,
+  SteamVR, controller configs — is filtered out). They launch through the
+  native client (`steam://`), so login, DRM, and cloud saves stay Steam's.
+- **Add any Mac app** — App Store, web, anywhere: pick a `.app` and it joins
+  the wall, launched natively. Live "Playing" chip for .app games.
+- Native covers use the same art pipeline (Steam natives fetch by appid —
+  no search needed) and support custom covers. A blue **native** dot marks
+  them: no Wine, no bottle, no tuning — it just runs.
+- The wall's **Add game** tile offers all three paths: native Steam import,
+  Mac app, or Bottles for Windows games.
+
 ## v0.12.0 — 2026-07-02
 
 Make it yours: themes, appearance, backgrounds, and custom covers.
