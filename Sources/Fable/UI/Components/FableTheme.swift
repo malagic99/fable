@@ -5,7 +5,7 @@ import SwiftUI
 /// these so the app reads as one hand, not thirty feature branches.
 enum FableTheme {
     /// The identity: the wineglass purple→indigo from onboarding, carried
-    /// through the whole app.
+    /// through the whole app. Themes override it via `\.fableGradient`.
     static let accentGradient = LinearGradient(
         colors: [.purple, .indigo],
         startPoint: .topLeading,
@@ -112,6 +112,19 @@ extension View {
     }
 }
 
+/// The active theme's identity gradient, injected at the app root so every
+/// brand mark and fallback cover re-skins together.
+private struct FableGradientKey: EnvironmentKey {
+    static let defaultValue = FableTheme.accentGradient
+}
+
+extension EnvironmentValues {
+    var fableGradient: LinearGradient {
+        get { self[FableGradientKey.self] }
+        set { self[FableGradientKey.self] = newValue }
+    }
+}
+
 /// The one exe-icon view: loads a game's icon from its exe (off the main
 /// actor), falling back to a symbol on the brand gradient. Replaces the three
 /// copy-pasted loaders in BottleCard / LibraryGameCard / GameLauncherView.
@@ -122,6 +135,7 @@ struct ExeIconView: View {
     var fallbackSymbol: String = "wineglass"
 
     @EnvironmentObject private var bottleManager: BottleManager
+    @Environment(\.fableGradient) private var gradient
     @State private var icon: NSImage?
 
     var body: some View {
@@ -138,7 +152,7 @@ struct ExeIconView: View {
                     .foregroundStyle(.white)
                     .frame(width: size, height: size)
                     .background(
-                        FableTheme.accentGradient,
+                        gradient,
                         in: RoundedRectangle(cornerRadius: size * 0.22)
                     )
             }

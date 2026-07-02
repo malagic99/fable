@@ -83,6 +83,10 @@ private struct LibraryGameItem: View {
     let entry: LibraryEntry
     @State private var isHovering = false
 
+    @EnvironmentObject private var bottleManager: BottleManager
+    @EnvironmentObject private var artworkStore: ArtworkStore
+    @EnvironmentObject private var settingsManager: SettingsManager
+
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
             NavigationLink(value: entry.bottle.id) {
@@ -96,6 +100,25 @@ private struct LibraryGameItem: View {
                 .animation(.easeInOut(duration: 0.15), value: isHovering)
         }
         .onHover { isHovering = $0 }
+        .contextMenu {
+            Button("Set Custom Cover…") { pickCustomCover() }
+            Button("Refresh Cover") {
+                Task {
+                    await artworkStore.refreshArt(
+                        for: entry.game, bottle: entry.bottle,
+                        bottleManager: bottleManager, settings: settingsManager.settings
+                    )
+                }
+            }
+        }
+    }
+
+    private func pickCustomCover() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.image]
+        panel.allowsMultipleSelection = false
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        artworkStore.setCustomArt(for: entry.game, from: url)
     }
 }
 

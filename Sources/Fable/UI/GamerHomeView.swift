@@ -42,6 +42,7 @@ struct GamerHomeView: View {
     @EnvironmentObject private var gameLauncher: GameLauncher
     @EnvironmentObject private var activityMonitor: ActivityMonitor
     @EnvironmentObject private var settingsManager: SettingsManager
+    @Environment(\.fableGradient) private var gradient
 
     @State private var tab: Tab = .play
     @State private var searchText = ""
@@ -84,7 +85,7 @@ struct GamerHomeView: View {
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(.white)
                     .frame(width: 26, height: 26)
-                    .background(FableTheme.accentGradient, in: RoundedRectangle(cornerRadius: 7))
+                    .background(gradient, in: RoundedRectangle(cornerRadius: 7))
                 Text("Fable").font(.headline.weight(.bold))
             }
 
@@ -306,12 +307,31 @@ private struct GameCoverCard: View {
         .animation(.spring(duration: 0.25, bounce: 0.25), value: isHovering)
         .onHover { isHovering = $0 }
         .help("Click to inspect · double-click to play")
+        .contextMenu {
+            Button("Set Custom Cover…") { pickCustomCover() }
+            Button("Refresh Cover") {
+                Task {
+                    await artworkStore.refreshArt(
+                        for: entry.game, bottle: entry.bottle,
+                        bottleManager: bottleManager, settings: settingsManager.settings
+                    )
+                }
+            }
+        }
         .task(id: entry.id) {
             await artworkStore.fetchIfNeeded(
                 game: entry.game, bottle: entry.bottle,
                 bottleManager: bottleManager, settings: settingsManager.settings
             )
         }
+    }
+
+    private func pickCustomCover() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.image]
+        panel.allowsMultipleSelection = false
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        artworkStore.setCustomArt(for: entry.game, from: url)
     }
 }
 

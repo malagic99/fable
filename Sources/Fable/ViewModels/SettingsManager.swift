@@ -56,6 +56,16 @@ struct AppSettings: Codable, Equatable, Sendable {
     /// doesn't carry. Empty = skip SteamGridDB.
     var steamGridDBKey: String = ""
 
+    /// Light/dark/system — independent of theme (a theme suggests one on apply).
+    var appearance: AppAppearance = .system
+
+    /// The active theme's id (built-in or imported `.fableskin`).
+    var activeThemeID: String = FableSkin.standard.id
+
+    /// A user-picked window background image (stored copy); overrides the
+    /// active theme's own background.
+    var customBackgroundPath: String?
+
     init() {}
 
     init(from decoder: Decoder) throws {
@@ -77,6 +87,9 @@ struct AppSettings: Codable, Equatable, Sendable {
         )
         onlineArtwork = try container.decodeIfPresent(Bool.self, forKey: .onlineArtwork) ?? true
         steamGridDBKey = try container.decodeIfPresent(String.self, forKey: .steamGridDBKey) ?? ""
+        appearance = try container.decodeIfPresent(AppAppearance.self, forKey: .appearance) ?? .system
+        activeThemeID = try container.decodeIfPresent(String.self, forKey: .activeThemeID) ?? FableSkin.standard.id
+        customBackgroundPath = try container.decodeIfPresent(String.self, forKey: .customBackgroundPath)
     }
 }
 

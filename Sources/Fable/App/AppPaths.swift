@@ -52,6 +52,11 @@ enum AppPaths {
         applicationSupport.appending(path: "Artwork", directoryHint: .isDirectory)
     }
 
+    /// User themes (`.fableskin` files) and their background images.
+    static var themes: URL {
+        applicationSupport.appending(path: "Themes", directoryHint: .isDirectory)
+    }
+
     static func ensureDirectoriesExist() throws {
         for url in [applicationSupport, bottles, components, downloads, logs] {
             try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)

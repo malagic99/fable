@@ -1,5 +1,29 @@
 # Changelog
 
+## v0.12.0 — 2026-07-02
+
+Make it yours: themes, appearance, backgrounds, and custom covers.
+
+### Themes (Settings → Themes)
+
+- **Three built-ins**: Fable (the stock purple→indigo), **Midnight** (deep-night
+  blues on near-black), and **OG Steam** — the 2004 olive-and-gold skin,
+  lovingly approximated. A theme recolors the accent, the identity gradient,
+  and lays a window wash behind everything.
+- **Themes are files.** Export the current theme as a `.fableskin` (its
+  background image travels embedded) and import ones from anywhere — a tiny
+  theme plug-in system. Imports can't shadow the built-ins.
+- **Appearance**: System / Light / Dark, independent of theme (a theme suggests
+  one when applied; you can override).
+- **Custom background**: pick any image to sit behind the whole window (most
+  visible in the Gamer interface); it overrides the theme's own background.
+
+### Custom covers
+
+- Right-click any cover (Gamer wall or Library): **Set Custom Cover…** uses
+  your own image (persists, wins over fetched art), **Refresh Cover** re-runs
+  the pipeline when the fetched art is wrong.
+
 ## v0.11.0 — 2026-07-02
 
 Real box art everywhere, and the Gamer interface goes Big Picture.

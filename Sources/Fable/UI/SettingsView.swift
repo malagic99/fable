@@ -20,6 +20,7 @@ private struct GeneralSettingsTab: View {
     @EnvironmentObject private var settingsManager: SettingsManager
     @EnvironmentObject private var userRecipeStore: UserRecipeStore
     @EnvironmentObject private var shaderCacheStore: ShaderCacheStore
+    @EnvironmentObject private var themeStore: ThemeStore
     @EnvironmentObject private var toastCenter: ToastCenter
 
     var body: some View {
@@ -36,6 +37,50 @@ private struct GeneralSettingsTab: View {
                 Text("Interface")
             } footer: {
                 Text("Gamer puts your games up front as a cover wall (tools live in the Workshop); Classic is the bottles-first utility. Advanced Mode — off: a clean click-and-play view of each bottle's games; on: the full backend, performance, dependency, storage, and troubleshooting panels.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Section {
+                Picker("Appearance", selection: $settingsManager.settings.appearance) {
+                    ForEach(AppAppearance.allCases) { mode in
+                        Text(mode.displayName).tag(mode)
+                    }
+                }
+                .pickerStyle(.segmented)
+
+                Picker("Theme", selection: Binding(
+                    get: { settingsManager.settings.activeThemeID },
+                    set: { applyTheme(id: $0) }
+                )) {
+                    ForEach(themeStore.skins) { skin in
+                        Text(skin.name).tag(skin.id)
+                    }
+                }
+
+                LabeledContent("Theme Files") {
+                    HStack(spacing: 8) {
+                        Button("Import…") { importTheme() }
+                            .controlSize(.small)
+                        Button("Export Current…") { exportTheme() }
+                            .controlSize(.small)
+                    }
+                }
+
+                LabeledContent("Background") {
+                    HStack(spacing: 8) {
+                        if settingsManager.settings.customBackgroundPath != nil {
+                            Button("Clear") { settingsManager.settings.customBackgroundPath = nil }
+                                .controlSize(.small)
+                        }
+                        Button("Choose Image…") { pickBackground() }
+                            .controlSize(.small)
+                    }
+                }
+            } header: {
+                Text("Themes")
+            } footer: {
+                Text("Themes recolor Fable's identity — accent, gradient, and window wash — and travel as .fableskin files you can share. Midnight and OG Steam ship built in. A custom background image sits behind the whole window (most visible in the Gamer interface).")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -125,6 +170,52 @@ private struct GeneralSettingsTab: View {
     private func open(_ url: URL) {
         try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
         NSWorkspace.shared.open(url)
+    }
+
+    private func applyTheme(id: String) {
+        settingsManager.settings.activeThemeID = id
+        // A theme carries a suggested appearance — apply it (still overridable).
+        if let suggested = themeStore.skin(id: id).suggestedAppearance {
+            settingsManager.settings.appearance = suggested
+        }
+    }
+
+    private func importTheme() {
+        let panel = NSOpenPanel()
+        panel.allowsMultipleSelection = false
+        panel.allowedFileTypes = ["fableskin"]
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        do {
+            let skin = try themeStore.importSkin(from: url)
+            applyTheme(id: skin.id)
+            toastCenter.success("Theme imported: \(skin.name)")
+        } catch {
+            toastCenter.error("Couldn't import that theme file.")
+        }
+    }
+
+    private func exportTheme() {
+        let skin = themeStore.skin(id: settingsManager.settings.activeThemeID)
+        let panel = NSSavePanel()
+        panel.nameFieldStringValue = "\(skin.name).fableskin"
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        do {
+            try themeStore.exportData(for: skin).write(to: url, options: .atomic)
+        } catch {
+            toastCenter.error("Couldn't export the theme.")
+        }
+    }
+
+    private func pickBackground() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.image]
+        panel.allowsMultipleSelection = false
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        do {
+            settingsManager.settings.customBackgroundPath = try themeStore.storeCustomBackground(from: url)
+        } catch {
+            toastCenter.error("Couldn't use that image.")
+        }
     }
 
     private func backUpShaders() {

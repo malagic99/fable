@@ -4,6 +4,7 @@ import SwiftUI
 /// Fable mark so the app carries its identity beyond onboarding.
 struct SidebarView: View {
     @EnvironmentObject private var appState: AppState
+    @Environment(\.fableGradient) private var gradient
 
     var body: some View {
         List(selection: $appState.selectedSection) {
@@ -19,7 +20,7 @@ struct SidebarView: View {
                         .font(.system(size: 15, weight: .semibold))
                         .foregroundStyle(.white)
                         .frame(width: 30, height: 30)
-                        .background(FableTheme.accentGradient, in: RoundedRectangle(cornerRadius: 8))
+                        .background(gradient, in: RoundedRectangle(cornerRadius: 8))
                     Text("Fable")
                         .font(.title3.weight(.bold))
                         .foregroundStyle(.primary)
