@@ -25,8 +25,12 @@ struct TriggerProfileSheet: View {
             .padding(16)
             Divider()
 
-            TriggerConfigView(profile: $profile)
-                .padding(16)
+            // Scrollable so the two panels — up to three sliders each in
+            // weapon/vibration mode — can never overflow the sheet.
+            ScrollView {
+                TriggerConfigView(profile: $profile)
+                    .padding(16)
+            }
 
             Divider()
             SheetActionBar {
@@ -38,6 +42,6 @@ struct TriggerProfileSheet: View {
                     .keyboardShortcut(.defaultAction)
             }
         }
-        .frame(width: 560, height: 470)
+        .frame(minWidth: 620, idealWidth: 640, minHeight: 520, idealHeight: 560)
     }
 }

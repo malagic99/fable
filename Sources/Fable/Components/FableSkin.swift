@@ -83,7 +83,19 @@ struct FableSkin: Codable, Identifiable, Hashable, Sendable {
         windowTintHex: "#3F4637", windowTintOpacity: 0.5
     )
 
-    static let builtIns: [FableSkin] = [.standard, .midnight, .ogSteam]
+    /// Pure pitch black for late-night sessions — the window wash is near-opaque
+    /// #000000, so on an OLED/HDR panel the background pixels switch fully off
+    /// (true black, no backlight glow, less battery). A calm blue accent and a
+    /// dim brand gradient keep the light emission low and easy on the eyes.
+    static let pitchBlack = FableSkin(
+        id: "pitch-black", name: "Pitch Black",
+        suggestedAppearance: .dark,
+        accentHex: "#6E9BFF",
+        gradientStartHex: "#2A2A3D", gradientEndHex: "#0C0C14",
+        windowTintHex: "#000000", windowTintOpacity: 0.98
+    )
+
+    static let builtIns: [FableSkin] = [.standard, .midnight, .pitchBlack, .ogSteam]
 }
 
 /// The `.fableskin` file: a skin plus its background image (embedded so a
