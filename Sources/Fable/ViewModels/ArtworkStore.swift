@@ -96,6 +96,38 @@ final class ArtworkStore: ObservableObject {
         }
     }
 
+    // MARK: Custom art
+
+    /// Sets a user-picked image as a game's cover — copied into the cache so
+    /// it persists and wins over anything the pipeline would fetch.
+    func setCustomArt(for game: Game, from url: URL) {
+        let key = GameArtwork.cacheKey(for: game.name)
+        guard let data = try? Data(contentsOf: url), let image = NSImage(data: data) else { return }
+        images[key] = image
+        misses.remove(key)
+        let file = directory.appending(path: "\(key).jpg")
+        let dir = directory
+        Task.detached(priority: .utility) {
+            try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+            try? data.write(to: file, options: .atomic)
+        }
+    }
+
+    /// Drops a game's cached cover (custom or fetched) and re-runs the
+    /// pipeline — the escape hatch when the fetched art is wrong.
+    func refreshArt(
+        for game: Game,
+        bottle: Bottle,
+        bottleManager: BottleManager,
+        settings: AppSettings
+    ) async {
+        let key = GameArtwork.cacheKey(for: game.name)
+        images[key] = nil
+        misses.remove(key)
+        try? FileManager.default.removeItem(at: directory.appending(path: "\(key).jpg"))
+        await fetchIfNeeded(game: game, bottle: bottle, bottleManager: bottleManager, settings: settings)
+    }
+
     // MARK: Internals
 
     nonisolated private static func loadImage(at url: URL) async -> NSImage? {

@@ -28,6 +28,7 @@ struct FableApp: App {
     @StateObject private var activityMonitor = ActivityMonitor()
     @StateObject private var triggerController = DualSenseTriggerController()
     @StateObject private var artworkStore = ArtworkStore()
+    @StateObject private var themeStore = ThemeStore()
 
     init() {
         let appState = AppState()
@@ -161,6 +162,7 @@ struct FableApp: App {
                 .environmentObject(activityMonitor)
                 .environmentObject(triggerController)
                 .environmentObject(artworkStore)
+                .environmentObject(themeStore)
         }
         .windowToolbarStyle(.unified)
         .commands {
@@ -173,8 +175,10 @@ struct MainWindow: View {
     @EnvironmentObject private var appState: AppState
     @EnvironmentObject private var onboardingState: OnboardingState
     @EnvironmentObject private var settingsManager: SettingsManager
+    @EnvironmentObject private var themeStore: ThemeStore
 
     private var isGamer: Bool { settingsManager.settings.interfaceStyle == .gamer }
+    private var skin: FableSkin { themeStore.skin(id: settingsManager.settings.activeThemeID) }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -190,6 +194,27 @@ struct MainWindow: View {
                 }
             }
         }
+        // Theme layer: background image (custom pick wins over the theme's own)
+        // under a window-tint wash, behind everything.
+        .background {
+            ZStack {
+                if let image = themeStore.backgroundImage(
+                    for: skin, customPath: settingsManager.settings.customBackgroundPath
+                ) {
+                    Image(nsImage: image)
+                        .resizable()
+                        .scaledToFill()
+                        .opacity(0.35)
+                }
+                if let tint = skin.windowTint {
+                    tint.opacity(skin.windowTintOpacity)
+                }
+            }
+            .ignoresSafeArea()
+        }
+        .tint(skin.accent ?? .accentColor)
+        .environment(\.fableGradient, skin.gradient)
+        .preferredColorScheme(settingsManager.settings.appearance.colorScheme)
         .toastOverlay()
         .frame(minWidth: 800, minHeight: 520)
         .navigationTitle(isGamer ? "Fable" : appState.selectedSection.title)
