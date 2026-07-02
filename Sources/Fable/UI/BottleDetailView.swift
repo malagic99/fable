@@ -332,6 +332,7 @@ struct BottleDetailView: View {
             }
         }
         .formStyle(.grouped)
+        .fableThemedFormBackground()
         // A settings column stretched across a huge window reads as void;
         // cap it and center for balance.
         .frame(maxWidth: 820)

@@ -114,6 +114,7 @@ struct CreateBottleView: View {
                 }
             }
             .formStyle(.grouped)
+            .fableThemedFormBackground()
 
             Divider()
 

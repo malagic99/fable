@@ -208,6 +208,7 @@ struct ImportGameView: View {
                 }
             }
             .formStyle(.grouped)
+            .fableThemedFormBackground()
 
             Divider()
 

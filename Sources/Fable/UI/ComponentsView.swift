@@ -53,6 +53,7 @@ struct ComponentsView: View {
             }
         }
         .formStyle(.grouped)
+        .fableThemedFormBackground()
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button {
