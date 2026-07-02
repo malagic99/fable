@@ -24,6 +24,8 @@ struct OnboardingView: View {
                 switch onboardingState.currentStep {
                 case .welcome:
                     WelcomeStep()
+                case .interface:
+                    InterfaceStyleStep()
                 case .graphics:
                     D3DMetalSetupStep()
                 case .source:

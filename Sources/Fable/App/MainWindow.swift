@@ -163,20 +163,27 @@ struct FableApp: App {
 struct MainWindow: View {
     @EnvironmentObject private var appState: AppState
     @EnvironmentObject private var onboardingState: OnboardingState
+    @EnvironmentObject private var settingsManager: SettingsManager
+
+    private var isGamer: Bool { settingsManager.settings.interfaceStyle == .gamer }
 
     var body: some View {
         VStack(spacing: 0) {
             AppUpdateBanner()
-            NavigationSplitView {
-                SidebarView()
-                    .navigationSplitViewColumnWidth(min: 180, ideal: 210, max: 280)
-            } detail: {
-                MainContentView()
+            if isGamer {
+                GamerHomeView()
+            } else {
+                NavigationSplitView {
+                    SidebarView()
+                        .navigationSplitViewColumnWidth(min: 180, ideal: 210, max: 280)
+                } detail: {
+                    MainContentView()
+                }
             }
         }
         .toastOverlay()
         .frame(minWidth: 800, minHeight: 520)
-        .navigationTitle(appState.selectedSection.title)
+        .navigationTitle(isGamer ? "Fable" : appState.selectedSection.title)
         .sheet(isPresented: Binding(
             get: { onboardingState.isShowingWizard },
             set: { newValue in
