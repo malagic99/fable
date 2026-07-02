@@ -52,3 +52,25 @@ import Testing
         #expect(decoded.interfaceStyle == .gamer)
     }
 }
+
+/// Tile sizing clamp — a stored scale never escapes the usable range.
+@Suite struct TileMetricsTests {
+    @Test
+    func scaleClampsToRange() {
+        #expect(TileMetrics.clamp(0.1) == TileMetrics.range.lowerBound)
+        #expect(TileMetrics.clamp(9.0) == TileMetrics.range.upperBound)
+        #expect(TileMetrics.clamp(1.0) == 1.0)
+    }
+
+    @Test
+    func biggerScaleMeansBiggerTiles() {
+        #expect(TileMetrics.coverMin(1.5) > TileMetrics.coverMin(1.0))
+        #expect(TileMetrics.cardMin(1.5) > TileMetrics.cardMin(1.0))
+    }
+
+    @Test
+    func anOutOfRangeStoredScaleDecodesClamped() throws {
+        let decoded = try JSONDecoder().decode(AppSettings.self, from: Data(#"{"tileScale": 99}"#.utf8))
+        #expect(decoded.tileScale == TileMetrics.range.upperBound)
+    }
+}

@@ -1,5 +1,31 @@
 # Changelog
 
+## v0.10.1 — 2026-07-02
+
+Gamer-interface polish and always-on triggers.
+
+### Gamer interface
+
+- **One navigation.** The rail now hosts Play plus Bottles, Components, and
+  Settings directly — the nested Classic sidebar is gone, so there's no longer
+  a menu inside a menu.
+- **Resizable tiles.** A slider (in the Play header and the Bottles toolbar)
+  grows the covers and cards from laptop-tight to couch-distance — hook the
+  laptop to a TV and size them to taste. Persisted.
+- **Add a bottle, your way.** The toolbar "+" is gone; the dashed New Bottle
+  tile is now the single entry point and offers a choice — plain bottle or
+  Steam bottle.
+- **Inspector.** Play and Tune sit together at the top (Tune was buried at the
+  bottom).
+
+### DualSense triggers, always on
+
+- Trigger resistance is now a hardware layer Fable maintains that **stacks on
+  top of the game's own input** — so a game with zero native trigger support
+  still gets resistive triggers. Whenever a game runs in a bottle (including one
+  launched from inside Steam), the bottle's trigger profile is applied and held;
+  it clears only when the bottle goes idle. Global-per-bottle by design.
+
 ## v0.10.0 — 2026-07-02
 
 Two faces, your pick: the new **Gamer** interface joins Classic, chosen on

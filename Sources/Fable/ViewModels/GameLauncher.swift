@@ -286,9 +286,29 @@ final class GameLauncher: ObservableObject {
         let fresh = deps.bottleManager.bottle(with: bottle.id) ?? bottle
 
         try launch(prepared, in: fresh)
-        deps.triggerController.apply(
-            prepared.effectiveTriggerProfile(bottleDefault: fresh.triggerProfile)
-        )
+        refreshTriggers()
+    }
+
+    /// Keeps the DualSense adaptive-trigger profile matched to whatever's
+    /// actually running — Fable-launched OR detected (a game started from inside
+    /// Steam). Fable drives the trigger *resistance* as a hardware state through
+    /// GameController, independent of whether the game supports triggers, so it
+    /// "stacks on top of" the game's own input: even a game with zero native
+    /// support gets the bottle's resistive triggers. Applies the running game's
+    /// effective profile (its per-game override when resolvable, else the bottle
+    /// default — the global-per-bottle baseline); clears when nothing runs.
+    func refreshTriggers() {
+        guard let deps else { return }
+        for bottle in deps.bottleManager.bottles {
+            for game in bottle.games
+            where isRunning(game.id) || deps.activityMonitor.isRunning(game, in: bottle) {
+                deps.triggerController.apply(
+                    game.effectiveTriggerProfile(bottleDefault: bottle.triggerProfile)
+                )
+                return
+            }
+        }
+        deps.triggerController.reset()
     }
 
     /// Stop what Fable launched; for a game that's only *detected* (started

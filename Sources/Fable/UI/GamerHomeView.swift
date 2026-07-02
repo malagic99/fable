@@ -2,17 +2,19 @@ import SwiftUI
 
 /// The Gamer interface: games first. A cover wall of every game across every
 /// bottle, a confidence dot on each cover (will it run?), and an inspector
-/// showing how the selected game runs — play and tune without ever thinking
-/// about bottles. The full Classic app lives one rail-click away as the
-/// Workshop, so nothing is lost, only reordered.
+/// showing how the selected game runs. The rail is the app's ONE navigation —
+/// Play plus the workshop destinations — so there's no second sidebar to wade
+/// through.
 struct GamerHomeView: View {
-    private enum Tab { case play, workshop }
+    private enum Section: Hashable { case play, bottles, components, settings }
 
+    @EnvironmentObject private var appState: AppState
     @EnvironmentObject private var bottleManager: BottleManager
     @EnvironmentObject private var gameLauncher: GameLauncher
     @EnvironmentObject private var activityMonitor: ActivityMonitor
+    @EnvironmentObject private var settingsManager: SettingsManager
 
-    @State private var tab: Tab = .play
+    @State private var section: Section = .play
     @State private var searchText = ""
     @State private var selectedID: LibraryEntry.ID?
 
@@ -36,59 +38,56 @@ struct GamerHomeView: View {
         HStack(spacing: 0) {
             rail
             Divider()
-            switch tab {
-            case .play:
+            if section == .play {
                 playSurface
-            case .workshop:
-                NavigationSplitView {
-                    SidebarView()
-                        .navigationSplitViewColumnWidth(min: 180, ideal: 210, max: 280)
-                } detail: {
-                    MainContentView()
-                }
+            } else {
+                MainContentView()
             }
         }
     }
 
-    // MARK: Rail
+    // MARK: Rail — the one navigation
 
     private var rail: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 3) {
             HStack(spacing: 9) {
                 Image(systemName: "wineglass")
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(.white)
                     .frame(width: 28, height: 28)
                     .background(FableTheme.accentGradient, in: RoundedRectangle(cornerRadius: 7))
-                Text("Fable")
-                    .font(.title3.weight(.bold))
+                Text("Fable").font(.title3.weight(.bold))
             }
             .padding(.horizontal, 10)
             .padding(.top, 14)
-            .padding(.bottom, 16)
+            .padding(.bottom, 14)
 
-            railButton("Play", symbol: "play.fill", active: tab == .play) { tab = .play }
+            railButton("Play", symbol: "play.fill", active: section == .play) { section = .play }
             if let nowPlaying {
                 railButton(nowPlaying.game.name, symbol: "waveform", active: false) {
-                    tab = .play
+                    section = .play
                     selectedID = nowPlaying.id
                 }
                 .overlay(alignment: .trailing) {
-                    Circle().fill(.green).frame(width: 7, height: 7).padding(.trailing, 12)
+                    Circle().fill(.green).frame(width: 7, height: 7).padding(.trailing, 14)
                 }
             }
-            railButton("Workshop", symbol: "wrench.and.screwdriver.fill", active: tab == .workshop) { tab = .workshop }
+
+            Divider().padding(.vertical, 8).padding(.horizontal, 12)
+
+            railButton("Bottles", symbol: "square.stack.3d.up", active: section == .bottles) { go(.bottles, .bottles) }
+            railButton("Components", symbol: "shippingbox", active: section == .components) { go(.components, .components) }
+            railButton("Settings", symbol: "gearshape", active: section == .settings) { go(.settings, .settings) }
 
             Spacer()
-
-            Text("Tools, bottles, and settings live in the Workshop.")
-                .font(.caption2)
-                .foregroundStyle(.tertiary)
-                .padding(.horizontal, 12)
-                .padding(.bottom, 12)
         }
-        .frame(width: 176)
+        .frame(width: 178)
         .background(.background.secondary)
+    }
+
+    private func go(_ section: Section, _ appSection: AppSection) {
+        self.section = section
+        appState.selectedSection = appSection
     }
 
     private func railButton(_ title: String, symbol: String, active: Bool, action: @escaping () -> Void) -> some View {
@@ -119,15 +118,15 @@ struct GamerHomeView: View {
     private var playSurface: some View {
         HStack(spacing: 0) {
             VStack(alignment: .leading, spacing: 14) {
-                HStack {
-                    Text("Your games")
-                        .font(.title.weight(.semibold))
+                HStack(spacing: 14) {
+                    Text("Your games").font(.title.weight(.semibold))
                     Spacer()
+                    TileSizeControl(scale: $settingsManager.settings.tileScale)
                     HStack(spacing: 6) {
                         Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
                         TextField("Search", text: $searchText)
                             .textFieldStyle(.plain)
-                            .frame(width: 150)
+                            .frame(width: 130)
                     }
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
@@ -140,18 +139,19 @@ struct GamerHomeView: View {
                         Label(searchText.isEmpty ? "No games yet" : "No matches", systemImage: "square.grid.2x2")
                     } description: {
                         Text(searchText.isEmpty
-                             ? "Add games in the Workshop and they'll appear here as covers."
+                             ? "Add games in Bottles and they'll appear here as covers."
                              : "Nothing matches “\(searchText)”.")
                     } actions: {
                         if searchText.isEmpty {
-                            Button("Open Workshop") { tab = .workshop }
+                            Button("Open Bottles") { go(.bottles, .bottles) }
                                 .buttonStyle(.borderedProminent)
                         }
                     }
                     .frame(maxHeight: .infinity)
                 } else {
                     ScrollView {
-                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 148, maximum: 184), spacing: 16)],
+                        let coverMin = TileMetrics.coverMin(settingsManager.settings.tileScale)
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: coverMin, maximum: coverMin * 1.25), spacing: 16)],
                                   spacing: 16) {
                             ForEach(entries) { entry in
                                 GameCoverCard(
@@ -267,8 +267,8 @@ private struct GameCoverCard: View {
 
 // MARK: - Inspector
 
-/// How the selected game runs: health, backend, performance, triggers — and
-/// the Play. Tune opens the game's settings without leaving the wall.
+/// How the selected game runs: Play and Tune sit up top, then health, backend,
+/// performance, and triggers.
 private struct GameInspector: View {
     let entry: LibraryEntry
     let isRunning: Bool
@@ -299,11 +299,18 @@ private struct GameInspector: View {
                     .foregroundStyle(.secondary)
             }
 
-            HStack {
-                Spacer()
-                GamePlayButton(game: entry.game, bottle: entry.bottle, size: 44)
-                Spacer()
+            HStack(spacing: 10) {
+                GamePlayButton(game: entry.game, bottle: entry.bottle, size: 42)
+                Button {
+                    isShowingTune = true
+                } label: {
+                    Label("Tune", systemImage: "slider.horizontal.3")
+                        .frame(maxWidth: .infinity)
+                }
+                .controlSize(.large)
             }
+
+            Divider()
 
             Text("How it runs")
                 .font(.caption.weight(.medium))
@@ -339,13 +346,6 @@ private struct GameInspector: View {
             }
 
             Spacer()
-
-            Button {
-                isShowingTune = true
-            } label: {
-                Label("Tune", systemImage: "slider.horizontal.3")
-                    .frame(maxWidth: .infinity)
-            }
         }
         .padding(14)
         .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 12))

@@ -43,6 +43,10 @@ struct AppSettings: Codable, Equatable, Sendable {
     /// onboarding; existing configs decode to .classic (no surprise change).
     var interfaceStyle: InterfaceStyle = .classic
 
+    /// How large the library/bottle tiles render — so covers fit anything from
+    /// a laptop to a couch-distance TV. 1.0 = default; clamped on read.
+    var tileScale: Double = 1.0
+
     init() {}
 
     init(from decoder: Decoder) throws {
@@ -59,6 +63,9 @@ struct AppSettings: Codable, Equatable, Sendable {
             .decodeIfPresent(Bool.self, forKey: .onlineCompatibilityLookups) ?? false
         interfaceStyle = try container
             .decodeIfPresent(InterfaceStyle.self, forKey: .interfaceStyle) ?? .classic
+        tileScale = TileMetrics.clamp(
+            try container.decodeIfPresent(Double.self, forKey: .tileScale) ?? 1.0
+        )
     }
 }
 

@@ -48,7 +48,11 @@ final class DualSenseTriggerController: ObservableObject {
     }
 
     /// Applies a profile to the pad (and remembers it, so a reconnect re-applies).
+    /// A no-op when the same profile is already applied — the activity-driven
+    /// refresh calls this every scan, and we don't want redundant hardware
+    /// writes (a tiny hitch risk) every few seconds.
     func apply(_ profile: TriggerProfile) {
+        guard profile != applied else { return }
         applied = profile
         write(profile)
     }

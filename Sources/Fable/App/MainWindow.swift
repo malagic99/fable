@@ -78,13 +78,15 @@ struct FableApp: App {
                     gameLauncher.onAbnormalExit = { [weak toastCenter] message in
                         toastCenter?.error(message)
                     }
-                    gameLauncher.onProcessLifecycle = { [weak metricsStore, weak triggerController] id, pid in
+                    gameLauncher.onProcessLifecycle = { [weak metricsStore, weak gameLauncher] id, pid in
                         if let pid {
                             metricsStore?.startTracking(id, rootPID: pid)
                         } else {
                             metricsStore?.stopTracking(id)
-                            // Clear any adaptive-trigger effect when the game exits.
-                            triggerController?.reset()
+                            // Re-match triggers to whatever's still running (a
+                            // Steam bottle keeps its profile while other games
+                            // run); clears only when the bottle goes idle.
+                            gameLauncher?.refreshTriggers()
                         }
                     }
                     // Quitting Steam is the moment to finish any install stuck
@@ -128,6 +130,11 @@ struct FableApp: App {
                     // Keep wine launch logs from eating the disk (a single
                     // spammy channel can balloon one log to tens of GB).
                     Task.detached(priority: .utility) { LogPruner.prune() }
+                }
+                // When detection notices a game start/stop (e.g. launched from
+                // inside Steam), re-match the DualSense trigger profile to it.
+                .onReceive(activityMonitor.$commands) { _ in
+                    gameLauncher.refreshTriggers()
                 }
                 .environmentObject(appState)
                 .environmentObject(bottleManager)
