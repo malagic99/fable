@@ -61,6 +61,18 @@ private struct GeneralSettingsTab: View {
             }
 
             Section {
+                Toggle("Fetch Cover Art Online", isOn: $settingsManager.settings.onlineArtwork)
+                TextField("SteamGridDB API Key (optional)", text: $settingsManager.settings.steamGridDBKey)
+                    .textFieldStyle(.roundedBorder)
+            } header: {
+                Text("Artwork")
+            } footer: {
+                Text("Covers come from Steam's public CDN (by the game's name or app ID — works for Epic/GOG copies of Steam titles too), cached on disk after one fetch. Add a free SteamGridDB key to cover titles Steam doesn't carry. Turn off to keep Fable fully offline; tiles fall back to each game's own icon.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Section {
                 LabeledContent("Saved Shaders",
                                value: shaderCacheStore.localBytes > 0 ? BottleDiskUsage.formatted(shaderCacheStore.localBytes) : "—")
                 if let external = shaderCacheStore.externalLocation {

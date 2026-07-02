@@ -47,6 +47,11 @@ enum AppPaths {
         applicationSupport.appending(path: "ShaderCache", directoryHint: .isDirectory)
     }
 
+    /// Downloaded cover art, one image per title (fetched at most once).
+    static var artwork: URL {
+        applicationSupport.appending(path: "Artwork", directoryHint: .isDirectory)
+    }
+
     static func ensureDirectoriesExist() throws {
         for url in [applicationSupport, bottles, components, downloads, logs] {
             try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)

@@ -4,10 +4,14 @@ import SwiftUI
 /// grid, each launchable with one click. Root of the Library section.
 struct LibraryView: View {
     @EnvironmentObject private var bottleManager: BottleManager
+    @EnvironmentObject private var settingsManager: SettingsManager
     @State private var searchText = ""
     @State private var isShowingHeroicImport = false
 
-    private let columns = [GridItem(.adaptive(minimum: 200, maximum: 260), spacing: 18)]
+    private var columns: [GridItem] {
+        let min = TileMetrics.cardMin(settingsManager.settings.tileScale)
+        return [GridItem(.adaptive(minimum: min, maximum: min * 1.3), spacing: 18)]
+    }
 
     private var allEntries: [LibraryEntry] {
         LibraryIndex.entries(from: bottleManager.bottles)
@@ -33,12 +37,21 @@ struct LibraryView: View {
                     ContentUnavailableView.search(text: searchText)
                 } else {
                     ScrollView {
+                        // Same inline resizer as the Bottles grid and Gamer wall.
+                        HStack {
+                            Spacer()
+                            TileSizeControl(scale: $settingsManager.settings.tileScale)
+                        }
+                        .padding(.horizontal, 24)
+                        .padding(.top, 14)
+
                         LazyVGrid(columns: columns, spacing: 18) {
                             ForEach(filteredEntries) { entry in
                                 LibraryGameItem(entry: entry)
                             }
                         }
-                        .padding(24)
+                        .padding([.horizontal, .bottom], 24)
+                        .padding(.top, 10)
                         .frame(maxWidth: .infinity, alignment: .topLeading)
                     }
                 }
@@ -90,11 +103,19 @@ private struct LibraryGameCard: View {
     let entry: LibraryEntry
     var isHovering = false
 
+    @EnvironmentObject private var bottleManager: BottleManager
+    @EnvironmentObject private var artworkStore: ArtworkStore
+    @EnvironmentObject private var settingsManager: SettingsManager
+
+    private var artwork: NSImage? { artworkStore.image(for: entry.game) }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .top) {
-                ExeIconView(bottle: entry.bottle, game: entry.game,
-                            size: 52, fallbackSymbol: "gamecontroller.fill")
+                if artwork == nil {
+                    ExeIconView(bottle: entry.bottle, game: entry.game,
+                                size: 52, fallbackSymbol: "gamecontroller.fill")
+                }
                 Spacer()
                 BackendBadge(backend: entry.effectiveBackend)
             }
@@ -107,13 +128,35 @@ private struct LibraryGameCard: View {
 
             Label(entry.bottle.name, systemImage: "wineglass")
                 .font(.caption)
-                .foregroundStyle(.secondary)
                 .lineLimit(1)
+                .foregroundStyle(artwork != nil ? AnyShapeStyle(.white.opacity(0.85)) : AnyShapeStyle(.secondary))
                 // Keep the bottom-right corner clear for the play button.
                 .padding(.trailing, 42)
         }
+        .foregroundStyle(artwork != nil ? AnyShapeStyle(.white) : AnyShapeStyle(.primary))
         .padding(16)
         .frame(maxWidth: .infinity, minHeight: 130, alignment: .leading)
+        .background {
+            if let artwork {
+                ZStack {
+                    Image(nsImage: artwork)
+                        .resizable()
+                        .scaledToFill()
+                    // Bottom-heavy scrim keeps title + bottle legible on any art.
+                    LinearGradient(
+                        colors: [.black.opacity(0.78), .black.opacity(0.25)],
+                        startPoint: .bottom, endPoint: .top
+                    )
+                }
+            }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: FableTheme.cardRadius))
         .fableCard(isHovering: isHovering)
+        .task(id: entry.id) {
+            await artworkStore.fetchIfNeeded(
+                game: entry.game, bottle: entry.bottle,
+                bottleManager: bottleManager, settings: settingsManager.settings
+            )
+        }
     }
 }

@@ -47,6 +47,15 @@ struct AppSettings: Codable, Equatable, Sendable {
     /// a laptop to a couch-distance TV. 1.0 = default; clamped on read.
     var tileScale: Double = 1.0
 
+    /// Fetch cover art online (Steam's public CDN, and SteamGridDB when a key
+    /// is set). On by default — it's what makes the cover wall a cover wall —
+    /// with an off switch for the network-averse.
+    var onlineArtwork: Bool = true
+
+    /// Optional SteamGridDB API key — fills in art for titles Steam's CDN
+    /// doesn't carry. Empty = skip SteamGridDB.
+    var steamGridDBKey: String = ""
+
     init() {}
 
     init(from decoder: Decoder) throws {
@@ -66,6 +75,8 @@ struct AppSettings: Codable, Equatable, Sendable {
         tileScale = TileMetrics.clamp(
             try container.decodeIfPresent(Double.self, forKey: .tileScale) ?? 1.0
         )
+        onlineArtwork = try container.decodeIfPresent(Bool.self, forKey: .onlineArtwork) ?? true
+        steamGridDBKey = try container.decodeIfPresent(String.self, forKey: .steamGridDBKey) ?? ""
     }
 }
 

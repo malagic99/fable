@@ -1,7 +1,9 @@
 import SwiftUI
 
-/// Bottle tile for the grid: cover art, name, status, and quick facts, with
-/// a hover lift. Surface + badge styling come from FableTheme.
+/// Bottle tile for the grid: cover art (fetched artwork when available, else
+/// the exe icon), name, status, and quick facts, with a hover lift. When art
+/// is present it fills the card behind a dark scrim so text and badges stay
+/// legible at any tile size.
 struct BottleCard: View {
     let bottle: Bottle
     /// Driven by the parent grid item so the card's lift and the
@@ -11,14 +13,22 @@ struct BottleCard: View {
     @EnvironmentObject private var diskUsageStore: BottleDiskUsageStore
     @EnvironmentObject private var bottleManager: BottleManager
     @EnvironmentObject private var gameLauncher: GameLauncher
+    @EnvironmentObject private var artworkStore: ArtworkStore
+    @EnvironmentObject private var settingsManager: SettingsManager
 
-    /// The bottle's first game — its icon becomes the card's cover art.
+    /// The bottle's first game — its artwork/icon becomes the card's cover.
     private var primaryGame: Game? { bottle.games.first }
+
+    private var artwork: NSImage? {
+        primaryGame.flatMap { artworkStore.image(for: $0) }
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .top) {
-                ExeIconView(bottle: bottle, game: primaryGame, size: 52)
+                if artwork == nil {
+                    ExeIconView(bottle: bottle, game: primaryGame, size: 52)
+                }
                 Spacer()
                 statusBadge
             }
@@ -42,11 +52,27 @@ struct BottleCard: View {
                 Spacer(minLength: 42)
             }
             .font(.caption)
-            .foregroundStyle(.secondary)
             .lineLimit(1)
+            .foregroundStyle(artwork != nil ? AnyShapeStyle(.white.opacity(0.85)) : AnyShapeStyle(.secondary))
         }
+        .foregroundStyle(artwork != nil ? AnyShapeStyle(.white) : AnyShapeStyle(.primary))
         .padding(16)
         .frame(maxWidth: .infinity, minHeight: 130, alignment: .leading)
+        .background {
+            if let artwork {
+                ZStack {
+                    Image(nsImage: artwork)
+                        .resizable()
+                        .scaledToFill()
+                    // Bottom-heavy scrim keeps name + facts legible on any art.
+                    LinearGradient(
+                        colors: [.black.opacity(0.78), .black.opacity(0.25)],
+                        startPoint: .bottom, endPoint: .top
+                    )
+                }
+            }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: FableTheme.cardRadius))
         .fableCard(isHovering: isHovering)
         .task {
             // First-visit scan. The store coalesces concurrent requests, and
@@ -58,10 +84,17 @@ struct BottleCard: View {
                 diskUsageStore.scan(bottle, manager: bottleManager)
             }
         }
+        .task(id: primaryGame?.executablePath) {
+            guard let primaryGame else { return }
+            await artworkStore.fetchIfNeeded(
+                game: primaryGame, bottle: bottle,
+                bottleManager: bottleManager, settings: settingsManager.settings
+            )
+        }
     }
 
     private var dot: some View {
-        Text("·").foregroundStyle(.tertiary)
+        Text("·").opacity(0.6)
     }
 
     @ViewBuilder
