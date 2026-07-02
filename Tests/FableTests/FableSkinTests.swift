@@ -21,7 +21,11 @@ import Testing
         #expect(Set(ids).count == ids.count)
         #expect(ids.contains("default"))
         #expect(ids.contains("midnight"))
+        #expect(ids.contains("pitch-black"))
         #expect(ids.contains("og-steam"))
+        // Pitch Black is a true-black OLED theme: near-opaque #000000 wash.
+        #expect(FableSkin.pitchBlack.windowTintHex == "#000000")
+        #expect(FableSkin.pitchBlack.windowTintOpacity >= 0.95)
         // Every built-in's colors must actually parse.
         for skin in FableSkin.builtIns {
             #expect(Color(hex: skin.gradientStartHex) != nil, Comment(rawValue: skin.name))

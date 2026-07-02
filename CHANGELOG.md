@@ -1,5 +1,20 @@
 # Changelog
 
+## v0.13.1 — 2026-07-02
+
+Late-night polish.
+
+- **Pitch Black theme** — a new built-in for late-night sessions: the window
+  wash is near-opaque `#000000`, so on an OLED/HDR panel the background pixels
+  switch fully off (true black, no backlight glow, easier on the eyes and the
+  battery). Calm blue accent, dim brand gradient to keep light emission low.
+  (Not an HDR *pipeline* — there's no honest lever for that — but on HDR/OLED
+  hardware pure black is genuinely black.)
+- **DualSense trigger editor no longer overflows** — the Trigger Lab is now
+  scrollable and the sheet is larger, so the two L2/R2 panels (up to three
+  sliders each in Weapon/Vibration mode) always fit instead of being clipped
+  off the bottom of the screen.
+
 ## v0.13.0 — 2026-07-02
 
 One wall for everything: native macOS games join the library.
