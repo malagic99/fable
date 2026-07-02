@@ -17,20 +17,20 @@ struct TriggerProfileSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 3) {
                 Text(title).font(.headline)
                 Text("A constant trigger feel you set — like Steam Input. A Wine game's own contextual trigger effects can't cross the Wine boundary, so these are static, not game-driven.")
                     .font(.caption).foregroundStyle(.secondary)
+                    // Wrap to the sheet width instead of forcing it wider (which
+                    // clipped the header at both edges).
+                    .fixedSize(horizontal: false, vertical: true)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
             .padding(16)
             Divider()
 
-            // Scrollable so the two panels — up to three sliders each in
-            // weapon/vibration mode — can never overflow the sheet.
-            ScrollView {
-                TriggerConfigView(profile: $profile)
-                    .padding(16)
-            }
+            TriggerConfigView(profile: $profile)
+                .padding(16)
 
             Divider()
             SheetActionBar {
@@ -42,6 +42,9 @@ struct TriggerProfileSheet: View {
                     .keyboardShortcut(.defaultAction)
             }
         }
-        .frame(minWidth: 620, idealWidth: 640, minHeight: 520, idealHeight: 560)
+        // Fixed width so text wraps and nothing overflows; height grows to the
+        // content (2 sliders in Feedback, 3 in Weapon/Vibration) so there's no
+        // dead space and no clipping.
+        .frame(width: 640)
     }
 }

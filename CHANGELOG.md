@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.13.4 — 2026-07-03
+
+- **Trigger editor layout fixed properly.** v0.13.1's attempt (a scroll view
+  plus a `minWidth/idealWidth` frame) backfired: the long descriptive caption
+  has a huge single-line intrinsic width, so a non-fixed width let the content
+  overflow both edges — clipping the header text ("Triggers" → "riggers") — and
+  the `minHeight` forced a tall sheet with a dead void under the panels. Now the
+  sheet is a **fixed 640 wide with a natural, content-sized height**: the
+  caption wraps, nothing clips, the two L2/R2 panels get comfortable room, and
+  the sheet is exactly as tall as the current mode needs (no empty space).
+
 ## v0.13.3 — 2026-07-03
 
 Adaptive triggers survive the game taking focus.
