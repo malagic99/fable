@@ -1,5 +1,29 @@
 # Changelog
 
+## v0.13.6 — 2026-07-03
+
+Lane 1 verification sweep (roadmap) + one fix that fell out of it.
+
+- **Fix: stale native-Steam manifests are no longer offered for import.** A
+  Steam `appmanifest_*.acf` can claim a game is installed (with a large
+  SizeOnDisk) while its `common/<installdir>` folder is an empty husk — Steam
+  then fails the launch silently. Observed live: Balatro's manifest said 85 MB,
+  the folder held one `.DS_Store`. The import list now checks the files
+  actually exist on disk (size-capped walk, early-out at 5 MB — a real install
+  costs a handful of stat calls).
+- **Verified: shader-cache restore.** Simulated a macOS purge of a live wine
+  Metal cache; Fable's startup restore detected it and healed it byte-identical
+  from the snapshot. Cache paths are keyed by GPU + driver build, not the boot
+  session, so a plain reboot shouldn't invalidate them. (The final word — no
+  first-run stutter after a real reboot — still needs a play session.)
+- **Verified: the D3DMetal onboarding step, live.** First time seen outside
+  tests: correctly detects the installed D3DMetal and shows the ready state.
+  (Cosmetic: version renders as "10.0_4" — underscore from the raw string.)
+- **Verified: `steam://rungameid` cold-start handoff.** From a fully cold
+  native Steam: client starts, auto-logs-in, and processes the launch in ~30 s.
+- **Closed: Z: drive self-heal watch.** No recurrence in any log since the heal
+  shipped; the bottle's `z:` symlink is healthy.
+
 ## v0.13.5 — 2026-07-03
 
 Trigger resistance now survives *any* app being frontmost — raw HID.

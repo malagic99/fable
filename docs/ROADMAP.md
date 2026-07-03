@@ -44,26 +44,32 @@ game is frontmost** (raw-HID bypass, v0.13.5).
 
 ---
 
-## Lane 1 — Harden & verify (highest value, do first)
+## Lane 1 — Harden & verify ✔ (swept 2026-07-03, v0.13.6)
 
-Real-world testing has caught every important bug so far. Closing these beats
-any new feature. Each is a *confirm-or-fix*, not a build.
+Real-world testing has caught every important bug so far. All five items are
+now closed or as closed as they can be without a reboot-and-play session.
 
 1. **✔ Trigger resistance survives game focus (v0.13.5).** Confirmed live — the
    raw-HID path carries the profile forward while the game is frontmost, and the
    1s keep-alive re-asserts it if anything clears it. The framework's background
    write gate is bypassed. See [[fable-dualsense-triggers]].
-2. **Shader-cache reuse across reboot.** Does Metal actually *reuse* a restored
-   D3DMetal pipeline cache after a reboot, or recompile anyway (cache-key
-   stability unknown)? Warm a game → reboot → relaunch → is first-run stutter
-   gone? If not, the feature is a benign no-op that needs a rethink.
-3. **D3DMetal onboarding step, seen once.** It has never been observed live
-   (existing install has `onboarding.hasCompleted = true`). Dry-run via
-   `OnboardingState.reset()` or a fresh account before trusting it.
-4. **Z: drive self-heal root cause.** Shipped without a confirmed log line; if
-   "can't find Z:" recurs, capture the actual wine log line and pin the cause.
-5. **Native-Steam launch reliability.** `steam://rungameid/` hands off to the
-   native client — confirm it launches (and focuses) reliably from a cold Steam.
+2. **✔ Shader-cache restore mechanics (v0.13.6).** Simulated a purge of a live
+   wine Metal cache → Fable's startup restore healed it byte-identical from the
+   snapshot. Cache dirs are keyed by GPU + driver build (`16777235_467`), not
+   the boot session, so a plain reboot shouldn't invalidate them. *Open tail:*
+   the no-stutter-after-real-reboot feel test — one warmed game, one reboot,
+   one play session.
+3. **✔ D3DMetal onboarding step, seen live (v0.13.6).** Wizard reset + relaunch:
+   detects the installed D3DMetal, shows the ready state, steps advance
+   correctly. Cosmetic: version prints as "10.0_4" (raw string underscore).
+4. **✔ Z: drive self-heal — no recurrence.** Zero "can't find Z:" lines in any
+   log since the heal shipped; `z:` symlink healthy. Closed as monitored; log
+   capture stays in place if it ever recurs.
+5. **✔ Native-Steam cold-start handoff (v0.13.6).** From a fully cold Steam,
+   `steam://rungameid/` starts the client, auto-logs-in, and processes the
+   launch in ~30 s. *Finding fixed in v0.13.6:* stale manifests (files deleted
+   outside Steam — a husk dir with just a .DS_Store) made Steam fail silently;
+   the import list now verifies files exist on disk before offering a game.
 
 ## Lane 2 — The moat: recipes + the Friend Kit
 
@@ -145,6 +151,6 @@ Small, additive, low-risk. Pull when a rough edge annoys.
 2. **Assemble a first Friend Kit and cold-start it** (Lane 2.7) — that's the
    goal, made tangible. A fresh account through the onboarding wizard, a
    preloaded Steam bottle, and the recipe set.
-3. **Verify the other Lane 1 unknowns** — shader-cache reuse across a reboot
-   (Lane 1.2), the D3DMetal onboarding step live (Lane 1.3), Z: drive root
-   cause (Lane 1.4), native-Steam launch reliability (Lane 1.5).
+3. **The one Lane 1 tail:** after the next real reboot, launch a warmed game
+   and feel for first-run stutter — that's the final word on shader-cache
+   reuse (Lane 1.2).

@@ -49,22 +49,43 @@ enum SteamAppManifest {
     /// client's `~/Library/Application Support/Steam` too): appid + display
     /// name per `appmanifest_*.acf`. Steam's own tooling entries (redists,
     /// SteamVR, …) are left in — the import UI lets the user choose.
-    static func installedApps(steamRoot: URL) -> [(appID: Int, name: String)] {
+    static func installedApps(steamRoot: URL) -> [(appID: Int, name: String, installDir: String?)] {
         let steamapps = steamRoot.appending(path: "steamapps", directoryHint: .isDirectory)
         guard let entries = try? FileManager.default.contentsOfDirectory(
             at: steamapps, includingPropertiesForKeys: nil
         ) else { return [] }
 
-        var apps: [(appID: Int, name: String)] = []
+        var apps: [(appID: Int, name: String, installDir: String?)] = []
         for acf in entries where acf.lastPathComponent.hasPrefix("appmanifest_")
             && acf.pathExtension == "acf" {
             guard let text = try? String(contentsOf: acf, encoding: .utf8),
                   let appID = value(of: "appid", in: text).flatMap(Int.init),
                   let name = value(of: "name", in: text), !name.isEmpty
             else { continue }
-            apps.append((appID, name))
+            apps.append((appID, name, value(of: "installdir", in: text)))
         }
         return apps.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+    }
+
+    /// Whether a manifest's game files genuinely exist on disk. A stale
+    /// `appmanifest_*.acf` can claim "installed" (with a large SizeOnDisk)
+    /// while `common/<installdir>` holds nothing but a .DS_Store — Steam then
+    /// fails the launch silently, so such entries must not be offered for
+    /// import. The walk early-outs once `threshold` bytes are seen, so a real
+    /// install costs a handful of stat calls.
+    static func hasGameFiles(installDir: String?, steamRoot: URL, threshold: Int64 = 5_000_000) -> Bool {
+        guard let installDir, !installDir.isEmpty else { return false }
+        let dir = steamRoot.appending(path: "steamapps/common", directoryHint: .isDirectory)
+            .appending(path: installDir, directoryHint: .isDirectory)
+        guard let enumerator = FileManager.default.enumerator(
+            at: dir, includingPropertiesForKeys: [.fileSizeKey]
+        ) else { return false }
+        var seen: Int64 = 0
+        for case let file as URL in enumerator {
+            seen += Int64((try? file.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0)
+            if seen >= threshold { return true }
+        }
+        return false
     }
 
     /// The native macOS Steam client's root, when present.
