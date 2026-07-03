@@ -1,5 +1,24 @@
 # Changelog
 
+## v0.15.2 — 2026-07-04
+
+Supervisor review, items A1–A3 + quick wins: the dedup sweep.
+
+- **One CoverCard.** The wine and native wall tiles were ~80% copy-paste; now
+  one shared `CoverCard` carries the cover, health dot, Playing chip,
+  selection ring, and hover — the two wrappers only decide what to feed it.
+- **One running rule.** The Fable-launched-OR-detected check lived in five
+  call sites; now `GameLauncher.isRunning(_:in:activity:)` is the single path.
+- **One confidence entry point.** `GameConfidence.assess(game:recipes:quirks:)`
+  replaces three inline copies of the recipe+quirk lookup.
+- **FilePicker grew up:** image/file-by-extension/folder/applications pickers
+  replace seven hand-rolled NSOpenPanel blocks (and retire the deprecated
+  `allowedFileTypes` API in the process).
+- **No more retroactive `URL: Identifiable`** — sheet items use a small
+  wrapper instead of a module-wide conformance.
+- The Classic sidebar section is now called **Games** (it shows the wall, not
+  the old "Library").
+
 ## v0.15.1 — 2026-07-03
 
 Supervisor review, item 1: the release ritual is now a script.

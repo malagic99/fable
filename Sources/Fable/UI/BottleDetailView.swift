@@ -25,9 +25,9 @@ struct BottleDetailView: View {
     @State private var renameText = ""
     @State private var isShowingDeleteConfirmation = false
     @State private var errorMessage: String?
-    @State private var installerExe: URL?
-    @State private var importExe: URL?
-    @State private var gogInstallerExe: URL?
+    @State private var installerExe: PickedExecutable?
+    @State private var importExe: PickedExecutable?
+    @State private var gogInstallerExe: PickedExecutable?
     @State private var isShowingWinetricks = false
     @State private var isShowingTriggers = false
     @State private var isRepairing = false
@@ -395,14 +395,14 @@ struct BottleDetailView: View {
             }
         }
         .sheet(item: $installerExe) { exe in
-            GameInstallerView(bottle: bottle, installerExe: exe)
+            GameInstallerView(bottle: bottle, installerExe: exe.url)
         }
         .sheet(item: $importExe) { exe in
-            ImportGameView(bottle: bottle, executable: exe)
+            ImportGameView(bottle: bottle, executable: exe.url)
         }
         .sheet(item: $gogInstallerExe) { exe in
-            GOGInstallView(bottle: bottle, installer: exe) { installer in
-                installerExe = installer
+            GOGInstallView(bottle: bottle, installer: exe.url) { installer in
+                installerExe = PickedExecutable(url: installer)
             }
         }
         .confirmationDialog(
@@ -696,9 +696,9 @@ struct BottleDetailView: View {
         // ones crash Wine's WoW64. Detection needs innoextract installed.
         Task {
             if await InnoExtractor.isInnoSetup(exe) {
-                gogInstallerExe = exe
+                gogInstallerExe = PickedExecutable(url: exe)
             } else {
-                installerExe = exe
+                installerExe = PickedExecutable(url: exe)
             }
         }
     }
@@ -718,12 +718,14 @@ struct BottleDetailView: View {
                 errorMessage = error.localizedDescription
             }
         } else {
-            importExe = exe
+            importExe = PickedExecutable(url: exe)
         }
     }
 }
 
-// Lets URL drive `.sheet(item:)` for the installer/import flows.
-extension URL: @retroactive Identifiable {
-    public var id: String { absoluteString }
+/// Wraps a picked executable so `.sheet(item:)` can drive the installer and
+/// import flows without a module-wide retroactive URL conformance.
+struct PickedExecutable: Identifiable {
+    let url: URL
+    var id: String { url.absoluteString }
 }

@@ -104,10 +104,7 @@ private struct AppearanceSettingsTab: View {
     }
 
     private func importTheme() {
-        let panel = NSOpenPanel()
-        panel.allowsMultipleSelection = false
-        panel.allowedFileTypes = ["fableskin"]
-        guard panel.runModal() == .OK, let url = panel.url else { return }
+        guard let url = FilePicker.chooseFile(extension: "fableskin") else { return }
         do {
             let skin = try themeStore.importSkin(from: url)
             applyTheme(id: skin.id)
@@ -130,10 +127,7 @@ private struct AppearanceSettingsTab: View {
     }
 
     private func pickBackground() {
-        let panel = NSOpenPanel()
-        panel.allowedContentTypes = [.image]
-        panel.allowsMultipleSelection = false
-        guard panel.runModal() == .OK, let url = panel.url else { return }
+        guard let url = FilePicker.chooseImage() else { return }
         do {
             settingsManager.settings.customBackgroundPath = try themeStore.storeCustomBackground(from: url)
         } catch {
@@ -188,11 +182,7 @@ private struct LibrarySettingsTab: View {
     }
 
     private func importRecipe() {
-        let panel = NSOpenPanel()
-        panel.allowsMultipleSelection = false
-        panel.canChooseDirectories = false
-        panel.allowedFileTypes = ["fablerecipe"]
-        guard panel.runModal() == .OK, let url = panel.url else { return }
+        guard let url = FilePicker.chooseFile(extension: "fablerecipe") else { return }
         do {
             let recipe = try userRecipeStore.importRecipe(from: url)
             toastCenter.success("Imported recipe: \(recipe.name)")
@@ -311,12 +301,7 @@ private struct AdvancedSettingsTab: View {
     }
 
     private func backUpShaders() {
-        let panel = NSOpenPanel()
-        panel.canChooseDirectories = true
-        panel.canChooseFiles = false
-        panel.allowsMultipleSelection = false
-        panel.prompt = "Back Up Here"
-        guard panel.runModal() == .OK, let dir = panel.url else { return }
+        guard let dir = FilePicker.chooseFolder(prompt: "Back Up Here") else { return }
         Task {
             await shaderCacheStore.snapshot()       // capture the latest warmed shaders first
             await shaderCacheStore.offload(to: dir)

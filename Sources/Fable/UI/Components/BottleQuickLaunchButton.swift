@@ -17,7 +17,7 @@ struct BottleQuickLaunchButton: View {
 
     private var isRunning: Bool {
         guard let primaryGame else { return false }
-        return gameLauncher.isRunning(primaryGame.id) || activityMonitor.isRunning(primaryGame, in: bottle)
+        return gameLauncher.isRunning(primaryGame, in: bottle, activity: activityMonitor)
     }
 
     var body: some View {

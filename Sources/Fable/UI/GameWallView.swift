@@ -63,14 +63,11 @@ struct GameWallView: View {
     }
 
     private func isRunning(_ entry: LibraryEntry) -> Bool {
-        gameLauncher.isRunning(entry.game.id) || activityMonitor.isRunning(entry.game, in: entry.bottle)
+        gameLauncher.isRunning(entry.game, in: entry.bottle, activity: activityMonitor)
     }
 
     private func confidence(_ entry: LibraryEntry) -> GameConfidence {
-        let hasRecipe = userRecipeStore.recipe(forExecutablePath: entry.game.executablePath) != nil
-            || GameRecipeCatalog.recipe(forExecutablePath: entry.game.executablePath) != nil
-        return .assess(hasRecipe: hasRecipe,
-                       findings: quirkService.findings(forGameNamed: entry.game.name))
+        .assess(entry.game, recipes: userRecipeStore, quirks: quirkService)
     }
 
     /// The wall sliced by the active grouping. `.none` = one untitled section.
@@ -270,12 +267,7 @@ struct GameWallView: View {
     }
 
     private func pickApp() {
-        let panel = NSOpenPanel()
-        panel.allowedContentTypes = [.applicationBundle]
-        panel.directoryURL = URL(filePath: "/Applications")
-        panel.allowsMultipleSelection = true
-        guard panel.runModal() == .OK else { return }
-        for url in panel.urls { nativeGames.addApp(at: url) }
+        for url in FilePicker.chooseApplications() { nativeGames.addApp(at: url) }
     }
 
     private func legendDot(_ color: Color, _ text: String) -> some View {
@@ -288,8 +280,7 @@ struct GameWallView: View {
 
 // MARK: - Cover card
 
-/// One game on the wall: cover art (fetched artwork when available, else the
-/// exe icon on the brand-dark surface), confidence dot, playing chip, name.
+/// One game on the wall — the shared CoverCard fed with wine-world facts.
 private struct GameCoverCard: View {
     let entry: LibraryEntry
     let isSelected: Bool
@@ -298,75 +289,26 @@ private struct GameCoverCard: View {
     @EnvironmentObject private var quirkService: QuirkService
     @EnvironmentObject private var userRecipeStore: UserRecipeStore
     @EnvironmentObject private var artworkStore: ArtworkStore
-    @EnvironmentObject private var gameStats: GameStatsStore
     @EnvironmentObject private var bottleManager: BottleManager
     @EnvironmentObject private var settingsManager: SettingsManager
-    @State private var isHovering = false
-
-    private var confidence: GameConfidence {
-        let hasRecipe = userRecipeStore.recipe(forExecutablePath: entry.game.executablePath) != nil
-            || GameRecipeCatalog.recipe(forExecutablePath: entry.game.executablePath) != nil
-        return .assess(hasRecipe: hasRecipe,
-                       findings: quirkService.findings(forGameNamed: entry.game.name))
-    }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 7) {
-            RoundedRectangle(cornerRadius: FableTheme.innerRadius)
-                .fill(FableTheme.surfaceRaised)
-                .overlay {
-                    if let art = artworkStore.image(for: entry.game) {
-                        Image(nsImage: art)
-                            .resizable()
-                            .scaledToFill()
-                    } else {
-                        ExeIconView(bottle: entry.bottle, game: entry.game,
-                                    size: 64, fallbackSymbol: "gamecontroller.fill")
-                    }
-                }
-                .clipShape(RoundedRectangle(cornerRadius: FableTheme.innerRadius))
-                .aspectRatio(3 / 4, contentMode: .fit)
-                .overlay(alignment: .topTrailing) {
-                    Circle()
-                        .fill(confidence.tint)
-                        .frame(width: 10, height: 10)
-                        .padding(4)
-                        .background(.black.opacity(0.45), in: Circle())
-                        .padding(6)
-                        .help(confidence.label)
-                }
-                .overlay(alignment: .bottomLeading) {
-                    if isRunning {
-                        Label("Playing", systemImage: "play.fill")
-                            .font(.caption2.weight(.medium))
-                            .padding(.horizontal, 7)
-                            .padding(.vertical, 3)
-                            .background(.black.opacity(0.55), in: Capsule())
-                            .foregroundStyle(.green)
-                            .padding(6)
-                    }
-                }
-
-            Text(entry.game.name)
-                .font(.callout.weight(.medium))
-                .lineLimit(1)
-                .padding(.horizontal, 2)
-        }
-        .padding(5)
-        .background(
-            RoundedRectangle(cornerRadius: FableTheme.cardRadius)
-                .fill(isSelected ? FableTheme.surfaceSelected : AnyShapeStyle(.clear))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: FableTheme.cardRadius)
-                .strokeBorder(isSelected ? Color.accentColor : .clear, lineWidth: 2)
-        )
-        .scaleEffect(isHovering ? 1.02 : 1)
-        .animation(.spring(duration: 0.25, bounce: 0.25), value: isHovering)
-        .onHover { isHovering = $0 }
-        .help("Click to inspect · double-click to play")
-        .contextMenu {
-            Button("Set Custom Cover…") { pickCustomCover() }
+        let confidence = GameConfidence.assess(entry.game, recipes: userRecipeStore, quirks: quirkService)
+        CoverCard(
+            artwork: artworkStore.image(for: entry.game),
+            name: entry.game.name,
+            healthDot: (confidence.tint, confidence.label),
+            isNative: false,
+            isSelected: isSelected,
+            isRunning: isRunning
+        ) {
+            ExeIconView(bottle: entry.bottle, game: entry.game,
+                        size: 64, fallbackSymbol: "gamecontroller.fill")
+        } menu: {
+            Button("Set Custom Cover…") {
+                guard let url = FilePicker.chooseImage() else { return }
+                artworkStore.setCustomArt(for: entry.game, from: url)
+            }
             Button("Refresh Cover") {
                 Task {
                     await artworkStore.refreshArt(
@@ -382,14 +324,6 @@ private struct GameCoverCard: View {
                 bottleManager: bottleManager, settings: settingsManager.settings
             )
         }
-    }
-
-    private func pickCustomCover() {
-        let panel = NSOpenPanel()
-        panel.allowedContentTypes = [.image]
-        panel.allowsMultipleSelection = false
-        guard panel.runModal() == .OK, let url = panel.url else { return }
-        artworkStore.setCustomArt(for: entry.game, from: url)
     }
 }
 
@@ -407,10 +341,7 @@ private struct GameInspector: View {
     @State private var isShowingTune = false
 
     private var confidence: GameConfidence {
-        let hasRecipe = userRecipeStore.recipe(forExecutablePath: entry.game.executablePath) != nil
-            || GameRecipeCatalog.recipe(forExecutablePath: entry.game.executablePath) != nil
-        return .assess(hasRecipe: hasRecipe,
-                       findings: quirkService.findings(forGameNamed: entry.game.name))
+        .assess(entry.game, recipes: userRecipeStore, quirks: quirkService)
     }
 
     private var triggers: TriggerProfile {
@@ -535,92 +466,46 @@ private struct GameInspector: View {
 
 // MARK: - Native games
 
-/// A native macOS game on the wall — same cover language, a blue "native" dot
-/// instead of a Wine confidence verdict (it just runs).
+/// A native macOS game on the wall — the shared CoverCard, no health dot
+/// (platform is not a verdict), the  glyph by the name instead.
 private struct NativeCoverCard: View {
     let game: NativeGame
     let isSelected: Bool
     let isRunning: Bool
 
     @EnvironmentObject private var artworkStore: ArtworkStore
-    @EnvironmentObject private var gameStats: GameStatsStore
     @EnvironmentObject private var nativeGames: NativeGamesStore
     @EnvironmentObject private var settingsManager: SettingsManager
-    @State private var isHovering = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 7) {
-            RoundedRectangle(cornerRadius: FableTheme.innerRadius)
-                .fill(FableTheme.surfaceRaised)
-                .overlay {
-                    if let art = artworkStore.image(named: game.name) {
-                        Image(nsImage: art)
-                            .resizable()
-                            .scaledToFill()
-                    } else if let path = game.appPath {
-                        Image(nsImage: NSWorkspace.shared.icon(forFile: path))
-                            .resizable()
-                            .interpolation(.high)
-                            .frame(width: 64, height: 64)
-                    } else {
-                        Image(systemName: "applelogo")
-                            .font(.system(size: 30))
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                .clipShape(RoundedRectangle(cornerRadius: FableTheme.innerRadius))
-                .aspectRatio(3 / 4, contentMode: .fit)
-                .overlay(alignment: .bottomLeading) {
-                    if isRunning {
-                        Label("Playing", systemImage: "play.fill")
-                            .font(.caption2.weight(.medium))
-                            .padding(.horizontal, 7)
-                            .padding(.vertical, 3)
-                            .background(.black.opacity(0.55), in: Capsule())
-                            .foregroundStyle(.green)
-                            .padding(6)
-                    }
-                }
-
-            HStack(spacing: 4) {
+        CoverCard(
+            artwork: artworkStore.image(named: game.name),
+            name: game.name,
+            healthDot: nil,
+            isNative: true,
+            isSelected: isSelected,
+            isRunning: isRunning
+        ) {
+            if let path = game.appPath {
+                Image(nsImage: NSWorkspace.shared.icon(forFile: path))
+                    .resizable()
+                    .interpolation(.high)
+                    .frame(width: 64, height: 64)
+            } else {
                 Image(systemName: "applelogo")
-                    .font(.caption2)
+                    .font(.system(size: 30))
                     .foregroundStyle(.secondary)
-                    .help("Native macOS — no Wine involved")
-                Text(game.name)
-                    .font(.callout.weight(.medium))
-                    .lineLimit(1)
             }
-            .padding(.horizontal, 2)
-        }
-        .padding(5)
-        .background(
-            RoundedRectangle(cornerRadius: FableTheme.cardRadius)
-                .fill(isSelected ? FableTheme.surfaceSelected : AnyShapeStyle(.clear))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: FableTheme.cardRadius)
-                .strokeBorder(isSelected ? Color.accentColor : .clear, lineWidth: 2)
-        )
-        .scaleEffect(isHovering ? 1.02 : 1)
-        .animation(.spring(duration: 0.25, bounce: 0.25), value: isHovering)
-        .onHover { isHovering = $0 }
-        .help("Click to inspect · double-click to play")
-        .contextMenu {
-            Button("Set Custom Cover…") { pickCustomCover() }
+        } menu: {
+            Button("Set Custom Cover…") {
+                guard let url = FilePicker.chooseImage() else { return }
+                artworkStore.setCustomArt(named: game.name, from: url)
+            }
             Button("Remove from Library", role: .destructive) { nativeGames.remove(game) }
         }
         .task(id: game.id) {
             await artworkStore.fetchIfNeeded(native: game, settings: settingsManager.settings)
         }
-    }
-
-    private func pickCustomCover() {
-        let panel = NSOpenPanel()
-        panel.allowedContentTypes = [.image]
-        panel.allowsMultipleSelection = false
-        guard panel.runModal() == .OK, let url = panel.url else { return }
-        artworkStore.setCustomArt(named: game.name, from: url)
     }
 }
 
