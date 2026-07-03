@@ -28,7 +28,7 @@ import Testing
         try fm.createDirectory(at: steamapps, withIntermediateDirectories: true)
         defer { try? fm.removeItem(at: root) }
         try #"""
-        "AppState" { "appid" "870780"  "name" "Control Ultimate Edition" }
+        "AppState" { "appid" "870780"  "name" "Control Ultimate Edition"  "installdir" "Control" }
         """#.write(to: steamapps.appending(path: "appmanifest_870780.acf"), atomically: true, encoding: .utf8)
         try #"""
         "AppState" { "appid" "264710"  "name" "Subnautica" }
@@ -37,7 +37,33 @@ import Testing
         let apps = SteamAppManifest.installedApps(steamRoot: root)
         #expect(apps.count == 2)
         #expect(apps.first?.name == "Control Ultimate Edition")   // sorted
+        #expect(apps.first?.installDir == "Control")
         #expect(apps.map(\.appID).contains(264710))
+    }
+
+    @Test
+    func staleManifestsWithoutGameFilesAreDetected() throws {
+        // A manifest can claim "installed" while common/<installdir> is a husk
+        // (observed live: Balatro's dir held only a .DS_Store while the acf
+        // said 85 MB) — hasGameFiles must reject those and accept real ones.
+        let root = fm.temporaryDirectory.appending(path: "nsteam-\(UUID().uuidString)", directoryHint: .isDirectory)
+        let common = root.appending(path: "steamapps/common", directoryHint: .isDirectory)
+        defer { try? fm.removeItem(at: root) }
+
+        // Husk: directory with a token file, far under the threshold.
+        let husk = common.appending(path: "Husk", directoryHint: .isDirectory)
+        try fm.createDirectory(at: husk, withIntermediateDirectories: true)
+        try Data("junk".utf8).write(to: husk.appending(path: ".DS_Store"))
+
+        // Real install: content past the threshold.
+        let real = common.appending(path: "RealGame", directoryHint: .isDirectory)
+        try fm.createDirectory(at: real, withIntermediateDirectories: true)
+        try Data(count: 6_000_000).write(to: real.appending(path: "game.bin"))
+
+        #expect(!SteamAppManifest.hasGameFiles(installDir: "Husk", steamRoot: root))
+        #expect(SteamAppManifest.hasGameFiles(installDir: "RealGame", steamRoot: root))
+        #expect(!SteamAppManifest.hasGameFiles(installDir: "Nonexistent", steamRoot: root))
+        #expect(!SteamAppManifest.hasGameFiles(installDir: nil, steamRoot: root))
     }
 
     @Test

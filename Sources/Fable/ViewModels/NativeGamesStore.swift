@@ -20,13 +20,18 @@ final class NativeGamesStore: ObservableObject {
     // MARK: Import
 
     /// Installed games in the native Steam client not yet imported.
-    /// Steam's own tooling (redists, SteamVR, controller configs) is filtered.
+    /// Steam's own tooling (redists, SteamVR, controller configs) is filtered,
+    /// as are stale manifests whose game files are gone from disk — Steam
+    /// fails those launches silently, so offering them would be a lie.
     func availableNativeSteamGames() -> [(appID: Int, name: String)] {
         guard let root = SteamAppManifest.nativeSteamRoot() else { return [] }
         let imported = Set(games.compactMap(\.steamAppID))
-        return SteamAppManifest.installedApps(steamRoot: root).filter { app in
-            !imported.contains(app.appID) && !Self.isSteamTooling(app.name)
-        }
+        return SteamAppManifest.installedApps(steamRoot: root)
+            .filter { app in
+                !imported.contains(app.appID) && !Self.isSteamTooling(app.name)
+                    && SteamAppManifest.hasGameFiles(installDir: app.installDir, steamRoot: root)
+            }
+            .map { (appID: $0.appID, name: $0.name) }
     }
 
     func importNativeSteamGames(_ apps: [(appID: Int, name: String)]) {
