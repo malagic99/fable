@@ -1,5 +1,18 @@
 # Changelog
 
+## v0.14.2 — 2026-07-03
+
+Tune tunes what the inspector shows. (UI review, priority 3.)
+
+- **The Tune sheet gained a Performance section** — Frame Rate Cap and MetalFX,
+  the two facts the inspector displays but previously offered no way to change
+  from there (they were three levels deep behind Advanced Mode). Honestly
+  labeled: these are shared by every game in the bottle.
+- **Trigger sheet titles unified** ("DualSense Triggers — <name>" everywhere).
+- **The bottle page's trigger row no longer changes meaning with state:**
+  "DualSense Triggers" + On/Off value + a constant "Configure…" verb, instead
+  of a button whose label flipped between status and action.
+
 ## v0.14.1 — 2026-07-03
 
 Settings regrouped by intent. (UI review, priority 2.)

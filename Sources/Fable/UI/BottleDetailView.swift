@@ -143,12 +143,17 @@ struct BottleDetailView: View {
 
             Section {
                 ControllerStatusView(bottle: bottle)
-                Button {
-                    isShowingTriggers = true
+                // State as value, action as verb — the label never changes
+                // meaning with state (UI review).
+                LabeledContent {
+                    HStack(spacing: 8) {
+                        Text(bottle.triggerProfile.isActive ? "On" : "Off")
+                            .foregroundStyle(bottle.triggerProfile.isActive ? .primary : .secondary)
+                        Button("Configure…") { isShowingTriggers = true }
+                            .controlSize(.small)
+                    }
                 } label: {
-                    Label(bottle.triggerProfile.isActive
-                          ? "DualSense Triggers: On" : "Configure DualSense Triggers…",
-                          systemImage: "l2.rectangle.roundedbottom")
+                    Label("DualSense Triggers", systemImage: "l2.rectangle.roundedbottom")
                 }
                 .help("Set adaptive-trigger resistance (weapon-break, brake, etc.) for this bottle's games")
             } header: {
