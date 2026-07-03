@@ -28,10 +28,37 @@ enum ProcessActivity {
     /// path) AND the game's exe basename. Requiring *both* avoids matching an
     /// unrelated process that merely names the bottle directory (e.g. a tool's
     /// `--dir` argument that mentions the bottle but not the exe).
-    static func isRunning(commands: [String], prefixToken: String, exeBasename: String) -> Bool {
+    ///
+    /// A game launched from INSIDE Steam runs with a Windows-style command
+    /// line (`C:\…\steamapps\common\…\game.exe`) that names the exe but not
+    /// the bottle's unix path — so `windowsPath` (derived from the game's
+    /// drive_c-relative install path) is accepted as an alternative match.
+    /// The full install path is specific enough to stand without the UUID.
+    static func isRunning(
+        commands: [String], prefixToken: String, exeBasename: String,
+        windowsPath: String? = nil
+    ) -> Bool {
         let token = prefixToken.lowercased()
         let exe = exeBasename.lowercased()
         guard !token.isEmpty, !exe.isEmpty else { return false }
-        return commands.contains { $0.contains(token) && $0.contains(exe) }
+        let winVariants = windowsPath.map { win -> [String] in
+            let lower = win.lowercased()
+            return [lower, lower.replacingOccurrences(of: "\\", with: "/")]
+        } ?? []
+        return commands.contains { command in
+            (command.contains(token) && command.contains(exe))
+                || winVariants.contains { command.contains($0) }
+        }
+    }
+
+    /// The game's Windows-style path (`c:\…\game.exe`) derived from its unix
+    /// exe path inside the bottle — how the process appears when Steam (not
+    /// Fable) launched it. nil for exes outside drive_c.
+    static func windowsPath(fromExecutablePath path: String) -> String? {
+        let normalized = path.replacingOccurrences(of: "\\", with: "/")
+        guard let range = normalized.range(of: "/drive_c/", options: .caseInsensitive) else { return nil }
+        let relative = normalized[range.upperBound...]
+        guard !relative.isEmpty else { return nil }
+        return "c:\\" + relative.replacingOccurrences(of: "/", with: "\\")
     }
 }

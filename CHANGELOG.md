@@ -1,5 +1,29 @@
 # Changelog
 
+## v0.15.0 — 2026-07-03
+
+The library learns your history — and two long-standing wrongs put right.
+
+- **Playtime + last played.** Fable-launched sessions accumulate real playtime
+  (launch → exit); the inspector shows "Playtime" and "Last played". Native
+  launches hand off to the platform, so they honestly track only the moment
+  ("last played"), never a guessed duration.
+- **Per-game notes.** A freeform notes field in the Tune sheet — mod setup,
+  launch quirks, where you left off. Shown in the inspector when present.
+- **Group the wall.** Wall options (⋯) → Group By: Platform (Windows vs native
+  Mac), Health (verified / tweaks / won't run / untested), or Bottle — which
+  doubles as the account view when two Steam accounts live in separate bottles.
+- **Fetch Missing Covers** (also under ⋯) retries the artwork pipeline for
+  every game without a cover, clearing this session's "no art" marks first.
+- **Fixed: custom covers for the Steam tile no longer vanish on relaunch.**
+  The Steam client skips art *fetching*, but the skip also skipped reading the
+  saved custom cover back from disk — set once, gone next launch. Custom
+  covers now persist for every title, including ones with nothing to fetch.
+- **Fixed: a game launched from inside Steam now shows as running** (not just
+  Steam). Steam-spawned processes carry Windows-style paths with no bottle
+  path in them, so the old unix-path match never saw them; detection now also
+  matches the game's drive_c-derived Windows path.
+
 ## v0.14.3 — 2026-07-03
 
 Visual harmonization. (UI review, final pass.)

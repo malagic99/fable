@@ -15,11 +15,23 @@ struct GameWallView: View {
     @EnvironmentObject private var activityMonitor: ActivityMonitor
     @EnvironmentObject private var settingsManager: SettingsManager
     @EnvironmentObject private var nativeGames: NativeGamesStore
+    @EnvironmentObject private var quirkService: QuirkService
+    @EnvironmentObject private var userRecipeStore: UserRecipeStore
+    @EnvironmentObject private var artworkStore: ArtworkStore
+    @EnvironmentObject private var gameStats: GameStatsStore
 
     /// The wall holds both worlds; selection distinguishes them.
     private enum Selection: Hashable {
         case wine(LibraryEntry.ID)
         case native(NativeGame.ID)
+    }
+
+    /// One titled slice of the wall under the active grouping.
+    private struct WallSection: Identifiable {
+        let id: String
+        let title: String?
+        var wine: [LibraryEntry] = []
+        var native: [NativeGame] = []
     }
 
     @State private var searchText = ""
@@ -52,6 +64,67 @@ struct GameWallView: View {
 
     private func isRunning(_ entry: LibraryEntry) -> Bool {
         gameLauncher.isRunning(entry.game.id) || activityMonitor.isRunning(entry.game, in: entry.bottle)
+    }
+
+    private func confidence(_ entry: LibraryEntry) -> GameConfidence {
+        let hasRecipe = userRecipeStore.recipe(forExecutablePath: entry.game.executablePath) != nil
+            || GameRecipeCatalog.recipe(forExecutablePath: entry.game.executablePath) != nil
+        return .assess(hasRecipe: hasRecipe,
+                       findings: quirkService.findings(forGameNamed: entry.game.name))
+    }
+
+    /// The wall sliced by the active grouping. `.none` = one untitled section.
+    private var sections: [WallSection] {
+        switch settingsManager.settings.libraryGrouping {
+        case .none:
+            return [WallSection(id: "all", title: nil, wine: entries, native: nativeEntries)]
+        case .platform:
+            return [
+                WallSection(id: "wine", title: "Windows", wine: entries),
+                WallSection(id: "native", title: "Native Mac", native: nativeEntries),
+            ].filter { !$0.wine.isEmpty || !$0.native.isEmpty }
+        case .health:
+            var byVerdict: [GameConfidence: [LibraryEntry]] = [:]
+            for entry in entries { byVerdict[confidence(entry), default: []].append(entry) }
+            var result: [WallSection] = GameConfidence.allCases.compactMap { verdict in
+                guard let games = byVerdict[verdict], !games.isEmpty else { return nil }
+                return WallSection(id: verdict.label, title: verdict.label.capitalized, wine: games)
+            }
+            if !nativeEntries.isEmpty {
+                result.append(WallSection(id: "native", title: "Native Mac", native: nativeEntries))
+            }
+            return result
+        case .bottle:
+            // Bottle doubles as the account boundary (two Steam accounts =
+            // two bottles), so this is also the "by account" view.
+            var result: [WallSection] = bottleManager.bottles.compactMap { bottle in
+                let games = entries.filter { $0.bottle.id == bottle.id }
+                guard !games.isEmpty else { return nil }
+                return WallSection(id: bottle.id.uuidString, title: bottle.name, wine: games)
+            }
+            if !nativeEntries.isEmpty {
+                result.append(WallSection(id: "native", title: "Native Mac", native: nativeEntries))
+            }
+            return result
+        }
+    }
+
+    /// Re-runs the artwork pipeline for every game that has no cover yet.
+    private func fetchMissingCovers() {
+        artworkStore.clearMisses()
+        for entry in LibraryIndex.entries(from: bottleManager.bottles) where artworkStore.image(for: entry.game) == nil {
+            let entry = entry
+            Task {
+                await artworkStore.fetchIfNeeded(
+                    game: entry.game, bottle: entry.bottle,
+                    bottleManager: bottleManager, settings: settingsManager.settings
+                )
+            }
+        }
+        for game in nativeGames.games where artworkStore.image(named: game.name) == nil {
+            let game = game
+            Task { await artworkStore.fetchIfNeeded(native: game, settings: settingsManager.settings) }
+        }
     }
 
     var body: some View {
@@ -95,6 +168,25 @@ struct GameWallView: View {
                         }
                         .padding(12)
                     }
+                    // Wall-wide actions: how it's sectioned, and cover upkeep.
+                    Menu {
+                        Picker("Group By", selection: $settingsManager.settings.libraryGrouping) {
+                            ForEach(LibraryGrouping.allCases) { grouping in
+                                Text(grouping.displayName).tag(grouping)
+                            }
+                        }
+                        Divider()
+                        Button("Fetch Missing Covers", systemImage: "photo.on.rectangle.angled") {
+                            fetchMissingCovers()
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
+                            .foregroundStyle(.secondary)
+                    }
+                    .menuStyle(.borderlessButton)
+                    .menuIndicator(.hidden)
+                    .fixedSize()
+                    .help("Wall options")
                 }
                 .padding(.top, 16)
 
@@ -104,35 +196,48 @@ struct GameWallView: View {
                 } else {
                     ScrollView {
                         let coverMin = TileMetrics.coverMin(settingsManager.settings.tileScale)
-                        LazyVGrid(columns: [GridItem(.adaptive(minimum: coverMin, maximum: coverMin * 1.25), spacing: 16)],
-                                  spacing: 16) {
-                            ForEach(entries) { entry in
-                                GameCoverCard(
-                                    entry: entry,
-                                    isSelected: selection == .wine(entry.id) || (selection == nil && entry.id == selectedWine?.id),
-                                    isRunning: isRunning(entry)
-                                )
-                                .onTapGesture(count: 2) {
-                                    Task { try? await gameLauncher.launchSmart(entry.game, in: entry.bottle) }
+                        let columns = [GridItem(.adaptive(minimum: coverMin, maximum: coverMin * 1.25), spacing: 16)]
+                        LazyVStack(alignment: .leading, spacing: 18) {
+                            ForEach(sections) { section in
+                                if let title = section.title {
+                                    Text(title)
+                                        .font(.headline)
+                                        .foregroundStyle(.secondary)
                                 }
-                                .onTapGesture { selection = .wine(entry.id) }
+                                LazyVGrid(columns: columns, spacing: 16) {
+                                    ForEach(section.wine) { entry in
+                                        GameCoverCard(
+                                            entry: entry,
+                                            isSelected: selection == .wine(entry.id) || (selection == nil && entry.id == selectedWine?.id),
+                                            isRunning: isRunning(entry)
+                                        )
+                                        .onTapGesture(count: 2) {
+                                            Task { try? await gameLauncher.launchSmart(entry.game, in: entry.bottle) }
+                                        }
+                                        .onTapGesture { selection = .wine(entry.id) }
+                                    }
+                                    ForEach(section.native) { game in
+                                        NativeCoverCard(
+                                            game: game,
+                                            isSelected: selection == .native(game.id),
+                                            isRunning: nativeGames.isRunning(game)
+                                        )
+                                        .onTapGesture(count: 2) { launchNative(game) }
+                                        .onTapGesture { selection = .native(game.id) }
+                                    }
+                                    // The add tile lives in the last section so the
+                                    // grid always ends with a way in.
+                                    if section.id == sections.last?.id {
+                                        AddGameTile(
+                                            hasNativeSteam: SteamAppManifest.nativeSteamRoot() != nil,
+                                            importSteam: { isShowingSteamImport = true },
+                                            importHeroic: { isShowingHeroicImport = true },
+                                            addApp: { pickApp() },
+                                            openBottles: openBottles
+                                        )
+                                    }
+                                }
                             }
-                            ForEach(nativeEntries) { game in
-                                NativeCoverCard(
-                                    game: game,
-                                    isSelected: selection == .native(game.id),
-                                    isRunning: nativeGames.isRunning(game)
-                                )
-                                .onTapGesture(count: 2) { nativeGames.launch(game) }
-                                .onTapGesture { selection = .native(game.id) }
-                            }
-                            AddGameTile(
-                                hasNativeSteam: SteamAppManifest.nativeSteamRoot() != nil,
-                                importSteam: { isShowingSteamImport = true },
-                                importHeroic: { isShowingHeroicImport = true },
-                                addApp: { pickApp() },
-                                openBottles: openBottles
-                            )
                         }
                         .padding(.vertical, 4)
                     }
@@ -156,6 +261,12 @@ struct GameWallView: View {
         .sheet(isPresented: $isShowingHeroicImport) {
             HeroicImportView()
         }
+    }
+
+    /// Native launches hand off to the platform, so only the moment is known.
+    private func launchNative(_ game: NativeGame) {
+        gameStats.touch(game.id)
+        nativeGames.launch(game)
     }
 
     private func pickApp() {
@@ -187,6 +298,7 @@ private struct GameCoverCard: View {
     @EnvironmentObject private var quirkService: QuirkService
     @EnvironmentObject private var userRecipeStore: UserRecipeStore
     @EnvironmentObject private var artworkStore: ArtworkStore
+    @EnvironmentObject private var gameStats: GameStatsStore
     @EnvironmentObject private var bottleManager: BottleManager
     @EnvironmentObject private var settingsManager: SettingsManager
     @State private var isHovering = false
@@ -291,6 +403,7 @@ private struct GameInspector: View {
 
     @EnvironmentObject private var quirkService: QuirkService
     @EnvironmentObject private var userRecipeStore: UserRecipeStore
+    @EnvironmentObject private var gameStats: GameStatsStore
     @State private var isShowingTune = false
 
     private var confidence: GameConfidence {
@@ -361,6 +474,36 @@ private struct GameInspector: View {
                 }
             }
 
+            let stat = gameStats.stats[entry.game.id]
+            if let stat, stat.lastPlayedAt != nil || stat.totalSeconds >= 60 {
+                Divider()
+                Text("History")
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(.tertiary)
+                VStack(alignment: .leading, spacing: 9) {
+                    if let playtime = GameStatsStore.formattedPlaytime(seconds: stat.totalSeconds) {
+                        fact("Playtime") { Text(playtime) }
+                    }
+                    if let last = stat.lastPlayedAt {
+                        fact("Last played") {
+                            Text(last, format: .relative(presentation: .named))
+                        }
+                    }
+                }
+                .font(.callout)
+            }
+
+            if let stat, !stat.notes.isEmpty {
+                Divider()
+                Text("Notes")
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(.tertiary)
+                Text(stat.notes)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(4)
+            }
+
             Spacer()
         }
         .padding(14)
@@ -400,6 +543,7 @@ private struct NativeCoverCard: View {
     let isRunning: Bool
 
     @EnvironmentObject private var artworkStore: ArtworkStore
+    @EnvironmentObject private var gameStats: GameStatsStore
     @EnvironmentObject private var nativeGames: NativeGamesStore
     @EnvironmentObject private var settingsManager: SettingsManager
     @State private var isHovering = false
@@ -487,6 +631,7 @@ private struct NativeInspector: View {
     let isRunning: Bool
 
     @EnvironmentObject private var nativeGames: NativeGamesStore
+    @EnvironmentObject private var gameStats: GameStatsStore
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -500,6 +645,7 @@ private struct NativeInspector: View {
             }
 
             Button {
+                gameStats.touch(game.id)
                 nativeGames.launch(game)
             } label: {
                 Label(isRunning ? "Running" : "Play", systemImage: "play.fill")
@@ -526,6 +672,15 @@ private struct NativeInspector: View {
                  : "A regular Mac app — Fable just launches it.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
+
+            if let last = gameStats.stats[game.id]?.lastPlayedAt {
+                HStack {
+                    Text("Last played").foregroundStyle(.secondary)
+                    Spacer()
+                    Text(last, format: .relative(presentation: .named))
+                }
+                .font(.callout)
+            }
 
             Spacer()
         }
