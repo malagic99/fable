@@ -14,8 +14,12 @@ struct GameSettingsView: View {
     @State private var environmentText = ""
     @State private var backendOverride: GraphicsBackend? = nil
     @State private var triggerOverride: TriggerProfile? = nil
+    @State private var performance = PerformanceOptions()
     @State private var isShowingTriggers = false
     @State private var errorMessage: String?
+
+    /// Whether the effective backend can drive MetalFX (a D3DMetal feature).
+    private var effectiveBackend: GraphicsBackend { backendOverride ?? bottle.graphicsBackend }
 
     /// Tag used by the "inherit" row in the picker. None of the real
     /// GraphicsBackend cases can be nil, so this stand-in is safe.
@@ -74,6 +78,32 @@ struct GameSettingsView: View {
                         .foregroundStyle(.secondary)
                 }
 
+                // The inspector shows Frame cap + MetalFX; Tune must be able to
+                // change them (UI review P3 — no more "facts you can't touch").
+                // These live on the bottle, and the section says so honestly.
+                Section {
+                    Picker("Frame Rate Cap", selection: Binding(
+                        get: { performance.frameRateCap ?? 0 },
+                        set: { performance.frameRateCap = $0 == 0 ? nil : $0 }
+                    )) {
+                        Text("Uncapped").tag(0)
+                        Text("120 fps").tag(120)
+                        Text("60 fps").tag(60)
+                        Text("30 fps").tag(30)
+                    }
+                    .disabled(effectiveBackend == .off)
+
+                    if effectiveBackend == .gptk || effectiveBackend == .sikarugir {
+                        Toggle("MetalFX Upscaling", isOn: $performance.metalFXUpscaling)
+                    }
+                } header: {
+                    Text("Performance")
+                } footer: {
+                    Text("Shared by every game in “\(bottle.name)” — performance is set per bottle.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
                 Section {
                     Toggle("Override bottle's DualSense triggers", isOn: Binding(
                         get: { triggerOverride != nil },
@@ -124,16 +154,17 @@ struct GameSettingsView: View {
                     .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
             }
         }
-        .frame(width: 460, height: 360)
+        .frame(width: 460, height: 440)
         .onAppear {
             name = game.name
             arguments = game.arguments
             environmentText = ArgumentTokenizer.lines(fromEnvironment: game.environment)
             backendOverride = game.graphicsBackend
             triggerOverride = game.triggerProfile
+            performance = bottle.performance
         }
         .sheet(isPresented: $isShowingTriggers) {
-            TriggerProfileSheet(title: "Triggers — \(game.name)",
+            TriggerProfileSheet(title: "DualSense Triggers — \(game.name)",
                                 profile: triggerOverride ?? bottle.triggerProfile) { profile in
                 triggerOverride = profile
             }
@@ -169,6 +200,9 @@ struct GameSettingsView: View {
         updated.triggerProfile = triggerOverride
         do {
             try bottleManager.updateGame(updated, in: bottle.id)
+            if performance != bottle.performance {
+                try bottleManager.setPerformance(performance, for: bottle.id)
+            }
             dismiss()
         } catch {
             errorMessage = error.localizedDescription
