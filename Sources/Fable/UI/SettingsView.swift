@@ -1,14 +1,20 @@
 import SwiftUI
 
-/// Settings section: General (new-bottle defaults, folders),
-/// Performance (DXMT defaults), About.
+/// Settings, grouped by intent (UI review P2):
+/// Appearance (how Fable looks) · Library (how games are described) ·
+/// Defaults (what new bottles get) · Advanced (storage + escape hatches) ·
+/// About (version + update).
 struct SettingsView: View {
     var body: some View {
         TabView {
-            GeneralSettingsTab()
-                .tabItem { Label("General", systemImage: "gearshape") }
-            PerformanceSettingsTab()
-                .tabItem { Label("Performance", systemImage: "speedometer") }
+            AppearanceSettingsTab()
+                .tabItem { Label("Appearance", systemImage: "paintbrush") }
+            LibrarySettingsTab()
+                .tabItem { Label("Library", systemImage: "square.grid.2x2") }
+            DefaultsSettingsTab()
+                .tabItem { Label("Defaults", systemImage: "slider.horizontal.3") }
+            AdvancedSettingsTab()
+                .tabItem { Label("Advanced", systemImage: "wrench.and.screwdriver") }
             AboutTab()
                 .tabItem { Label("About", systemImage: "info.circle") }
         }
@@ -16,10 +22,10 @@ struct SettingsView: View {
     }
 }
 
-private struct GeneralSettingsTab: View {
+// MARK: - Appearance
+
+private struct AppearanceSettingsTab: View {
     @EnvironmentObject private var settingsManager: SettingsManager
-    @EnvironmentObject private var userRecipeStore: UserRecipeStore
-    @EnvironmentObject private var shaderCacheStore: ShaderCacheStore
     @EnvironmentObject private var themeStore: ThemeStore
     @EnvironmentObject private var toastCenter: ToastCenter
 
@@ -36,7 +42,7 @@ private struct GeneralSettingsTab: View {
             } header: {
                 Text("Interface")
             } footer: {
-                Text("Gamer puts your games up front as a cover wall (tools live in the Workshop); Classic is the bottles-first utility. Advanced Mode — off: a clean click-and-play view of each bottle's games; on: the full backend, performance, dependency, storage, and troubleshooting panels.")
+                Text("Gamer puts your games up front as a cover wall; Classic is the bottles-first utility. Advanced Mode reveals the backend, performance, storage, and troubleshooting panels on bottle pages.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -80,97 +86,13 @@ private struct GeneralSettingsTab: View {
             } header: {
                 Text("Themes")
             } footer: {
-                Text("Themes recolor Fable's identity — accent, gradient, and window wash — and travel as .fableskin files you can share. Midnight and OG Steam ship built in. A custom background image sits behind the whole window (most visible in the Gamer interface).")
+                Text("Themes recolor Fable's accent, gradient, and window wash, and travel as .fableskin files you can share. A custom background image sits behind the whole window.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-            }
-
-            Section {
-                Toggle("Look Up Compatibility Online (ProtonDB)", isOn: $settingsManager.settings.onlineCompatibilityLookups)
-                LabeledContent("Shared Recipes") {
-                    HStack(spacing: 8) {
-                        if !userRecipeStore.recipes.isEmpty {
-                            Text("\(userRecipeStore.recipes.count) imported")
-                                .foregroundStyle(.secondary)
-                        }
-                        Button("Import Recipe…") { importRecipe() }
-                            .controlSize(.small)
-                    }
-                }
-            } header: {
-                Text("Compatibility")
-            } footer: {
-                Text("Off by default. When on, Fable sends a game's Steam app ID to ProtonDB to fetch its community rating, shown in the compatibility banner. The offline anti-cheat database always works regardless of this setting.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
-            Section {
-                Toggle("Fetch Cover Art Online", isOn: $settingsManager.settings.onlineArtwork)
-                TextField("SteamGridDB API Key (optional)", text: $settingsManager.settings.steamGridDBKey)
-                    .textFieldStyle(.roundedBorder)
-            } header: {
-                Text("Artwork")
-            } footer: {
-                Text("Covers come from Steam's public CDN (by the game's name or app ID — works for Epic/GOG copies of Steam titles too), cached on disk after one fetch. Add a free SteamGridDB key to cover titles Steam doesn't carry. Turn off to keep Fable fully offline; tiles fall back to each game's own icon.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
-            Section {
-                LabeledContent("Saved Shaders",
-                               value: shaderCacheStore.localBytes > 0 ? BottleDiskUsage.formatted(shaderCacheStore.localBytes) : "—")
-                if let external = shaderCacheStore.externalLocation {
-                    LabeledContent("Offloaded To") {
-                        Text(external.path).lineLimit(1).truncationMode(.middle).foregroundStyle(.secondary)
-                    }
-                    Button("Bring Shaders Back to Mac") {
-                        Task { await shaderCacheStore.bringBack(); toastCenter.success("Shaders restored to this Mac.") }
-                    }
-                    .disabled(shaderCacheStore.isWorking)
-                } else {
-                    Button("Back Up Shaders to External…") { backUpShaders() }
-                        .disabled(shaderCacheStore.isWorking || (shaderCacheStore.localBytes == 0 && shaderCacheStore.liveBytes == 0))
-                }
-            } header: {
-                Text("Shader Cache")
-            } footer: {
-                Text("D3DMetal compiles shaders during play. Fable keeps a durable copy so they survive a reboot — no first-run stutter again — and restores it automatically at startup. Offload it to an external drive to reclaim local space, then bring it back when you want to play.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
-            Section("New Bottle Defaults") {
-                Picker("Windows Version", selection: $settingsManager.settings.defaultWindowsVersion) {
-                    ForEach(WindowsVersion.allCases) { version in
-                        Text(version.displayName).tag(version)
-                    }
-                }
-                Toggle("Enable DXMT (DirectX 11 via Metal)", isOn: $settingsManager.settings.defaultDXMTEnabled)
-            }
-
-            Section("Folders") {
-                LabeledContent("Bottles") {
-                    Button("Open Bottles Folder") { open(AppPaths.bottles) }
-                        .controlSize(.small)
-                }
-                LabeledContent("Components") {
-                    Button("Open Components Folder") { open(AppPaths.components) }
-                        .controlSize(.small)
-                }
-                LabeledContent("Logs") {
-                    Button("Open Logs Folder") { open(AppPaths.logs) }
-                        .controlSize(.small)
-                }
             }
         }
         .formStyle(.grouped)
         .fableThemedFormBackground()
-    }
-
-    private func open(_ url: URL) {
-        try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
-        NSWorkspace.shared.open(url)
     }
 
     private func applyTheme(id: String) {
@@ -218,19 +140,51 @@ private struct GeneralSettingsTab: View {
             toastCenter.error("Couldn't use that image.")
         }
     }
+}
 
-    private func backUpShaders() {
-        let panel = NSOpenPanel()
-        panel.canChooseDirectories = true
-        panel.canChooseFiles = false
-        panel.allowsMultipleSelection = false
-        panel.prompt = "Back Up Here"
-        guard panel.runModal() == .OK, let dir = panel.url else { return }
-        Task {
-            await shaderCacheStore.snapshot()       // capture the latest warmed shaders first
-            await shaderCacheStore.offload(to: dir)
-            toastCenter.success("Shaders backed up to \(dir.lastPathComponent).")
+// MARK: - Library
+
+private struct LibrarySettingsTab: View {
+    @EnvironmentObject private var settingsManager: SettingsManager
+    @EnvironmentObject private var userRecipeStore: UserRecipeStore
+    @EnvironmentObject private var toastCenter: ToastCenter
+
+    var body: some View {
+        Form {
+            Section {
+                Toggle("Look Up Compatibility Online (ProtonDB)", isOn: $settingsManager.settings.onlineCompatibilityLookups)
+                LabeledContent("Shared Recipes") {
+                    HStack(spacing: 8) {
+                        if !userRecipeStore.recipes.isEmpty {
+                            Text("\(userRecipeStore.recipes.count) imported")
+                                .foregroundStyle(.secondary)
+                        }
+                        Button("Import Recipe…") { importRecipe() }
+                            .controlSize(.small)
+                    }
+                }
+            } header: {
+                Text("Compatibility")
+            } footer: {
+                Text("Off by default. When on, Fable sends a game's Steam app ID to ProtonDB for its community rating. The offline anti-cheat database always works regardless.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Section {
+                Toggle("Fetch Cover Art Online", isOn: $settingsManager.settings.onlineArtwork)
+                TextField("SteamGridDB API Key (optional)", text: $settingsManager.settings.steamGridDBKey)
+                    .textFieldStyle(.roundedBorder)
+            } header: {
+                Text("Artwork")
+            } footer: {
+                Text("Covers come from Steam's public CDN, cached after one fetch. Add a free SteamGridDB key for titles Steam doesn't carry. Off keeps Fable fully offline.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
+        .formStyle(.grouped)
+        .fableThemedFormBackground()
     }
 
     private func importRecipe() {
@@ -248,12 +202,21 @@ private struct GeneralSettingsTab: View {
     }
 }
 
-private struct PerformanceSettingsTab: View {
+// MARK: - Defaults (everything a NEW bottle starts with — one home)
+
+private struct DefaultsSettingsTab: View {
     @EnvironmentObject private var settingsManager: SettingsManager
 
     var body: some View {
         Form {
             Section {
+                Picker("Windows Version", selection: $settingsManager.settings.defaultWindowsVersion) {
+                    ForEach(WindowsVersion.allCases) { version in
+                        Text(version.displayName).tag(version)
+                    }
+                }
+                Toggle("Enable DXMT (DirectX 11 via Metal)", isOn: $settingsManager.settings.defaultDXMTEnabled)
+
                 Picker("Frame Rate Cap", selection: Binding(
                     get: { settingsManager.settings.defaultDXMTConfig.maxFrameRate ?? 0 },
                     set: { settingsManager.settings.defaultDXMTConfig.maxFrameRate = $0 == 0 ? nil : $0 }
@@ -270,9 +233,9 @@ private struct PerformanceSettingsTab: View {
                     }
                 }
             } header: {
-                Text("DXMT Defaults for New Bottles")
+                Text("New Bottle Defaults")
             } footer: {
-                Text("Existing bottles keep their own Graphics settings — change those on the bottle's page.")
+                Text("Applied when a bottle is created. Existing bottles keep their own settings — change those on the bottle's page.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -282,10 +245,90 @@ private struct PerformanceSettingsTab: View {
     }
 }
 
-private struct AboutTab: View {
-    @EnvironmentObject private var updateManager: UpdateManager
-    @EnvironmentObject private var appUpdateChecker: AppUpdateChecker
+// MARK: - Advanced
+
+private struct AdvancedSettingsTab: View {
+    @EnvironmentObject private var shaderCacheStore: ShaderCacheStore
     @EnvironmentObject private var onboardingState: OnboardingState
+    @EnvironmentObject private var toastCenter: ToastCenter
+
+    var body: some View {
+        Form {
+            Section {
+                LabeledContent("Saved Shaders",
+                               value: shaderCacheStore.localBytes > 0 ? BottleDiskUsage.formatted(shaderCacheStore.localBytes) : "—")
+                if let external = shaderCacheStore.externalLocation {
+                    LabeledContent("Offloaded To") {
+                        Text(external.path).lineLimit(1).truncationMode(.middle).foregroundStyle(.secondary)
+                    }
+                    Button("Bring Shaders Back to Mac") {
+                        Task { await shaderCacheStore.bringBack(); toastCenter.success("Shaders restored to this Mac.") }
+                    }
+                    .disabled(shaderCacheStore.isWorking)
+                } else {
+                    Button("Back Up Shaders to External…") { backUpShaders() }
+                        .disabled(shaderCacheStore.isWorking || (shaderCacheStore.localBytes == 0 && shaderCacheStore.liveBytes == 0))
+                }
+            } header: {
+                Text("Shader Cache")
+            } footer: {
+                Text("Fable keeps a durable copy of D3DMetal's compiled shaders so they survive a reboot, and restores it automatically at startup.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Section("Folders") {
+                LabeledContent("Bottles") {
+                    Button("Open Bottles Folder") { open(AppPaths.bottles) }
+                        .controlSize(.small)
+                }
+                LabeledContent("Components") {
+                    Button("Open Components Folder") { open(AppPaths.components) }
+                        .controlSize(.small)
+                }
+                LabeledContent("Logs") {
+                    Button("Open Logs Folder") { open(AppPaths.logs) }
+                        .controlSize(.small)
+                }
+            }
+
+            Section {
+                Button("settings.reset_onboarding") {
+                    onboardingState.reset()
+                }
+                .help("Show the first-launch wizard again next time the app opens")
+            } header: {
+                Text("Onboarding")
+            }
+        }
+        .formStyle(.grouped)
+        .fableThemedFormBackground()
+    }
+
+    private func open(_ url: URL) {
+        try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+        NSWorkspace.shared.open(url)
+    }
+
+    private func backUpShaders() {
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.allowsMultipleSelection = false
+        panel.prompt = "Back Up Here"
+        guard panel.runModal() == .OK, let dir = panel.url else { return }
+        Task {
+            await shaderCacheStore.snapshot()       // capture the latest warmed shaders first
+            await shaderCacheStore.offload(to: dir)
+            toastCenter.success("Shaders backed up to \(dir.lastPathComponent).")
+        }
+    }
+}
+
+// MARK: - About
+
+private struct AboutTab: View {
+    @EnvironmentObject private var appUpdateChecker: AppUpdateChecker
     @EnvironmentObject private var appState: AppState
 
     private var appVersion: String {
@@ -324,19 +367,14 @@ private struct AboutTab: View {
                         .font(.caption)
                         .foregroundStyle(.red)
                 }
-                LabeledContent("Wine", value: updateManager.installedVersion(of: WineManager.componentID) ?? "not installed")
-                LabeledContent("DXMT", value: updateManager.installedVersion(of: DXMTManager.componentID) ?? "not installed")
             } header: {
-                Text("Versions")
-            }
-
-            Section {
-                Button("settings.reset_onboarding") {
-                    onboardingState.reset()
-                }
-                .help("Show the first-launch wizard again next time the app opens")
-            } header: {
-                Text("Onboarding")
+                Text("Version")
+            } footer: {
+                // Runtime versions live in ONE place — Components (was
+                // duplicated here).
+                Text("Wine, DXMT, and the other runtime pieces are managed in the Components section.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
 
             Section {
