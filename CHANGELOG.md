@@ -1,5 +1,20 @@
 # Changelog
 
+## v0.14.1 — 2026-07-03
+
+Settings regrouped by intent. (UI review, priority 2.)
+
+- **Five tabs that mean something:** Appearance (interface + themes), Library
+  (compatibility + artwork), **Defaults** (everything a new bottle starts
+  with — Windows version, DXMT, frame cap, log level, finally in ONE place),
+  Advanced (shader cache, folders, onboarding reset), About.
+- The old General tab (a seven-section junk drawer) and the Performance tab
+  (two controls that were also new-bottle defaults) are gone.
+- **About no longer duplicates Components:** runtime versions live in one
+  place; About points there.
+- Housekeeping: stray screenshots untracked from the repo root (now
+  gitignored).
+
 ## v0.14.0 — 2026-07-03
 
 One library. (UI review, priority 1.)
