@@ -46,7 +46,7 @@ struct GamerHomeView: View {
     @State private var tab: Tab = .play
 
     private func isRunning(_ entry: LibraryEntry) -> Bool {
-        gameLauncher.isRunning(entry.game.id) || activityMonitor.isRunning(entry.game, in: entry.bottle)
+        gameLauncher.isRunning(entry.game, in: entry.bottle, activity: activityMonitor)
     }
 
     private var nowPlaying: LibraryEntry? {

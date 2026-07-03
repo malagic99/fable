@@ -16,7 +16,7 @@ struct GamePlayButton: View {
     /// Running if Fable launched it OR a live process for it is detected
     /// (e.g. started from inside Steam, or lingering after its window closed).
     private var isRunning: Bool {
-        gameLauncher.isRunning(game.id) || activityMonitor.isRunning(game, in: bottle)
+        gameLauncher.isRunning(game, in: bottle, activity: activityMonitor)
     }
 
     var body: some View {

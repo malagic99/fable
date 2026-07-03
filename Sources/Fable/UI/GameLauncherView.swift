@@ -13,13 +13,13 @@ struct GameLauncherView: View {
 
     @State private var launchError: String?
     @State private var isShowingSettings = false
-    @State private var logToView: URL?
+    @State private var logToView: PickedExecutable?
     @State private var isShowingDoctor = false
     @State private var doctorFindings: [CompatibilityFinding] = []
     @State private var icon: NSImage?
 
     private var isRunning: Bool {
-        gameLauncher.isRunning(game.id) || activityMonitor.isRunning(game, in: bottle)
+        gameLauncher.isRunning(game, in: bottle, activity: activityMonitor)
     }
 
     var body: some View {
@@ -67,7 +67,7 @@ struct GameLauncherView: View {
                 Button("Create Desktop Shortcut") { createShortcut() }
                     .help("A double-clickable app on your Desktop that launches this game directly")
                 if let log = gameLauncher.lastLog[game.id] {
-                    Button("View Last Log") { logToView = log }
+                    Button("View Last Log") { logToView = PickedExecutable(url: log) }
                     Button("Diagnose Last Run…") { doctorFindings = GameDoctor.diagnose(logFile: log); isShowingDoctor = true }
                         .help("Fable Doctor reads the log and explains what went wrong")
                 }
@@ -96,7 +96,7 @@ struct GameLauncherView: View {
             GameSettingsView(game: game, bottle: bottle)
         }
         .sheet(item: $logToView) { log in
-            LogViewerView(logURL: log)
+            LogViewerView(logURL: log.url)
         }
         .sheet(isPresented: $isShowingDoctor) {
             DoctorSheet(gameName: game.name, findings: doctorFindings)

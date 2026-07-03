@@ -398,3 +398,12 @@ final class GameLauncher: ObservableObject {
         running[gameID]?.terminate()
     }
 }
+
+extension GameLauncher {
+    /// THE running check: Fable-launched OR detected in the process table
+    /// (Steam-launched, lingering). Every Play/Stop indicator goes through
+    /// this so the rule can't drift between call sites.
+    func isRunning(_ game: Game, in bottle: Bottle, activity: ActivityMonitor) -> Bool {
+        isRunning(game.id) || activity.isRunning(game, in: bottle)
+    }
+}

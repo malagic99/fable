@@ -4,7 +4,7 @@
 
 // MARK: Sidebar
 "sidebar.bottles"             = "Botellas";
-"sidebar.library"             = "Biblioteca";
+"sidebar.library" = "Juegos";
 "sidebar.components"          = "Componentes";
 "sidebar.settings"            = "Ajustes";
 
