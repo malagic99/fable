@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.15.3 — 2026-07-04
+
+Supervisor review, item 3: tests where the bugs actually were.
+
+- **Wall grouping extracted to pure logic** (`LibraryGrouping.sections`) and
+  covered: platform/health/bottle slicing, empty-section dropping, natives
+  always getting their own section under health/bottle.
+- **ArtworkStore cache semantics tested** — including the exact regression
+  that shipped (custom cover saved to disk but never read back on a cold
+  start), custom-art-wins, offline behavior, and late disk drops. All tests
+  run fully offline.
+
 ## v0.15.2 — 2026-07-04
 
 Supervisor review, items A1–A3 + quick wins: the dedup sweep.

@@ -26,14 +26,6 @@ struct GameWallView: View {
         case native(NativeGame.ID)
     }
 
-    /// One titled slice of the wall under the active grouping.
-    private struct WallSection: Identifiable {
-        let id: String
-        let title: String?
-        var wine: [LibraryEntry] = []
-        var native: [NativeGame] = []
-    }
-
     @State private var searchText = ""
     @State private var selection: Selection?
     @State private var isShowingSteamImport = false
@@ -70,40 +62,12 @@ struct GameWallView: View {
         .assess(entry.game, recipes: userRecipeStore, quirks: quirkService)
     }
 
-    /// The wall sliced by the active grouping. `.none` = one untitled section.
-    private var sections: [WallSection] {
-        switch settingsManager.settings.libraryGrouping {
-        case .none:
-            return [WallSection(id: "all", title: nil, wine: entries, native: nativeEntries)]
-        case .platform:
-            return [
-                WallSection(id: "wine", title: "Windows", wine: entries),
-                WallSection(id: "native", title: "Native Mac", native: nativeEntries),
-            ].filter { !$0.wine.isEmpty || !$0.native.isEmpty }
-        case .health:
-            var byVerdict: [GameConfidence: [LibraryEntry]] = [:]
-            for entry in entries { byVerdict[confidence(entry), default: []].append(entry) }
-            var result: [WallSection] = GameConfidence.allCases.compactMap { verdict in
-                guard let games = byVerdict[verdict], !games.isEmpty else { return nil }
-                return WallSection(id: verdict.label, title: verdict.label.capitalized, wine: games)
-            }
-            if !nativeEntries.isEmpty {
-                result.append(WallSection(id: "native", title: "Native Mac", native: nativeEntries))
-            }
-            return result
-        case .bottle:
-            // Bottle doubles as the account boundary (two Steam accounts =
-            // two bottles), so this is also the "by account" view.
-            var result: [WallSection] = bottleManager.bottles.compactMap { bottle in
-                let games = entries.filter { $0.bottle.id == bottle.id }
-                guard !games.isEmpty else { return nil }
-                return WallSection(id: bottle.id.uuidString, title: bottle.name, wine: games)
-            }
-            if !nativeEntries.isEmpty {
-                result.append(WallSection(id: "native", title: "Native Mac", native: nativeEntries))
-            }
-            return result
-        }
+    /// The wall sliced by the active grouping (pure logic in LibraryGrouping).
+    private var sections: [LibrarySection] {
+        settingsManager.settings.libraryGrouping.sections(
+            entries: entries, natives: nativeEntries,
+            bottles: bottleManager.bottles, confidence: confidence
+        )
     }
 
     /// Re-runs the artwork pipeline for every game that has no cover yet.
