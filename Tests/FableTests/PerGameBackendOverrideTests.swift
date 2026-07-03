@@ -47,7 +47,7 @@ import Testing
 
     @Test
     func shortNamesAreCompact() {
-        #expect(GraphicsBackend.off.shortName == "Wine")
+        #expect(GraphicsBackend.off.shortName == "Built-in")
         #expect(GraphicsBackend.dxmt.shortName == "DXMT")
         #expect(GraphicsBackend.gptk.shortName == "GPTK")
     }

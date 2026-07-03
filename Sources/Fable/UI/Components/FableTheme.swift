@@ -12,7 +12,20 @@ enum FableTheme {
         endPoint: .bottomTrailing
     )
 
-    static let cardRadius: CGFloat = 14
+    // MARK: Shape scale — exactly two radii, everywhere.
+    /// Containers: cards, inspectors, tiles, selection rings.
+    static let cardRadius: CGFloat = 12
+    /// Elements inside a container: cover art, chips, small marks.
+    static let innerRadius: CGFloat = 8
+
+    // MARK: Surface scale — three semantic tones instead of ad-hoc
+    // `.quaternary.opacity(…)` values scattered per view.
+    /// A resting panel (inspector, sidebar-ish blocks).
+    static let surface = AnyShapeStyle(.quaternary.opacity(0.4))
+    /// A raised element on a surface (cover placeholder, chips, search field).
+    static let surfaceRaised = AnyShapeStyle(.quaternary.opacity(0.6))
+    /// The selected/active state of a raised element.
+    static let surfaceSelected = AnyShapeStyle(.quaternary.opacity(0.75))
 
     /// One tint per backend — quiet, informative colors (never alarm-red;
     /// red is reserved for actual problems).
@@ -27,16 +40,9 @@ enum FableTheme {
         }
     }
 
-    static func label(for backend: GraphicsBackend) -> String {
-        switch backend {
-        case .dxmt: "DXMT"
-        case .gptk: "GPTK"
-        case .dxvk: "DXVK"
-        case .crossover: "CrossOver"
-        case .sikarugir: "Sikarugir"
-        case .off: "Wine"
-        }
-    }
+    /// Delegates to the model's one compact label — two switch statements for
+    /// the same concept is how the "Wine"/"Built-in" drift happened.
+    static func label(for backend: GraphicsBackend) -> String { backend.shortName }
 }
 
 /// Tile sizing driven by `AppSettings.tileScale`, so the same slider grows both

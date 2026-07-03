@@ -120,10 +120,12 @@ enum GraphicsBackend: String, Codable, CaseIterable, Identifiable, Sendable {
         }
     }
 
-    /// Compact label for inline UI ("DXMT", "GPTK", "DXVK", "CrossOver", "Wine").
+    /// Compact label for inline UI ("DXMT", "GPTK", "DXVK", "CrossOver",
+    /// "Built-in"). `.off` is NOT "Wine" — everything here is Wine; .off means
+    /// Wine's built-in D3D path.
     var shortName: String {
         switch self {
-        case .off: "Wine"
+        case .off: "Built-in"
         case .dxmt: "DXMT"
         case .gptk: "GPTK"
         case .dxvk: "DXVK"

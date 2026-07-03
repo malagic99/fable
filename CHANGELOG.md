@@ -1,5 +1,24 @@
 # Changelog
 
+## v0.14.3 — 2026-07-03
+
+Visual harmonization. (UI review, final pass.)
+
+- **Design tokens, applied:** two corner radii (12 container / 8 inner) and
+  three semantic surface tones replace the ad-hoc values scattered per view.
+- **One backend label source:** the "Built-in" / DXMT / GPTK / … label lives in
+  one place; `.off` is now honestly "Built-in" instead of "Wine" (everything
+  here is Wine — .off means Wine's built-in D3D path).
+- **The dot scale tells one truth:** health dots are green/orange/red/gray
+  only. Native Mac games show an  glyph by their name instead of hijacking
+  the health scale with blue.
+- **Legend moved behind "?"** next to search — learn-once info no longer
+  occupies a permanent row.
+- **Hero Play shows only when unambiguous** (bottle has exactly one game).
+- Top bar typography is semantic (scales with the system), the Gamer face no
+  longer double-titles the window, and the longest footers were cut to one
+  sentence (mechanism lives in hover help).
+
 ## v0.14.2 — 2026-07-03
 
 Tune tunes what the inspector shows. (UI review, priority 3.)

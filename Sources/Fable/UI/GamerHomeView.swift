@@ -74,10 +74,10 @@ struct GamerHomeView: View {
         HStack(spacing: 18) {
             HStack(spacing: 9) {
                 Image(systemName: "wineglass")
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.footnote.weight(.semibold))
                     .foregroundStyle(.white)
                     .frame(width: 26, height: 26)
-                    .background(gradient, in: RoundedRectangle(cornerRadius: 7))
+                    .background(gradient, in: RoundedRectangle(cornerRadius: FableTheme.innerRadius))
                 Text("Fable").font(.headline.weight(.bold))
             }
 
@@ -120,7 +120,7 @@ struct GamerHomeView: View {
         } label: {
             HStack(spacing: 6) {
                 Image(systemName: item.symbol)
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(.caption.weight(.semibold))
                 Text(item.title)
             }
             .font(.callout.weight(active ? .semibold : .regular))

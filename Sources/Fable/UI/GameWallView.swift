@@ -26,6 +26,7 @@ struct GameWallView: View {
     @State private var selection: Selection?
     @State private var isShowingSteamImport = false
     @State private var isShowingHeroicImport = false
+    @State private var isShowingLegend = false
 
     private var entries: [LibraryEntry] {
         LibraryIndex.entries(from: bottleManager.bottles, query: searchText)
@@ -68,7 +69,32 @@ struct GameWallView: View {
                     }
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
-                    .background(.quaternary.opacity(0.5), in: Capsule())
+                    .background(FableTheme.surfaceRaised, in: Capsule())
+                    // Learn-once info lives behind "?", not in a permanent row.
+                    Button {
+                        isShowingLegend = true
+                    } label: {
+                        Image(systemName: "questionmark.circle")
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .help("What the dots mean")
+                    .popover(isPresented: $isShowingLegend, arrowEdge: .bottom) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Health dots").font(.caption.weight(.semibold))
+                            legendDot(.green, "verified — a tested recipe exists")
+                            legendDot(.orange, "works with tweaks")
+                            legendDot(.red, "won't run")
+                            legendDot(Color.secondary.opacity(0.6), "untested")
+                            Divider()
+                            HStack(spacing: 5) {
+                                Image(systemName: "applelogo").font(.caption2).foregroundStyle(.secondary)
+                                Text("native Mac game — no Wine, it just runs")
+                                    .font(.caption2).foregroundStyle(.secondary)
+                            }
+                        }
+                        .padding(12)
+                    }
                 }
                 .padding(.top, 16)
 
@@ -110,25 +136,17 @@ struct GameWallView: View {
                         }
                         .padding(.vertical, 4)
                     }
-                    HStack(spacing: 14) {
-                        legendDot(.green, "verified")
-                        legendDot(.orange, "works with tweaks")
-                        legendDot(.red, "won't run")
-                        legendDot(Color.secondary.opacity(0.6), "untested")
-                        legendDot(.blue, "native mac")
-                    }
-                    .padding(.bottom, 12)
                 }
             }
             .padding(.horizontal, 20)
 
             if let selectedNative {
                 NativeInspector(game: selectedNative, isRunning: nativeGames.isRunning(selectedNative))
-                    .frame(width: 235)
+                    .frame(width: 264)
                     .padding([.trailing, .vertical], 14)
             } else if let selectedWine {
                 GameInspector(entry: selectedWine, isRunning: isRunning(selectedWine))
-                    .frame(width: 235)
+                    .frame(width: 264)
                     .padding([.trailing, .vertical], 14)
             }
         }
@@ -182,8 +200,8 @@ private struct GameCoverCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 7) {
-            RoundedRectangle(cornerRadius: 10)
-                .fill(.quaternary.opacity(0.6))
+            RoundedRectangle(cornerRadius: FableTheme.innerRadius)
+                .fill(FableTheme.surfaceRaised)
                 .overlay {
                     if let art = artworkStore.image(for: entry.game) {
                         Image(nsImage: art)
@@ -194,7 +212,7 @@ private struct GameCoverCard: View {
                                     size: 64, fallbackSymbol: "gamecontroller.fill")
                     }
                 }
-                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .clipShape(RoundedRectangle(cornerRadius: FableTheme.innerRadius))
                 .aspectRatio(3 / 4, contentMode: .fit)
                 .overlay(alignment: .topTrailing) {
                     Circle()
@@ -224,11 +242,11 @@ private struct GameCoverCard: View {
         }
         .padding(5)
         .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(isSelected ? AnyShapeStyle(.quaternary.opacity(0.7)) : AnyShapeStyle(.clear))
+            RoundedRectangle(cornerRadius: FableTheme.cardRadius)
+                .fill(isSelected ? FableTheme.surfaceSelected : AnyShapeStyle(.clear))
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 12)
+            RoundedRectangle(cornerRadius: FableTheme.cardRadius)
                 .strokeBorder(isSelected ? Color.accentColor : .clear, lineWidth: 2)
         )
         .scaleEffect(isHovering ? 1.02 : 1)
@@ -346,7 +364,7 @@ private struct GameInspector: View {
             Spacer()
         }
         .padding(14)
-        .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 12))
+        .background(FableTheme.surface, in: RoundedRectangle(cornerRadius: FableTheme.cardRadius))
         .sheet(isPresented: $isShowingTune) {
             GameSettingsView(game: entry.game, bottle: entry.bottle)
         }
@@ -368,7 +386,7 @@ private struct GameInspector: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 6)
-        .background(.quaternary.opacity(0.6), in: RoundedRectangle(cornerRadius: 8))
+        .background(FableTheme.surfaceRaised, in: RoundedRectangle(cornerRadius: FableTheme.innerRadius))
     }
 }
 
@@ -388,8 +406,8 @@ private struct NativeCoverCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 7) {
-            RoundedRectangle(cornerRadius: 10)
-                .fill(.quaternary.opacity(0.6))
+            RoundedRectangle(cornerRadius: FableTheme.innerRadius)
+                .fill(FableTheme.surfaceRaised)
                 .overlay {
                     if let art = artworkStore.image(named: game.name) {
                         Image(nsImage: art)
@@ -406,17 +424,8 @@ private struct NativeCoverCard: View {
                             .foregroundStyle(.secondary)
                     }
                 }
-                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .clipShape(RoundedRectangle(cornerRadius: FableTheme.innerRadius))
                 .aspectRatio(3 / 4, contentMode: .fit)
-                .overlay(alignment: .topTrailing) {
-                    Circle()
-                        .fill(.blue)
-                        .frame(width: 10, height: 10)
-                        .padding(4)
-                        .background(.black.opacity(0.45), in: Circle())
-                        .padding(6)
-                        .help("Native macOS — no Wine involved")
-                }
                 .overlay(alignment: .bottomLeading) {
                     if isRunning {
                         Label("Playing", systemImage: "play.fill")
@@ -429,18 +438,24 @@ private struct NativeCoverCard: View {
                     }
                 }
 
-            Text(game.name)
-                .font(.callout.weight(.medium))
-                .lineLimit(1)
-                .padding(.horizontal, 2)
+            HStack(spacing: 4) {
+                Image(systemName: "applelogo")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .help("Native macOS — no Wine involved")
+                Text(game.name)
+                    .font(.callout.weight(.medium))
+                    .lineLimit(1)
+            }
+            .padding(.horizontal, 2)
         }
         .padding(5)
         .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(isSelected ? AnyShapeStyle(.quaternary.opacity(0.7)) : AnyShapeStyle(.clear))
+            RoundedRectangle(cornerRadius: FableTheme.cardRadius)
+                .fill(isSelected ? FableTheme.surfaceSelected : AnyShapeStyle(.clear))
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 12)
+            RoundedRectangle(cornerRadius: FableTheme.cardRadius)
                 .strokeBorder(isSelected ? Color.accentColor : .clear, lineWidth: 2)
         )
         .scaleEffect(isHovering ? 1.02 : 1)
@@ -515,7 +530,7 @@ private struct NativeInspector: View {
             Spacer()
         }
         .padding(14)
-        .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 12))
+        .background(FableTheme.surface, in: RoundedRectangle(cornerRadius: FableTheme.cardRadius))
     }
 }
 
@@ -553,13 +568,13 @@ private struct AddGameTile: View {
             .frame(maxWidth: .infinity)
             .aspectRatio(3 / 4, contentMode: .fit)
             .background(
-                RoundedRectangle(cornerRadius: 12)
+                RoundedRectangle(cornerRadius: FableTheme.cardRadius)
                     .strokeBorder(
                         isHovering ? AnyShapeStyle(.tertiary) : AnyShapeStyle(.quaternary),
                         style: StrokeStyle(lineWidth: 1.5, dash: [6, 5])
                     )
             )
-            .contentShape(RoundedRectangle(cornerRadius: 12))
+            .contentShape(RoundedRectangle(cornerRadius: FableTheme.cardRadius))
         }
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)

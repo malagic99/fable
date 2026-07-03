@@ -81,7 +81,9 @@ struct BottleDetailView: View {
                         }
                     }
                     Spacer()
-                    if bottle.status == .ready, let primary = bottle.games.first {
+                    // Only when unambiguous — with several games the hero
+                    // can't know which one you mean; each row has Play.
+                    if bottle.status == .ready, bottle.games.count == 1, let primary = bottle.games.first {
                         GamePlayButton(game: primary, bottle: bottle, size: 46)
                     }
                 }
@@ -182,12 +184,11 @@ struct BottleDetailView: View {
             } header: {
                 Text("Graphics")
             } footer: {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(graphicsFooter(for: bottle.graphicsBackend))
-                    Text("Retina mode sharpens HiDPI UI (Steam, launchers) but breaks many non-HiDPI games — leave off for game bottles. Applies on next launch.")
-                }
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                // The Retina explanation lives on the toggle's .help — one
+                // footer, one topic.
+                Text(graphicsFooter(for: bottle.graphicsBackend))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
 
             Section {
@@ -273,7 +274,7 @@ struct BottleDetailView: View {
                 } header: {
                     Text("Steam")
                 } footer: {
-                    Text("If a download sticks at “installing files”, that's the Sikarugir/WoW64 commit gap — Steam downloaded everything but its dead helper service can't move it into place. This does that move and marks it installed. Stop Steam first; it also runs automatically when you open this bottle.")
+                    Text("For downloads stuck at “installing files”. Runs automatically when you open this bottle.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
