@@ -94,12 +94,13 @@ where "boringly reliable" is actually won.
 
 Small, additive, low-risk. Pull when a rough edge annoys.
 
-9. **Native games in the Classic Library.** Today they're Gamer-wall only; the
-   classic Library is still Wine-only. Unify so both faces show everything.
-10. **Per-game notes / "last played".** A tiny freeform note and a last-launched
-    timestamp per game — sorting the wall by recent is a natural follow-on.
-11. **Bulk cover refresh.** A "refresh all missing covers" action; today it's
-    per-tile.
+9. **✔ Native games in the Classic Library (v0.14.0).** One wall serves both
+   faces.
+10. **✔ Per-game notes + playtime/last-played (v0.15.0).** History block in the
+    inspector; notes in Tune. Sorting the wall by recent remains a follow-on.
+11. **✔ Bulk cover refresh (v0.15.0).** Wall ⋯ menu → Fetch Missing Covers.
+    Also fixed: custom covers persist across relaunches (Steam tile), and wall
+    grouping shipped (Platform / Health / Bottle-as-account).
 12. **Theme editor in-app.** Author a `.fableskin` from a color-picker sheet
     instead of hand-editing JSON — the export path already exists.
 13. **Trigger keep-alive tuning surface.** If the 1s interval ever fights a
@@ -110,8 +111,8 @@ Small, additive, low-risk. Pull when a rough edge annoys.
 
 14. **More library sources.** GOG Galaxy and Lutris importers, mirroring the
     Heroic import already in place.
-15. **Playtime tracking.** Fold the activity monitor's start/stop into a simple
-    per-game playtime tally.
+15. **✔ Playtime tracking (v0.15.0).** Fable-launched sessions tally real
+    time; Steam-launched games now also show as running (windows-path match).
 16. **Localization beyond en/es.** The scaffold + `L10n` helper exist; adding a
     language is now mostly translation, not plumbing.
 
