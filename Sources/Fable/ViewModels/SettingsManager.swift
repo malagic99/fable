@@ -66,6 +66,11 @@ struct AppSettings: Codable, Equatable, Sendable {
     /// active theme's own background.
     var customBackgroundPath: String?
 
+    /// How the game wall is sectioned: one flat grid, or grouped by platform
+    /// (Wine vs native), health verdict, or bottle (which doubles as the
+    /// account boundary when two Steam accounts live in separate bottles).
+    var libraryGrouping: LibraryGrouping = .none
+
     init() {}
 
     init(from decoder: Decoder) throws {
@@ -90,6 +95,7 @@ struct AppSettings: Codable, Equatable, Sendable {
         appearance = try container.decodeIfPresent(AppAppearance.self, forKey: .appearance) ?? .system
         activeThemeID = try container.decodeIfPresent(String.self, forKey: .activeThemeID) ?? FableSkin.standard.id
         customBackgroundPath = try container.decodeIfPresent(String.self, forKey: .customBackgroundPath)
+        libraryGrouping = try container.decodeIfPresent(LibraryGrouping.self, forKey: .libraryGrouping) ?? .none
     }
 }
 

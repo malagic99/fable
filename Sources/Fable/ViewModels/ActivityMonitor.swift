@@ -33,7 +33,10 @@ final class ActivityMonitor: ObservableObject {
         ProcessActivity.isRunning(
             commands: commands,
             prefixToken: bottle.id.uuidString,
-            exeBasename: (game.executablePath as NSString).lastPathComponent
+            exeBasename: (game.executablePath as NSString).lastPathComponent,
+            // Matches the Windows-style command line a Steam-launched copy
+            // runs with (no unix bottle path in it).
+            windowsPath: ProcessActivity.windowsPath(fromExecutablePath: game.executablePath)
         )
     }
 

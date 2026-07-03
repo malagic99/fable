@@ -30,6 +30,7 @@ struct FableApp: App {
     @StateObject private var artworkStore = ArtworkStore()
     @StateObject private var themeStore = ThemeStore()
     @StateObject private var nativeGamesStore = NativeGamesStore()
+    @StateObject private var gameStatsStore = GameStatsStore()
 
     init() {
         let appState = AppState()
@@ -81,11 +82,13 @@ struct FableApp: App {
                     gameLauncher.onAbnormalExit = { [weak toastCenter] message in
                         toastCenter?.error(message)
                     }
-                    gameLauncher.onProcessLifecycle = { [weak metricsStore, weak gameLauncher] id, pid in
+                    gameLauncher.onProcessLifecycle = { [weak metricsStore, weak gameLauncher, weak gameStatsStore] id, pid in
                         if let pid {
                             metricsStore?.startTracking(id, rootPID: pid)
+                            gameStatsStore?.sessionStarted(id)
                         } else {
                             metricsStore?.stopTracking(id)
+                            gameStatsStore?.sessionEnded(id)
                             // Re-match triggers to whatever's still running (a
                             // Steam bottle keeps its profile while other games
                             // run); clears only when the bottle goes idle.
@@ -165,6 +168,7 @@ struct FableApp: App {
                 .environmentObject(artworkStore)
                 .environmentObject(themeStore)
                 .environmentObject(nativeGamesStore)
+                .environmentObject(gameStatsStore)
         }
         .windowToolbarStyle(.unified)
         .commands {

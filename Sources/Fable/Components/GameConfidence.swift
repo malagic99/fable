@@ -5,7 +5,7 @@ import SwiftUI
 /// (a match means someone verified this exact setup) and the quirk system's
 /// anti-cheat findings. Honest by construction: no signal → unknown, never a
 /// fake green.
-enum GameConfidence: Equatable {
+enum GameConfidence: Equatable, Hashable, CaseIterable {
     /// A known-good recipe matches this game.
     case verified
     /// Known caveats (e.g. anti-cheat needs configuration).

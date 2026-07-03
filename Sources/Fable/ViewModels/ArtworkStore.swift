@@ -34,7 +34,14 @@ final class ArtworkStore: ObservableObject {
         bottleManager: BottleManager,
         settings: AppSettings
     ) async {
-        guard !GameArtwork.isSteamClient(game) else { return }
+        // The Steam client has no store art to fetch — but a user-set custom
+        // cover on disk must still load. Skipping the whole pipeline here was
+        // the "my Steam cover resets on every relaunch" bug: setCustomArt
+        // persisted the file, and this guard then refused to read it back.
+        if GameArtwork.isSteamClient(game) {
+            await fetchIfNeeded(name: game.name, knownAppID: nil, settings: settings, allowNetwork: false)
+            return
+        }
         let manifestAppID = bottleManager.steamRoot(for: bottle).flatMap {
             SteamAppManifest.appID(forExecutablePath: game.executablePath, steamRoot: $0)
         }
@@ -48,8 +55,9 @@ final class ArtworkStore: ObservableObject {
     }
 
     /// The shared pipeline core. No-op when disabled, already loaded,
-    /// known-missing, or in flight.
-    private func fetchIfNeeded(name: String, knownAppID: Int?, settings: AppSettings) async {
+    /// known-missing, or in flight. `allowNetwork: false` = disk cache only
+    /// (custom covers for titles with nothing to fetch, e.g. the Steam client).
+    private func fetchIfNeeded(name: String, knownAppID: Int?, settings: AppSettings, allowNetwork: Bool = true) async {
         let key = GameArtwork.cacheKey(for: name)
         guard !key.isEmpty,
               images[key] == nil,
@@ -68,7 +76,7 @@ final class ArtworkStore: ObservableObject {
             return
         }
 
-        guard settings.onlineArtwork else { return }
+        guard allowNetwork, settings.onlineArtwork else { return }
 
         let manifestAppID = knownAppID
         let sgdbKey = settings.steamGridDBKey.trimmingCharacters(in: .whitespaces)
@@ -109,6 +117,12 @@ final class ArtworkStore: ObservableObject {
             try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
             try? data.write(to: file, options: .atomic)
         }
+    }
+
+    /// Forgets this session's "no art found" marks so a bulk refresh can
+    /// retry titles that failed earlier (network blip, art added since).
+    func clearMisses() {
+        misses.removeAll()
     }
 
     // MARK: Custom art

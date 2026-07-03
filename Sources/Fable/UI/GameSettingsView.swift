@@ -7,6 +7,7 @@ struct GameSettingsView: View {
     let bottle: Bottle
 
     @EnvironmentObject private var bottleManager: BottleManager
+    @EnvironmentObject private var gameStats: GameStatsStore
     @Environment(\.dismiss) private var dismiss
 
     @State private var name = ""
@@ -15,6 +16,7 @@ struct GameSettingsView: View {
     @State private var backendOverride: GraphicsBackend? = nil
     @State private var triggerOverride: TriggerProfile? = nil
     @State private var performance = PerformanceOptions()
+    @State private var notes = ""
     @State private var isShowingTriggers = false
     @State private var errorMessage: String?
 
@@ -122,6 +124,18 @@ struct GameSettingsView: View {
                 }
 
                 Section {
+                    TextEditor(text: $notes)
+                        .font(.body)
+                        .frame(height: 60)
+                } header: {
+                    Text("Notes")
+                } footer: {
+                    Text("Yours alone — mod setup, launch quirks, where you left off.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Section {
                     Button {
                         exportRecipe()
                     } label: {
@@ -154,7 +168,7 @@ struct GameSettingsView: View {
                     .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
             }
         }
-        .frame(width: 460, height: 440)
+        .frame(width: 460, height: 520)
         .onAppear {
             name = game.name
             arguments = game.arguments
@@ -162,6 +176,7 @@ struct GameSettingsView: View {
             backendOverride = game.graphicsBackend
             triggerOverride = game.triggerProfile
             performance = bottle.performance
+            notes = gameStats.notes(for: game.id)
         }
         .sheet(isPresented: $isShowingTriggers) {
             TriggerProfileSheet(title: "DualSense Triggers — \(game.name)",
@@ -202,6 +217,9 @@ struct GameSettingsView: View {
             try bottleManager.updateGame(updated, in: bottle.id)
             if performance != bottle.performance {
                 try bottleManager.setPerformance(performance, for: bottle.id)
+            }
+            if notes != gameStats.notes(for: game.id) {
+                gameStats.setNotes(notes, for: game.id)
             }
             dismiss()
         } catch {
