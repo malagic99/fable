@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.15.1 — 2026-07-03
+
+Supervisor review, item 1: the release ritual is now a script.
+
+- `scripts/release.sh prepare <version>` — bumps version + build, verifies the
+  CHANGELOG section exists, runs the test suite.
+- `scripts/release.sh publish <version> <title>` — on a clean main only: tags,
+  pushes, rebuilds, zips, and creates the GitHub release with notes pulled
+  straight from the CHANGELOG section. Refuses dirty trees, wrong versions,
+  and unaligned HEADs — the guardrails the hand-rolled ritual didn't have.
+
 ## v0.15.0 — 2026-07-03
 
 The library learns your history — and two long-standing wrongs put right.
