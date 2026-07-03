@@ -221,7 +221,7 @@ struct MainWindow: View {
         .preferredColorScheme(settingsManager.settings.appearance.colorScheme)
         .toastOverlay()
         .frame(minWidth: 800, minHeight: 520)
-        .navigationTitle(isGamer ? "Fable" : appState.selectedSection.title)
+        .navigationTitle(isGamer ? "" : appState.selectedSection.title)
         .sheet(isPresented: Binding(
             get: { onboardingState.isShowingWizard },
             set: { newValue in
