@@ -1,6 +1,6 @@
 # Fable — Development Roadmap
 
-> **Status: living document, last updated 2026-07-03 (v0.13.3).**
+> **Status: living document, last updated 2026-07-03 (v0.13.5).**
 > Supersedes `roadmap-tier-1-3.md` and `roadmap-tier-4-plus.md` (both retained
 > as history — their day-by-day grids were overtaken by the Sikarugir/D3DMetal
 > breakthrough and no longer describe the plan).
@@ -18,10 +18,11 @@ when the mood strikes, ordered by value, not a schedule to burn down.
 
 ---
 
-## Where we are (v0.13.3)
+## Where we are (v0.13.5)
 
 A free macOS Wine wrapper that plays Windows games — and now native Mac games —
-from one cover wall.
+from one cover wall. **DualSense adaptive triggers now work reliably while the
+game is frontmost** (raw-HID bypass, v0.13.5).
 
 - **Six graphics backends**, flagship **Sikarugir** (modern Wine + D3DMetal):
   free Steam CEF renders, installs, and plays AAA D3D12 titles on Apple Silicon.
@@ -34,8 +35,11 @@ from one cover wall.
   wall).
 - **Trust, honestly earned:** confidence dots from real recipe/quirk data,
   Fable Doctor, self-healing stability layer, cover-art pipeline.
-- **DualSense adaptive triggers** with a background keep-alive (v0.13.3).
-- **112 source files, 341 tests / 80 suites.** Ship ritual: branch → PR →
+- **DualSense adaptive triggers:** static user profiles (Feedback, Weapon,
+  Vibration modes), per-bottle or per-game. Raw-HID writes bypass the framework
+  gate that was silencing them when the game took focus; a 1s keep-alive
+  re-asserts the profile so any clear is restored within a second.
+- **348 source files, 348 tests / 81 suites.** Ship ritual: branch → PR →
   squash-merge → realign `gptk4-heroic-patcher` → tag → `ditto` zip → release.
 
 ---
@@ -45,10 +49,10 @@ from one cover wall.
 Real-world testing has caught every important bug so far. Closing these beats
 any new feature. Each is a *confirm-or-fix*, not a build.
 
-1. **Trigger keep-alive, live (v0.13.3).** Confirm resistance now survives a
-   game taking focus (Ready or Not). If it still drops, determine whether Steam
-   Input owns the pad (→ Steam controller settings) or the 1s interval needs
-   tuning. See [[fable-dualsense-triggers]].
+1. **✔ Trigger resistance survives game focus (v0.13.5).** Confirmed live — the
+   raw-HID path carries the profile forward while the game is frontmost, and the
+   1s keep-alive re-asserts it if anything clears it. The framework's background
+   write gate is bypassed. See [[fable-dualsense-triggers]].
 2. **Shader-cache reuse across reboot.** Does Metal actually *reuse* a restored
    D3DMetal pipeline cache after a reboot, or recompile anyway (cache-key
    stability unknown)? Warm a game → reboot → relaunch → is first-run stutter
@@ -136,8 +140,11 @@ Small, additive, low-risk. Pull when a rough edge annoys.
 
 ## If you only pull three things next
 
-1. **Verify the trigger keep-alive live** (Lane 1.1) — a fix isn't done until
-   the pad proves it.
-2. **Turn two more real games into recipes** (Lane 2.6) — the moat compounds.
-3. **Assemble a first Friend Kit and cold-start it** (Lane 2.7) — that's the
-   goal, made tangible.
+1. **Turn two more real games into recipes** (Lane 2.6) — the moat compounds.
+   Absolute Drift and Ready or Not would be solid next candidates.
+2. **Assemble a first Friend Kit and cold-start it** (Lane 2.7) — that's the
+   goal, made tangible. A fresh account through the onboarding wizard, a
+   preloaded Steam bottle, and the recipe set.
+3. **Verify the other Lane 1 unknowns** — shader-cache reuse across a reboot
+   (Lane 1.2), the D3DMetal onboarding step live (Lane 1.3), Z: drive root
+   cause (Lane 1.4), native-Steam launch reliability (Lane 1.5).
