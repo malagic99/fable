@@ -1,5 +1,18 @@
 # Changelog
 
+## v0.14.0 — 2026-07-03
+
+One library. (UI review, priority 1.)
+
+- **The game wall is now THE library — in both faces.** The Classic interface's
+  Library section shows the same wall as the Gamer face: covers, confidence
+  dots, native macOS games, the inspector, custom covers. The old second
+  library grid (wine-only, different cards, no natives) is gone.
+- **One unified Add flow.** The wall's Add tile now carries every way a game
+  enters the library: native Steam import, **Heroic (Epic/GOG) import** (was
+  stranded in the old Library), a plain Mac app, and "Set Up in a Bottle…" for
+  Windows games.
+
 ## v0.13.6 — 2026-07-03
 
 Lane 1 verification sweep (roadmap) + one fix that fell out of it.

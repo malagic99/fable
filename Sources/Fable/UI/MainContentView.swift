@@ -11,7 +11,8 @@ struct MainContentView: View {
                 BottleListView()
             }
         case .library:
-            LibraryView()
+            // The one game surface — same wall as the Gamer face.
+            GameWallView(openBottles: { appState.selectedSection = .bottles })
         case .components:
             ComponentsView()
         case .settings:
