@@ -182,3 +182,15 @@
 "CPU Cores"                   = "Núcleos de CPU";
 "GPU Cores"                   = "Núcleos de GPU";
 "Model"                       = "Modelo";
+
+// MARK: Feedback
+"feedback.category.bug"       = "Error";
+"feedback.category.idea"      = "Idea";
+"feedback.category.question"  = "Pregunta";
+"Send Feedback…"              = "Enviar comentarios…";
+"Feedback"                    = "Comentarios";
+"Title"                       = "Título";
+"One line — what happened?"   = "Una línea: ¿qué pasó?";
+"The details — what you did, what you expected, what you got." = "Los detalles: qué hiciste, qué esperabas y qué obtuviste.";
+"Include system info"         = "Incluir información del sistema";
+"Review on GitHub…"           = "Revisar en GitHub…";

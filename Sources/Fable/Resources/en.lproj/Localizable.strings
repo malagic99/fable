@@ -72,3 +72,8 @@
 "advice.hw.d3dmetal"          = "On your %@ with %@ GB of unified memory, a 60 fps cap + MetalFX holds AAA titles steady — memory is shared with the GPU.";
 "advice.hw.headroom"          = "Your %@ with %@ GB has real headroom — Fable starts at a 120 fps cap; add MetalFX if a long session slips.";
 "advice.hw.translation"       = "On your %@, a frame-rate cap keeps DirectX 11 translation smooth over long sessions.";
+
+// MARK: Feedback (categories resolve in code via L10n)
+"feedback.category.bug"       = "Bug";
+"feedback.category.idea"      = "Idea";
+"feedback.category.question"  = "Question";
