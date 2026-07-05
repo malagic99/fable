@@ -350,6 +350,7 @@ private struct AdvancedSettingsTab: View {
 private struct AboutTab: View {
     @EnvironmentObject private var appUpdateChecker: AppUpdateChecker
     @EnvironmentObject private var appState: AppState
+    @State private var showingFeedback = false
 
     private var appVersion: String {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "dev"
@@ -398,6 +399,16 @@ private struct AboutTab: View {
             }
 
             Section {
+                Button("Send Feedback…") { showingFeedback = true }
+            } header: {
+                Text("Feedback")
+            } footer: {
+                Text("Bug, idea, or question — opens as a pre-filled GitHub issue you review and post yourself. Anonymous to Fable: the app sends nothing.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Section {
                 LabeledContent("Chip", value: HardwareProfile.current.chipName)
                 LabeledContent("Unified Memory", value: "\(HardwareProfile.current.memoryGB) GB")
                 LabeledContent("CPU Cores") {
@@ -435,5 +446,6 @@ private struct AboutTab: View {
         }
         .formStyle(.grouped)
         .fableThemedFormBackground()
+        .sheet(isPresented: $showingFeedback) { FeedbackSheet() }
     }
 }

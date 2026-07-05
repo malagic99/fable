@@ -1,5 +1,23 @@
 # Changelog
 
+## v0.18.0 — 2026-07-05
+
+Tell Fable what broke — now that the repo is public.
+
+- **Send Feedback** (Settings → About): bug, idea, or question, composed
+  in-app and handed to the browser as a pre-filled GitHub issue. Anonymous
+  to Fable by construction — the app sends nothing; the user reviews the
+  exact text on github.com and posts it (or doesn't) themselves.
+- **Opt-in system info.** A toggle appends the same three facts the About
+  tab shows (Fable version, macOS version, hardware spec line) — previewed
+  verbatim in the sheet before anything leaves the app. No serials, no
+  usernames, no paths.
+- The composer is a pure, tested model (`FeedbackReport`): category prefix
+  in the title (labels don't survive the new-issue URL for non-maintainers),
+  query-hostile characters (`+ & =`) percent-encoded, oversized messages
+  trimmed to keep the URL browser-safe.
+- Sheet localized in English, Spanish, and Portuguese.
+
 ## v0.17.0 — 2026-07-05
 
 Fable knows your Mac.
