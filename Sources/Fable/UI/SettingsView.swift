@@ -5,20 +5,63 @@ import SwiftUI
 /// Defaults (what new bottles get) · Advanced (storage + escape hatches) ·
 /// About (version + update).
 struct SettingsView: View {
-    var body: some View {
-        TabView {
-            AppearanceSettingsTab()
-                .tabItem { Label("Appearance", systemImage: "paintbrush") }
-            LibrarySettingsTab()
-                .tabItem { Label("Library", systemImage: "square.grid.2x2") }
-            DefaultsSettingsTab()
-                .tabItem { Label("Defaults", systemImage: "slider.horizontal.3") }
-            AdvancedSettingsTab()
-                .tabItem { Label("Advanced", systemImage: "wrench.and.screwdriver") }
-            AboutTab()
-                .tabItem { Label("About", systemImage: "info.circle") }
+    private enum Tab: String, CaseIterable, Identifiable {
+        case appearance, library, defaults, advanced, about
+        var id: String { rawValue }
+
+        var title: LocalizedStringKey {
+            switch self {
+            case .appearance: "Appearance"
+            case .library: "Library"
+            case .defaults: "Defaults"
+            case .advanced: "Advanced"
+            case .about: "About"
+            }
         }
-        .padding(20)
+
+        var symbol: String {
+            switch self {
+            case .appearance: "paintbrush"
+            case .library: "square.grid.2x2"
+            case .defaults: "slider.horizontal.3"
+            case .advanced: "wrench.and.screwdriver"
+            case .about: "info.circle"
+            }
+        }
+    }
+
+    @State private var tab: Tab = .appearance
+
+    var body: some View {
+        // An in-content strip, not a native TabView: TabView promotes its
+        // tabs into the window titlebar, which floats them ABOVE the Gamer
+        // top bar that logically contains them.
+        VStack(spacing: 0) {
+            HStack(spacing: 4) {
+                ForEach(Tab.allCases) { item in
+                    PillTabButton(title: item.title, symbol: item.symbol,
+                                  isActive: tab == item) { tab = item }
+                }
+                Spacer()
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            Divider()
+
+            Group {
+                switch tab {
+                case .appearance: AppearanceSettingsTab()
+                case .library: LibrarySettingsTab()
+                case .defaults: DefaultsSettingsTab()
+                case .advanced: AdvancedSettingsTab()
+                case .about: AboutTab()
+                }
+            }
+            // Readable line lengths: cap the forms and center them instead
+            // of stretching label–value rows across the whole window.
+            .frame(maxWidth: 700)
+            .frame(maxWidth: .infinity)
+        }
     }
 }
 
@@ -302,17 +345,18 @@ private struct AdvancedSettingsTab: View {
                     .foregroundStyle(.secondary)
             }
 
+            // The row label already names the folder — the button just acts.
             Section("Folders") {
                 LabeledContent("Bottles") {
-                    Button("Open Bottles Folder") { open(AppPaths.bottles) }
+                    Button("Open in Finder") { open(AppPaths.bottles) }
                         .controlSize(.small)
                 }
                 LabeledContent("Components") {
-                    Button("Open Components Folder") { open(AppPaths.components) }
+                    Button("Open in Finder") { open(AppPaths.components) }
                         .controlSize(.small)
                 }
                 LabeledContent("Logs") {
-                    Button("Open Logs Folder") { open(AppPaths.logs) }
+                    Button("Open in Finder") { open(AppPaths.logs) }
                         .controlSize(.small)
                 }
             }

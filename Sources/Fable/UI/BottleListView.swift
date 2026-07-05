@@ -31,8 +31,11 @@ struct BottleListView: View {
                 }
             } else {
                 ScrollView {
-                    // Same inline resizer as the Library and the Gamer wall.
+                    // Same heading + inline resizer shape as the game wall.
                     HStack {
+                        // "Your bottles", not "Bottles" — the classic face
+                        // already titles the window "Bottles" right above it.
+                        Text("Your bottles").font(.title.weight(.semibold))
                         Spacer()
                         TileSizeControl(scale: $settingsManager.settings.tileScale)
                     }
