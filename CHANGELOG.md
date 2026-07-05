@@ -1,5 +1,21 @@
 # Changelog
 
+## v0.17.0 — 2026-07-05
+
+Fable knows your Mac.
+
+- **Hardware detection** (`HardwareProfile`): chip, unified memory, P/E core
+  split, GPU core count, and model identifier — read once at startup from
+  sysctl + the GPU registry. Shown in Settings → About → **This Mac**.
+- **Hardware-aware performance defaults.** Recommendations now consult the
+  actual machine: a Max/Ultra with 48 GB+ starts at a 120 fps cap with MetalFX
+  off (real headroom); Pro-class or 24 GB machines get the steady 60 + MetalFX
+  (unified memory is shared with the GPU); chip tier alone isn't headroom — a
+  32 GB Max still shares. Applied by the same only-if-untuned rule as before.
+- **The Performance section says why.** A one-line, machine-specific
+  explanation ("On your Apple M4 Pro with 24 GB of unified memory, …") sits
+  above the backend footer — localized in English, Spanish, and Portuguese.
+
 ## v0.16.0 — 2026-07-05
 
 Fable habla español — e agora fala português.

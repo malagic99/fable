@@ -113,8 +113,8 @@ Small, additive, low-risk. Pull when a rough edge annoys.
     Heroic import already in place.
 15. **✔ Playtime tracking (v0.15.0).** Fable-launched sessions tally real
     time; Steam-launched games now also show as running (windows-path match).
-16. **Localization beyond en/es.** The scaffold + `L10n` helper exist; adding a
-    language is now mostly translation, not plumbing.
+16. **✔ Localization (v0.16.0).** en/es/pt + in-app language switch (Settings →
+    Appearance). Long-form footers/help still English — the remaining tail.
 
 ## Lane 5 — Explicitly parked (honest reasons, don't chase)
 

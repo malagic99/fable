@@ -226,9 +226,15 @@ struct BottleDetailView: View {
             } header: {
                 Text("Performance")
             } footer: {
-                Text(performanceFooter(for: bottle.graphicsBackend))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 4) {
+                    // Why these defaults, for THIS machine.
+                    if let advice = PerformanceOptions.hardwareAdvice(for: bottle.graphicsBackend) {
+                        Text(advice)
+                    }
+                    Text(performanceFooter(for: bottle.graphicsBackend))
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
             }
 
             DependenciesSection(bottle: bottle)

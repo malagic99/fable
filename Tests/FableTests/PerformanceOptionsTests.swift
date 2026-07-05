@@ -3,6 +3,13 @@ import Testing
 @testable import Fable
 
 @Suite struct PerformanceOptionsTests {
+    /// Fixed hardware so these assertions don't depend on the dev machine.
+    private let steadyMachine = HardwareProfile(
+        chipName: "Apple M4 Pro", modelIdentifier: "Mac16,8",
+        memoryBytes: 24 * 1_073_741_824, performanceCores: 8,
+        efficiencyCores: 4, gpuCores: 16
+    )
+
     @Test
     func defaultsAreAllOff() {
         let perf = PerformanceOptions()
@@ -34,19 +41,19 @@ import Testing
     func recommendedDefaultsPerBackend() {
         // Heavy D3DMetal path: cap + upscale so AAA titles hold steady FPS.
         for backend in [GraphicsBackend.sikarugir, .gptk] {
-            let rec = PerformanceOptions.recommended(for: backend)
+            let rec = PerformanceOptions.recommended(for: backend, hardware: steadyMachine)
             #expect(rec.frameRateCap == 60)
             #expect(rec.metalFXUpscaling)
         }
         // Translation backends: cap only (MetalFX is D3DMetal-only).
         for backend in [GraphicsBackend.dxmt, .dxvk] {
-            let rec = PerformanceOptions.recommended(for: backend)
+            let rec = PerformanceOptions.recommended(for: backend, hardware: steadyMachine)
             #expect(rec.frameRateCap == 60)
             #expect(!rec.metalFXUpscaling)
         }
         // Bare backends keep defaults.
-        #expect(PerformanceOptions.recommended(for: .off) == PerformanceOptions())
-        #expect(PerformanceOptions.recommended(for: .crossover) == PerformanceOptions())
+        #expect(PerformanceOptions.recommended(for: .off, hardware: steadyMachine) == PerformanceOptions())
+        #expect(PerformanceOptions.recommended(for: .crossover, hardware: steadyMachine) == PerformanceOptions())
     }
 
     @Test

@@ -398,6 +398,27 @@ private struct AboutTab: View {
             }
 
             Section {
+                LabeledContent("Chip", value: HardwareProfile.current.chipName)
+                LabeledContent("Unified Memory", value: "\(HardwareProfile.current.memoryGB) GB")
+                LabeledContent("CPU Cores") {
+                    Text("\(HardwareProfile.current.performanceCores)P + \(HardwareProfile.current.efficiencyCores)E")
+                        .monospacedDigit()
+                }
+                if let gpuCores = HardwareProfile.current.gpuCores {
+                    LabeledContent("GPU Cores", value: "\(gpuCores)")
+                }
+                LabeledContent("Model", value: HardwareProfile.current.modelIdentifier)
+            } header: {
+                Text("This Mac")
+            } footer: {
+                Text(L10n.string("advice.hw.d3dmetal",
+                                 HardwareProfile.current.chipName,
+                                 String(HardwareProfile.current.memoryGB)))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Section {
                 Link("Wine builds — Gcenx/macOS_Wine_builds",
                      destination: URL(string: "https://github.com/Gcenx/macOS_Wine_builds")!)
                 Link("DXMT — 3Shain/dxmt",
