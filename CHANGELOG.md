@@ -1,5 +1,19 @@
 # Changelog
 
+## v0.16.0 — 2026-07-05
+
+Fable habla español — e agora fala português.
+
+- **In-app language switch** (Settings → Appearance → Language): System /
+  English / Español / Português, with a one-click relaunch to apply.
+- **Spanish revived.** The UI-review rewrites had quietly regressed es
+  coverage; the wall, Gamer top bar, inspector, Settings, bottle page, and
+  common sheets are translated again — verified live on screen.
+- **Portuguese added** (for a tester) — same coverage as Spanish.
+- A parity test now locks every code-resolved key into all three languages,
+  so a missing translation fails the build instead of rendering a raw key.
+- Honest scope note: long-form footers and hover help remain English for now.
+
 ## v0.15.3 — 2026-07-04
 
 Supervisor review, item 3: tests where the bugs actually were.

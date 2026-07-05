@@ -1,0 +1,171 @@
+// Fable — Português.
+// Chaves com pontos = strings construídas em código; o resto são os
+// literais das vistas SwiftUI (a chave é o texto em inglês).
+
+// MARK: Sidebar
+"sidebar.bottles"             = "Garrafas";
+"sidebar.library"             = "Jogos";
+"sidebar.components"          = "Componentes";
+"sidebar.settings"            = "Ajustes";
+
+// MARK: BottleListView
+"bottle.list.empty.title"     = "Ainda não há garrafas";
+"bottle.list.empty.description" = "Crie uma garrafa para instalar e jogar jogos de Windows.";
+"bottle.list.create"          = "Criar garrafa";
+"bottle.list.new_steam"       = "Nova garrafa Steam…";
+
+// MARK: Wall
+"grouping.none"               = "Sem grupos";
+"grouping.platform"           = "Plataforma";
+"grouping.health"             = "Saúde";
+"grouping.bottle"             = "Garrafa";
+"wall.section.windows"        = "Windows";
+"wall.section.native"         = "Mac nativo";
+"confidence.verified"         = "verificado";
+"confidence.caveat"           = "funciona com ajustes";
+"confidence.blocked"          = "não funciona";
+"confidence.unknown"          = "não testado";
+
+// MARK: Language
+"language.system"             = "Sistema";
+
+// MARK: Onboarding
+"onboarding.welcome.title"    = "Bem-vindo ao Fable";
+"onboarding.welcome.subtitle" = "Um lançador de garrafas Wine para jogos de Windows no macOS. Vamos configurar a sua primeira garrafa — leva menos de um minuto.";
+"onboarding.get_started"      = "Começar";
+"onboarding.skip"             = "Pular configuração";
+"onboarding.back"             = "Voltar";
+"onboarding.continue"         = "Continuar";
+"onboarding.skip_for_now"     = "Pular por enquanto";
+
+"onboarding.source.title"     = "Onde estão os seus jogos?";
+"onboarding.source.subtitle"  = "Escolha a fonte que você mais usa. Pode adicionar outras depois.";
+"onboarding.source.steam.title"    = "Steam";
+"onboarding.source.steam.subtitle" = "Instale o cliente Steam e traga a sua biblioteca por ele.";
+"onboarding.source.heroic.title"   = "Heroic / GOG / Epic";
+"onboarding.source.heroic.subtitle" = "Traga os seus instaladores ou cópias sem DRM para uma garrafa pronta para DXMT.";
+"onboarding.source.manual.title"   = "Instaladores manuais";
+"onboarding.source.manual.subtitle" = "Comece com uma garrafa vazia e adicione instaladores de Windows você mesmo.";
+
+"onboarding.first_bottle.title" = "Crie a sua primeira garrafa";
+"onboarding.first_bottle.subtitle.steam"  = "Criaremos uma garrafa Steam-Ready: gráficos DXMT, Visual C++ e o cliente Steam pré-instalados.";
+"onboarding.first_bottle.subtitle.heroic" = "Criaremos uma garrafa de Jogos Modernos com DXMT para DirectX 11 + Visual C++.";
+"onboarding.first_bottle.subtitle.manual" = "Criaremos uma garrafa básica. Adicione dependências e jogos na página de detalhes.";
+"onboarding.create_bottle"    = "Criar garrafa…";
+
+"onboarding.done.title"       = "Tudo pronto";
+"onboarding.done.subtitle"    = "Você pode reabrir este assistente em Ajustes → Avançado.";
+"onboarding.done.start"       = "Começar a jogar";
+
+"settings.reset_onboarding"   = "Redefinir assistente de início";
+
+// MARK: Toasts
+"toast.bottle.duplicated"     = "Duplicada como “%@”";
+"toast.bottle.killed"         = "Processos Wine de “%@” encerrados";
+"toast.disk.freed"            = "%@ liberados";
+
+// MARK: Vistas — o mural
+"Your games"                  = "Seus jogos";
+"Search"                      = "Buscar";
+"Add game"                    = "Adicionar jogo";
+"Playing"                     = "Jogando";
+"Play"                        = "Jogar";
+"Running"                     = "Em execução";
+"Tune"                        = "Ajustar";
+"How it runs"                 = "Como funciona";
+"Health"                      = "Saúde";
+"Backend"                     = "Backend";
+"Frame cap"                   = "Limite de FPS";
+"Adaptive triggers"           = "Gatilhos adaptáveis";
+"History"                     = "Histórico";
+"Playtime"                    = "Tempo de jogo";
+"Last played"                 = "Jogado por último";
+"Notes"                       = "Notas";
+"Runtime"                     = "Ambiente";
+"Health dots"                 = "Pontos de saúde";
+"Import"                      = "Importar";
+"From native Steam…"          = "Do Steam nativo…";
+"From Heroic (Epic/GOG)…"     = "Do Heroic (Epic/GOG)…";
+"A Mac App…"                  = "Um app do Mac…";
+"Windows games"               = "Jogos de Windows";
+"Set Up in a Bottle…"         = "Configurar numa garrafa…";
+"Group By"                    = "Agrupar por";
+"Fetch Missing Covers"        = "Buscar capas faltantes";
+"Set Custom Cover…"           = "Escolher capa personalizada…";
+"Refresh Cover"               = "Atualizar capa";
+"Remove from Library"         = "Remover da biblioteca";
+"Import from native Steam"    = "Importar do Steam nativo";
+"Nothing to import"           = "Nada para importar";
+"Select All"                  = "Selecionar tudo";
+"Native macOS"                = "macOS nativo";
+
+// MARK: Vistas — barra superior (Gamer)
+"Bottles"                     = "Garrafas";
+"Components"                  = "Componentes";
+"Settings"                    = "Ajustes";
+
+// MARK: Vistas — ajustes
+"Appearance"                  = "Aparência";
+"Library"                     = "Biblioteca";
+"Defaults"                    = "Padrões";
+"Advanced"                    = "Avançado";
+"About"                       = "Sobre";
+"Interface"                   = "Interface";
+"Style"                       = "Estilo";
+"Advanced Mode"               = "Modo avançado";
+"Language"                    = "Idioma";
+"Themes"                      = "Temas";
+"Theme"                       = "Tema";
+"Theme Files"                 = "Arquivos de tema";
+"Background"                  = "Fundo";
+"Import…"                     = "Importar…";
+"Export Current…"             = "Exportar atual…";
+"Clear"                       = "Remover";
+"Choose Image…"               = "Escolher imagem…";
+"Compatibility"               = "Compatibilidade";
+"Artwork"                     = "Capas";
+"Shader Cache"                = "Cache de shaders";
+"Folders"                     = "Pastas";
+"Onboarding"                  = "Assistente de início";
+"Version"                     = "Versão";
+"Check for Updates"           = "Buscar atualizações";
+"Restart Fable to switch language?" = "Reiniciar o Fable para trocar o idioma?";
+"Relaunch Now"                = "Reiniciar agora";
+"Later"                       = "Depois";
+"The language applies the next time Fable starts." = "O idioma é aplicado na próxima vez que o Fable iniciar.";
+
+// MARK: Vistas — página da garrafa
+"Games"                       = "Jogos";
+"Controllers"                 = "Controles";
+"Graphics"                    = "Gráficos";
+"Performance"                 = "Desempenho";
+"Storage"                     = "Armazenamento";
+"Troubleshooting"             = "Solução de problemas";
+"Details"                     = "Detalhes";
+"Run Installer…"              = "Executar instalador…";
+"Add Game…"                   = "Adicionar jogo…";
+"Rename"                      = "Renomear";
+"Duplicate"                   = "Duplicar";
+"Delete"                      = "Apagar";
+"Repair"                      = "Reparar";
+"Configure…"                  = "Configurar…";
+"DualSense Triggers"          = "Gatilhos DualSense";
+"Frame Rate Cap"              = "Limite de FPS";
+"MetalFX Upscaling"           = "Upscaling MetalFX";
+"Uncapped"                    = "Sem limite";
+
+// MARK: Vistas — folhas comuns
+"Cancel"                      = "Cancelar";
+"Save"                        = "Salvar";
+"Name"                        = "Nome";
+"Arguments"                   = "Argumentos";
+"Environment Variables"       = "Variáveis de ambiente";
+"Graphics Backend"            = "Backend gráfico";
+"Export as Recipe…"           = "Exportar como receita…";
+
+// MARK: Legenda
+"verified — a tested recipe exists" = "verificado — existe uma receita testada";
+"works with tweaks"           = "funciona com ajustes";
+"won't run"                   = "não funciona";
+"untested"                    = "não testado";
+"native Mac game — no Wine, it just runs" = "jogo nativo de Mac — sem Wine, simplesmente funciona";

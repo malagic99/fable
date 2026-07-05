@@ -28,6 +28,7 @@ private struct AppearanceSettingsTab: View {
     @EnvironmentObject private var settingsManager: SettingsManager
     @EnvironmentObject private var themeStore: ThemeStore
     @EnvironmentObject private var toastCenter: ToastCenter
+    @State private var isOfferingRelaunch = false
 
     var body: some View {
         Form {
@@ -39,10 +40,19 @@ private struct AppearanceSettingsTab: View {
                 }
                 .pickerStyle(.segmented)
                 Toggle("Advanced Mode", isOn: $settingsManager.settings.advancedMode)
+
+                Picker("Language", selection: Binding(
+                    get: { settingsManager.settings.language },
+                    set: { applyLanguage($0) }
+                )) {
+                    ForEach(AppLanguage.allCases) { language in
+                        Text(language.displayName).tag(language)
+                    }
+                }
             } header: {
                 Text("Interface")
             } footer: {
-                Text("Gamer puts your games up front as a cover wall; Classic is the bottles-first utility. Advanced Mode reveals the backend, performance, storage, and troubleshooting panels on bottle pages.")
+                Text("Gamer puts your games up front as a cover wall; Classic is the bottles-first utility. Advanced Mode reveals the backend, performance, storage, and troubleshooting panels on bottle pages. A language change applies on the next launch.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -93,6 +103,31 @@ private struct AppearanceSettingsTab: View {
         }
         .formStyle(.grouped)
         .fableThemedFormBackground()
+        .confirmationDialog(
+            "Restart Fable to switch language?",
+            isPresented: $isOfferingRelaunch
+        ) {
+            Button("Relaunch Now") { relaunch() }
+            Button("Later", role: .cancel) {}
+        } message: {
+            Text("The language applies the next time Fable starts.")
+        }
+    }
+
+    private func applyLanguage(_ language: AppLanguage) {
+        settingsManager.settings.language = language
+        language.apply()
+        isOfferingRelaunch = true
+    }
+
+    /// Relaunch so the AppleLanguages override takes effect.
+    private func relaunch() {
+        let configuration = NSWorkspace.OpenConfiguration()
+        configuration.createsNewApplicationInstance = true
+        NSWorkspace.shared.openApplication(at: Bundle.main.bundleURL, configuration: configuration)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            NSApp.terminate(nil)
+        }
     }
 
     private func applyTheme(id: String) {

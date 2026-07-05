@@ -14,12 +14,7 @@ enum LibraryGrouping: String, Codable, CaseIterable, Identifiable, Sendable {
     var id: String { rawValue }
 
     var displayName: String {
-        switch self {
-        case .none: "No Groups"
-        case .platform: "Platform"
-        case .health: "Health"
-        case .bottle: "Bottle"
-        }
+        L10n.string("grouping.\(rawValue)")
     }
 }
 
@@ -47,8 +42,8 @@ extension LibraryGrouping {
             return [LibrarySection(id: "all", title: nil, wine: entries, native: natives)]
         case .platform:
             return [
-                LibrarySection(id: "wine", title: "Windows", wine: entries),
-                LibrarySection(id: "native", title: "Native Mac", native: natives),
+                LibrarySection(id: "wine", title: L10n.string("wall.section.windows"), wine: entries),
+                LibrarySection(id: "native", title: L10n.string("wall.section.native"), native: natives),
             ].filter { !$0.wine.isEmpty || !$0.native.isEmpty }
         case .health:
             var byVerdict: [GameConfidence: [LibraryEntry]] = [:]
@@ -58,7 +53,7 @@ extension LibraryGrouping {
                 return LibrarySection(id: verdict.label, title: verdict.label.capitalized, wine: games)
             }
             if !natives.isEmpty {
-                result.append(LibrarySection(id: "native", title: "Native Mac", native: natives))
+                result.append(LibrarySection(id: "native", title: L10n.string("wall.section.native"), native: natives))
             }
             return result
         case .bottle:
@@ -70,7 +65,7 @@ extension LibraryGrouping {
                 return LibrarySection(id: bottle.id.uuidString, title: bottle.name, wine: games)
             }
             if !natives.isEmpty {
-                result.append(LibrarySection(id: "native", title: "Native Mac", native: natives))
+                result.append(LibrarySection(id: "native", title: L10n.string("wall.section.native"), native: natives))
             }
             return result
         }

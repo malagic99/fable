@@ -121,7 +121,9 @@ struct GamerHomeView: View {
             HStack(spacing: 6) {
                 Image(systemName: item.symbol)
                     .font(.caption.weight(.semibold))
-                Text(item.title)
+                // LocalizedStringKey so the tab names translate (a plain
+                // String would render verbatim).
+                Text(LocalizedStringKey(item.title))
             }
             .font(.callout.weight(active ? .semibold : .regular))
             .foregroundStyle(active ? AnyShapeStyle(.primary) : AnyShapeStyle(.secondary))
