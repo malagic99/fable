@@ -169,3 +169,16 @@
 "won't run"                   = "no funciona";
 "untested"                    = "sin probar";
 "native Mac game — no Wine, it just runs" = "juego nativo de Mac — sin Wine, simplemente funciona";
+
+// MARK: Consejo de hardware
+"advice.hw.d3dmetal"          = "En tu %@ con %@ GB de memoria unificada, un límite de 60 fps + MetalFX mantiene estables los títulos AAA — la memoria se comparte con la GPU.";
+"advice.hw.headroom"          = "Tu %@ con %@ GB tiene margen real — Fable empieza con un límite de 120 fps; añade MetalFX si una sesión larga decae.";
+"advice.hw.translation"       = "En tu %@, un límite de FPS mantiene fluida la traducción de DirectX 11 en sesiones largas.";
+
+// MARK: Este Mac
+"This Mac"                    = "Este Mac";
+"Chip"                        = "Chip";
+"Unified Memory"              = "Memoria unificada";
+"CPU Cores"                   = "Núcleos de CPU";
+"GPU Cores"                   = "Núcleos de GPU";
+"Model"                       = "Modelo";

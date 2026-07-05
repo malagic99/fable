@@ -377,7 +377,7 @@ final class BottleManager: ObservableObject {
     @discardableResult
     func applyRecommendedPerformanceIfDefault(for id: Bottle.ID) -> Bool {
         guard let bottle = bottle(with: id) else { return false }
-        return applyPerformanceIfDefault(PerformanceOptions.recommended(for: bottle.graphicsBackend), for: id)
+        return applyPerformanceIfDefault(PerformanceOptions.recommended(for: bottle.graphicsBackend, hardware: .current), for: id)
     }
 
     /// Auto-picks a graphics backend for a game about to launch from an
