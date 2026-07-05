@@ -18,6 +18,21 @@ Tell Fable what broke — now that the repo is public.
   trimmed to keep the URL browser-safe.
 - Sheet localized in English, Spanish, and Portuguese.
 
+Plus a UI-hierarchy polish pass now that Fable is in the wild:
+
+- **The settings-tab wedge is gone.** Native TabView floated its tabs into
+  the window titlebar — *above* the Gamer top bar that contains them. The
+  five settings sections are now an in-content pill strip, the same pill
+  the top bar uses (one shared `PillTabButton`).
+- **Components had the same wedge** (its refresh lived in a toolbar, which
+  conjured an empty titlebar band and pushed the nav down); the refresh now
+  sits in the section header and the nav height matches every other screen.
+- **Readable line lengths**: Settings and Components forms cap at 700 pt
+  and center instead of stretching label–value rows across the window.
+- Bottles wall gets a "Your bottles" heading, matching the games wall.
+- Advanced → Folders buttons say "Open in Finder" once, not
+  "Open Bottles Folder" next to a row already labeled Bottles.
+
 ## v0.17.0 — 2026-07-05
 
 Fable knows your Mac.
