@@ -113,28 +113,12 @@ struct GamerHomeView: View {
     }
 
     private func tabButton(_ item: Tab) -> some View {
-        let active = tab == item
-        return Button {
+        // LocalizedStringKey so the tab names translate (a plain String
+        // would render verbatim).
+        PillTabButton(title: LocalizedStringKey(item.title), symbol: item.symbol,
+                      isActive: tab == item) {
             tab = item
             if let section = item.appSection { appState.selectedSection = section }
-        } label: {
-            HStack(spacing: 6) {
-                Image(systemName: item.symbol)
-                    .font(.caption.weight(.semibold))
-                // LocalizedStringKey so the tab names translate (a plain
-                // String would render verbatim).
-                Text(LocalizedStringKey(item.title))
-            }
-            .font(.callout.weight(active ? .semibold : .regular))
-            .foregroundStyle(active ? AnyShapeStyle(.primary) : AnyShapeStyle(.secondary))
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
-            .background(
-                active ? AnyShapeStyle(.quaternary.opacity(0.8)) : AnyShapeStyle(.clear),
-                in: Capsule()
-            )
-            .contentShape(Capsule())
         }
-        .buttonStyle(.plain)
     }
 }

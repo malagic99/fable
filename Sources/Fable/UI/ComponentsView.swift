@@ -35,7 +35,26 @@ struct ComponentsView: View {
                     fallback: appState.versionCatalog.components[WinetricksManager.componentID]
                 )
             } header: {
-                Text("Runtime Components")
+                HStack {
+                    Text("Runtime Components")
+                    Spacer()
+                    // In the header, not a .toolbar: toolbar items conjure a
+                    // titlebar band above the Gamer top bar (the tab-wedge bug).
+                    Button {
+                        Task { await updateManager.checkForUpdates() }
+                    } label: {
+                        if updateManager.isChecking {
+                            ProgressView().controlSize(.small)
+                        } else {
+                            Label("Check for Updates", systemImage: "arrow.triangle.2.circlepath")
+                                .labelStyle(.iconOnly)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.secondary)
+                    .disabled(updateManager.isChecking)
+                    .help("Check GitHub for newer component releases")
+                }
             } footer: {
                 if let lastChecked = updateManager.lastChecked {
                     Text("Last checked \(lastChecked.formatted(date: .omitted, time: .shortened))")
@@ -54,21 +73,9 @@ struct ComponentsView: View {
         }
         .formStyle(.grouped)
         .fableThemedFormBackground()
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button {
-                    Task { await updateManager.checkForUpdates() }
-                } label: {
-                    if updateManager.isChecking {
-                        ProgressView().controlSize(.small)
-                    } else {
-                        Label("Check for Updates", systemImage: "arrow.triangle.2.circlepath")
-                    }
-                }
-                .disabled(updateManager.isChecking)
-                .help("Check GitHub for newer component releases")
-            }
-        }
+        // Same readable cap as Settings.
+        .frame(maxWidth: 700)
+        .frame(maxWidth: .infinity)
     }
 }
 
