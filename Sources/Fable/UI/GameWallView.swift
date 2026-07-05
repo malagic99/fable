@@ -234,7 +234,7 @@ struct GameWallView: View {
         for url in FilePicker.chooseApplications() { nativeGames.addApp(at: url) }
     }
 
-    private func legendDot(_ color: Color, _ text: String) -> some View {
+    private func legendDot(_ color: Color, _ text: LocalizedStringKey) -> some View {
         HStack(spacing: 5) {
             Circle().fill(color).frame(width: 7, height: 7)
             Text(text).font(.caption2).foregroundStyle(.secondary)
@@ -408,7 +408,7 @@ private struct GameInspector: View {
         }
     }
 
-    private func fact(_ label: String, @ViewBuilder value: () -> some View) -> some View {
+    private func fact(_ label: LocalizedStringKey, @ViewBuilder value: () -> some View) -> some View {
         HStack {
             Text(label).foregroundStyle(.secondary)
             Spacer()
@@ -417,7 +417,7 @@ private struct GameInspector: View {
         .font(.callout)
     }
 
-    private func triggerChip(_ name: String, mode: TriggerMode) -> some View {
+    private func triggerChip(_ name: LocalizedStringKey, mode: TriggerMode) -> some View {
         VStack(spacing: 2) {
             Text(name).font(.caption.weight(.semibold))
             Text(mode.label).font(.caption2).foregroundStyle(.secondary)

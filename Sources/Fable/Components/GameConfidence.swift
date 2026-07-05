@@ -44,11 +44,6 @@ enum GameConfidence: Equatable, Hashable, CaseIterable {
     }
 
     var label: String {
-        switch self {
-        case .verified: "Verified"
-        case .caveat: "Works with tweaks"
-        case .blocked: "Won't run"
-        case .unknown: "Untested"
-        }
+        L10n.string("confidence.\(String(describing: self))")
     }
 }

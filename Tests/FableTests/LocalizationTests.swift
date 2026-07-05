@@ -55,6 +55,53 @@ import Testing
     }
 
     @Test
+    func portugueseTranslationLoadsThroughExplicitBundle() throws {
+        let bundle = Bundle.module
+        guard let path = bundle.path(
+            forResource: "Localizable", ofType: "strings",
+            inDirectory: nil, forLocalization: "pt"
+        ), let dict = NSDictionary(contentsOfFile: path) as? [String: String] else {
+            Issue.record("Portuguese strings file unreadable")
+            return
+        }
+        #expect(dict["sidebar.bottles"] == "Garrafas")
+        #expect(dict["grouping.platform"] == "Plataforma")
+    }
+
+    @Test
+    func dottedKeysExistInEveryLanguage() throws {
+        // Dotted keys are resolved in CODE (L10n/constructed) — a missing one
+        // renders as a raw key, so every language must carry the full set.
+        // View-literal keys (English prose) intentionally exist only in es/pt.
+        let bundle = Bundle.module
+        func dottedKeys(_ localization: String) throws -> Set<String> {
+            let path = try #require(bundle.path(
+                forResource: "Localizable", ofType: "strings",
+                inDirectory: nil, forLocalization: localization
+            ))
+            let dict = try #require(NSDictionary(contentsOfFile: path) as? [String: String])
+            return Set(dict.keys.filter { $0.contains(".") && !$0.contains(" ") })
+        }
+        let en = try dottedKeys("en")
+        let es = try dottedKeys("es")
+        let pt = try dottedKeys("pt")
+        #expect(en.subtracting(es).isEmpty, "es is missing: \(en.subtracting(es).sorted())")
+        #expect(en.subtracting(pt).isEmpty, "pt is missing: \(en.subtracting(pt).sorted())")
+    }
+
+    @Test
+    func languageOverrideWritesAndClearsAppleLanguages() {
+        let suite = "l10n-test-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        AppLanguage.portuguese.apply(to: defaults)
+        #expect(defaults.persistentDomain(forName: suite)?["AppleLanguages"] as? [String] == ["pt"])
+        // .system removes the override — reads then inherit the OS value,
+        // which is exactly the intent.
+        AppLanguage.system.apply(to: defaults)
+        #expect(defaults.persistentDomain(forName: suite)?["AppleLanguages"] == nil)
+    }
+
+    @Test
     func appSectionTitleResolvesThroughL10n() {
         // AppSection.title now goes through L10n; an en runner should
         // get the English copy back.

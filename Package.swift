@@ -20,6 +20,7 @@ let package = Package(
                 .copy("Resources/versions.json"),
                 .process("Resources/en.lproj"),
                 .process("Resources/es.lproj"),
+                .process("Resources/pt.lproj"),
             ]
         ),
         .testTarget(

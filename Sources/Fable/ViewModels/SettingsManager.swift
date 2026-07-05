@@ -71,6 +71,10 @@ struct AppSettings: Codable, Equatable, Sendable {
     /// account boundary when two Steam accounts live in separate bottles).
     var libraryGrouping: LibraryGrouping = .none
 
+    /// Display language (.system follows macOS; fixed choices apply on next
+    /// launch via AppleLanguages).
+    var language: AppLanguage = .system
+
     init() {}
 
     init(from decoder: Decoder) throws {
@@ -96,6 +100,7 @@ struct AppSettings: Codable, Equatable, Sendable {
         activeThemeID = try container.decodeIfPresent(String.self, forKey: .activeThemeID) ?? FableSkin.standard.id
         customBackgroundPath = try container.decodeIfPresent(String.self, forKey: .customBackgroundPath)
         libraryGrouping = try container.decodeIfPresent(LibraryGrouping.self, forKey: .libraryGrouping) ?? .none
+        language = try container.decodeIfPresent(AppLanguage.self, forKey: .language) ?? .system
     }
 }
 
