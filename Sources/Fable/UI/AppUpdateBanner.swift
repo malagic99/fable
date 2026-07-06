@@ -14,9 +14,9 @@ struct AppUpdateBanner: View {
                     .foregroundStyle(.tint)
 
                 VStack(alignment: .leading, spacing: 1) {
-                    Text("Fable \(release.version) is available")
+                    Text(L10n.string("update.available", release.version))
                         .font(.callout.weight(.semibold))
-                    Text("You're on \(AppUpdateChecker.currentVersion). Open the release page to download.")
+                    Text(L10n.string("update.current", AppUpdateChecker.currentVersion))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }

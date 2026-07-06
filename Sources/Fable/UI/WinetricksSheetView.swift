@@ -45,7 +45,7 @@ struct WinetricksSheetView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text("Winetricks")
                     .font(.title3.weight(.semibold))
-                Text("\(bottle.installedWinetricksVerbs.count) installed in “\(bottle.name)”")
+                Text(L10n.string("winetricks.installed_in", String(bottle.installedWinetricksVerbs.count), bottle.name))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

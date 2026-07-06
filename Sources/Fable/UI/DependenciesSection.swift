@@ -20,7 +20,7 @@ struct DependenciesSection: View {
             HStack {
                 Label("More from Winetricks…", systemImage: "wrench.and.screwdriver")
                 Spacer()
-                Text("\(bottle.installedWinetricksVerbs.count) installed")
+                Text(L10n.string("winetricks.installed_count", String(bottle.installedWinetricksVerbs.count)))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Button("Browse") { isShowingWinetricks = true }

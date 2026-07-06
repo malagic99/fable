@@ -5,14 +5,7 @@ import Foundation
 enum TriggerMode: String, Codable, CaseIterable, Sendable, Identifiable {
     case off, feedback, weapon, vibration
     var id: String { rawValue }
-    var label: String {
-        switch self {
-        case .off: "Off"
-        case .feedback: "Feedback"
-        case .weapon: "Weapon"
-        case .vibration: "Vibration"
-        }
-    }
+    var label: String { L10n.string("trigger.mode.\(rawValue)") }
 }
 
 /// Parameters for one trigger. Which fields matter depends on `mode`:

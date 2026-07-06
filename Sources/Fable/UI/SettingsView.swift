@@ -228,7 +228,7 @@ private struct LibrarySettingsTab: View {
                 LabeledContent("Shared Recipes") {
                     HStack(spacing: 8) {
                         if !userRecipeStore.recipes.isEmpty {
-                            Text("\(userRecipeStore.recipes.count) imported")
+                            Text(L10n.string("recipes.imported_count", String(userRecipeStore.recipes.count)))
                                 .foregroundStyle(.secondary)
                         }
                         Button("Import Recipe…") { importRecipe() }
@@ -424,7 +424,7 @@ private struct AboutTab: View {
                             .controlSize(.small)
                     }
                 } else if let lastChecked = appUpdateChecker.lastChecked, appUpdateChecker.lastError == nil {
-                    Text("Last checked \(lastChecked.formatted(date: .abbreviated, time: .shortened)) — up to date.")
+                    Text(L10n.string("update.last_checked_uptodate", lastChecked.formatted(date: .abbreviated, time: .shortened)))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 } else if let lastError = appUpdateChecker.lastError {

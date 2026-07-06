@@ -12,15 +12,7 @@ struct WinetricksVerb: Identifiable, Hashable, Sendable {
 
         var id: String { rawValue }
 
-        var displayName: String {
-            switch self {
-            case .apps: "Apps"
-            case .benchmarks: "Benchmarks"
-            case .dlls: "DLLs & Runtimes"
-            case .fonts: "Fonts"
-            case .settings: "Settings"
-            }
-        }
+        var displayName: String { L10n.string("winetricks.category.\(rawValue)") }
     }
 
     let id: String

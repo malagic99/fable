@@ -54,7 +54,7 @@ struct GameSettingsView: View {
                             }
                         }
                     )) {
-                        Text("Bottle default (\(bottle.graphicsBackend.displayName))")
+                        Text(L10n.string("game.backend.bottle_default", bottle.graphicsBackend.displayName))
                             .tag(BackendChoice.inherit)
                         Divider()
                         ForEach(GraphicsBackend.allCases) { backend in
@@ -101,7 +101,7 @@ struct GameSettingsView: View {
                 } header: {
                     Text("Performance")
                 } footer: {
-                    Text("Shared by every game in “\(bottle.name)” — performance is set per bottle.")
+                    Text(L10n.string("game.perf.shared_footer", bottle.name))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -117,9 +117,9 @@ struct GameSettingsView: View {
                 } header: {
                     Text("Adaptive Triggers")
                 } footer: {
-                    Text(triggerOverride == nil
-                         ? "Using the bottle's default trigger profile."
-                         : "This game uses its own trigger profile instead of the bottle default. Applies when launched from Fable — a game started from inside Steam keeps the bottle default.")
+                    Text(L10n.string(triggerOverride == nil
+                         ? "game.triggers.footer_default"
+                         : "game.triggers.footer_override"))
                         .font(.caption).foregroundStyle(.secondary)
                 }
 

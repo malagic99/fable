@@ -40,7 +40,7 @@ struct BottleQuickLaunchButton: View {
             }
             .buttonStyle(.plain)
             .disabled(bottle.status != .ready)
-            .help(isRunning ? "Stop \(primaryGame.name)" : "Launch \(primaryGame.name)")
+            .help(L10n.string(isRunning ? "game.action.stop_named" : "game.action.launch_named", primaryGame.name))
             .contextMenu {
                 Button("Create Desktop Shortcut") { createShortcut(primaryGame) }
             }
