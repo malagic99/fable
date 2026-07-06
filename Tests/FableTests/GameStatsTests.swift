@@ -54,6 +54,25 @@ import Testing
     }
 
     @Test
+    func endAllSessionsFoldsOpenSessionsIn() throws {
+        // The app-quit path: quitting Fable mid-game must bank the session.
+        let file = tempFile()
+        defer { try? fm.removeItem(at: file) }
+        let store = GameStatsStore(fileURL: file)
+        let a = UUID(), b = UUID()
+        let start = Date(timeIntervalSince1970: 5_000)
+        store.sessionStarted(a, at: start)
+        store.sessionStarted(b, at: start.addingTimeInterval(600))
+
+        store.endAllSessions(at: start.addingTimeInterval(1_800))
+        #expect(store.stats[a]?.totalSeconds == 1_800)
+        #expect(store.stats[b]?.totalSeconds == 1_200)
+        // Idempotent — a second call adds nothing.
+        store.endAllSessions(at: start.addingTimeInterval(9_999))
+        #expect(store.stats[a]?.totalSeconds == 1_800)
+    }
+
+    @Test
     func sessionsAccumulateAndPersist() throws {
         let file = tempFile()
         defer { try? fm.removeItem(at: file) }

@@ -1,5 +1,25 @@
 # Changelog
 
+## v0.21.0 — 2026-07-06
+
+The kit's scariest moment made boring, and the moat learns to grow itself.
+
+- **Bottle export now scales to the real donor.** The prefix is tarred IN
+  PLACE and the checksum streams through a pipe — a 56 GB Steam bottle no
+  longer needs a staged copy plus a second full-size temp file (previously
+  ~2× the bottle in scratch space and three full disk passes; now one
+  streamed pass). The Export button shows live progress ("12.4 GB / ~56 GB")
+  and a disk-space preflight refuses up front instead of failing at 90%.
+- **Share This Setup on GitHub** (Game Settings): one click composes your
+  working config — backend, cap, MetalFX, the hardware it ran on, tracked
+  playtime — into a pre-filled `[Recipe]` GitHub issue. Same privacy contract
+  as Send Feedback: nothing sent, you review and post. Issue templates ship
+  in the repo; honest reports become built-in catalog entries.
+- **Playtime survives quitting Fable mid-game** — open sessions fold into
+  their totals on app termination instead of vanishing.
+- ROADMAP.md rewritten to post-Friend-Kit reality: the 1.0 checklist, the
+  1.x menu, the 2.0 money gate, and the honest non-goals with receipts.
+
 ## v0.20.0 — 2026-07-06
 
 Fable learns the most expensive lesson we ever paid for — and CI makes sure

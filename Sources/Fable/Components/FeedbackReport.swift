@@ -69,9 +69,16 @@ struct FeedbackReport: Equatable {
     }
 
     var issueURL: URL? {
-        URL(string: "https://github.com/\(Self.repo)/issues/new"
-            + "?title=\(Self.encodeQueryValue(issueTitle))"
-            + "&body=\(Self.encodeQueryValue(issueBody))")
+        Self.newIssueURL(title: issueTitle, body: issueBody)
+    }
+
+    /// General pre-filled new-issue composer — also used by "Share This
+    /// Setup" (recipe submissions). Same privacy property: nothing is sent;
+    /// the browser opens on github.com with everything visible.
+    static func newIssueURL(title: String, body: String) -> URL? {
+        URL(string: "https://github.com/\(repo)/issues/new"
+            + "?title=\(encodeQueryValue(title))"
+            + "&body=\(encodeQueryValue(body))")
     }
 
     /// The block the "include system info" toggle previews. No serials,

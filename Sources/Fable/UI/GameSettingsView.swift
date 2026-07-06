@@ -141,8 +141,13 @@ struct GameSettingsView: View {
                     } label: {
                         Label("Export as Recipe…", systemImage: "square.and.arrow.up")
                     }
+                    Button {
+                        shareSetupOnGitHub()
+                    } label: {
+                        Label("Share This Setup on GitHub…", systemImage: "arrow.up.message")
+                    }
                 } footer: {
-                    Text("Saves this game's backend + performance as a shareable .fablerecipe file. Anyone can import it so the setup auto-applies for them.")
+                    Text("Export saves a .fablerecipe file anyone can import. Share opens a pre-filled GitHub issue with this setup and your hardware — you review and post it yourself; tested setups grow Fable's built-in catalog.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -225,6 +230,39 @@ struct GameSettingsView: View {
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    /// The recipe intake pipe: composes this game's working setup (plus the
+    /// hardware it was tested on and tracked playtime) into a pre-filled
+    /// GitHub issue. Nothing is sent — the browser opens for review, same
+    /// contract as Send Feedback.
+    private func shareSetupOnGitHub() {
+        var staged = game
+        staged.graphicsBackend = backendOverride
+        let recipe = UserRecipeStore.recipe(from: staged, in: bottle)
+        let recipeJSON = (try? UserRecipeStore.encoded(recipe))
+            .map { String(decoding: $0, as: UTF8.self) } ?? "{}"
+        let playtime = gameStats.stats[game.id]
+            .flatMap { GameStatsStore.formattedPlaytime(seconds: $0.totalSeconds) } ?? "not tracked"
+
+        let body = """
+        **Game:** \(game.name)
+        **Tested on:** \(HardwareProfile.current.summary), Fable \(AppUpdateChecker.currentVersion)
+        **Tracked playtime:** \(playtime)
+
+        ```json
+        \(recipeJSON)
+        ```
+
+        <!-- Anything worth knowing? In-game settings, quirks, what you compared against. -->
+        """
+        guard let url = FeedbackReport.newIssueURL(
+            title: "[Recipe] \(game.name) — \(recipe.backend.shortName)"
+                + (recipe.performance.frameRateCap.map { " + \($0) fps" } ?? "")
+                + (recipe.performance.metalFXUpscaling ? " + MetalFX" : ""),
+            body: body
+        ) else { return }
+        NSWorkspace.shared.open(url)
     }
 
     private func exportRecipe() {

@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Bug / idea / question
+    url: https://github.com/malagic99/fable/issues/new
+    about: Or use Settings → About → Send Feedback inside Fable — it pre-fills everything.

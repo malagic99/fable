@@ -1,4 +1,3 @@
-import CryptoKit
 import Foundation
 
 /// `.fbottle` archive format: a tar.zst containing a manifest, the
@@ -73,9 +72,15 @@ enum BottleArchive {
 
     // MARK: Pack
 
-    /// Tar+zstd the bottle's directory (prefix + bottle.json) into
+    /// Tar+zstd the bottle (manifest + bottle.json + prefix tree) into
     /// `destination`. Returns the destination URL on success.
     /// MainActor-isolated because it reads BottleManager paths.
+    ///
+    /// Scale matters here: a Steam donor bottle is ~56 GB. The prefix is
+    /// tarred IN PLACE (it already sits at `<bottleDir>/prefix`, the exact
+    /// entry name the archive wants) and the checksum is streamed through a
+    /// pipe — no staged copy of the prefix, no full-size temp tar. Only the
+    /// two small JSON files are staged.
     @MainActor
     @discardableResult
     static func pack(
@@ -91,28 +96,31 @@ enum BottleArchive {
             throw ArchiveError.bottleDirectoryMissing(source.path)
         }
 
-        // Staging dir gets a deterministic layout so the manifest can
-        // reference paths predictably.
+        // Stage just the JSON entries; the prefix is read from its home.
         let staging = fm.temporaryDirectory
             .appending(path: "fable-archive-\(UUID().uuidString)", directoryHint: .isDirectory)
         try fm.createDirectory(at: staging, withIntermediateDirectories: true)
         defer { try? fm.removeItem(at: staging) }
 
-        // Copy the prefix tree + bottle.json into staging.
-        let prefixStaging = staging.appending(path: prefixEntryName, directoryHint: .isDirectory)
+        // An empty prefix still needs a directory for tar to reference.
+        let prefixParent: URL
         if fm.fileExists(atPath: prefixSource.path) {
-            try fm.copyItem(at: prefixSource, to: prefixStaging)
+            prefixParent = prefixSource.deletingLastPathComponent()
         } else {
-            try fm.createDirectory(at: prefixStaging, withIntermediateDirectories: true)
+            try fm.createDirectory(
+                at: staging.appending(path: prefixEntryName), withIntermediateDirectories: true
+            )
+            prefixParent = staging
         }
 
         let bottleJSON = try JSONEncoder.fablePretty().encode(bottle)
         try bottleJSON.write(to: staging.appending(path: bottleEntryName))
 
         // Checksum the prefix tar stream so the importer can validate
-        // before doing anything irreversible. tar over the staged prefix
-        // dir is deterministic per file list.
-        let checksum = try await prefixChecksum(stagingPrefix: prefixStaging)
+        // before doing anything irreversible.
+        let checksum = try await prefixChecksum(
+            stagingPrefix: prefixParent.appending(path: prefixEntryName, directoryHint: .isDirectory)
+        )
 
         let manifest = Manifest(
             schemaVersion: Manifest.currentSchemaVersion,
@@ -150,6 +158,7 @@ enum BottleArchive {
                 "-C", staging.path,
                 manifestEntryName,
                 bottleEntryName,
+                "-C", prefixParent.path,
                 prefixEntryName,
             ]
         )
@@ -251,43 +260,28 @@ enum BottleArchive {
 
     // MARK: Checksum
 
-    /// Streams a stable tar of the prefix tree and sha256s it. The same
-    /// staged directory produces the same digest on every machine,
-    /// because we control sort order via tar's deterministic flag.
+    /// Streams a stable tar of the prefix tree straight into sha256 — a
+    /// shell pipeline, so a 56 GB prefix never touches a temp file. The
+    /// digest is over the uncompressed tar bytes (same invocation as ever,
+    /// so archives written by older Fable versions still verify).
     private static func prefixChecksum(stagingPrefix: URL) async throws -> String {
-        let fm = FileManager.default
-        guard fm.fileExists(atPath: stagingPrefix.path) else { return emptyChecksum }
-
-        // tar to stdout, no compression — checksum is over the
-        // uncompressed bytes so it survives a re-compression round-trip.
-        let tarStream = fm.temporaryDirectory.appending(
-            path: "fable-checksum-\(UUID().uuidString).tar"
-        )
-        defer { try? fm.removeItem(at: tarStream) }
+        guard FileManager.default.fileExists(atPath: stagingPrefix.path) else { return emptyChecksum }
 
         let result = try await ProcessRunner.run(
-            URL(filePath: "/usr/bin/tar"),
+            URL(filePath: "/bin/sh"),
             arguments: [
-                "-cf", tarStream.path,
-                "-C", stagingPrefix.deletingLastPathComponent().path,
+                "-c", #"tar -cf - -C "$1" "$2" | shasum -a 256"#, "--",
+                stagingPrefix.deletingLastPathComponent().path,
                 stagingPrefix.lastPathComponent,
             ]
         )
-        guard result.succeeded else {
+        guard result.succeeded,
+              let hex = result.standardOutput.split(separator: " ").first,
+              hex.count == 64
+        else {
             throw ArchiveError.tarFailed(result.standardError)
         }
-
-        let handle = try FileHandle(forReadingFrom: tarStream)
-        defer { try? handle.close() }
-        var hasher = SHA256()
-        while autoreleasepool(invoking: {
-            let chunk = (try? handle.read(upToCount: 1 << 16)) ?? Data()
-            if chunk.isEmpty { return false }
-            hasher.update(data: chunk)
-            return true
-        }) {}
-        let digest = hasher.finalize()
-        return "sha256:" + digest.map { String(format: "%02x", $0) }.joined()
+        return "sha256:" + hex
     }
 
     private static let emptyChecksum = "sha256:" + String(
