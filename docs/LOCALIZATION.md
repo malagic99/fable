@@ -47,6 +47,13 @@ instead of silently rendering English.
 4. Add the code to the language lists in `LocalizationTests` and
    `LocalizationCoverageTests` so the gates cover it.
 
+## Known gap (deliberate)
+
+`GameDoctor` rule text (title/detail/suggestion) is English-only diagnostic
+prose — ~20 rules × 3 fields. It's data the gates don't police (it reads like
+log content). If a translator wants it: route the three fields through dotted
+keys (`doctor.<id>.title` …) and the parity test will take over.
+
 ## Conventions
 
 - es uses **tú**, pt uses **você** (pt-BR vocabulary: Mesa, controle, capa).

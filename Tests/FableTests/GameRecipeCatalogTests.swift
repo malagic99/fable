@@ -39,6 +39,19 @@ import Testing
     }
 
     @Test
+    func readyOrNotMatchesBothLauncherAndShippingExe() {
+        // UE4 games run through a launcher exe AND a -Win64-Shipping exe;
+        // the recipe (seeded from the real tested bottle: sikarugir override,
+        // 120 cap + MetalFX, ~4 h tracked) must match either.
+        for exe in ["ReadyOrNot.exe", #"Binaries\Win64\ReadyOrNot-Win64-Shipping.exe"#] {
+            let r = GameRecipeCatalog.recipe(forExecutablePath: exe)
+            #expect(r?.name == "Ready or Not", "no match for \(exe)")
+            #expect(r?.backend == .sikarugir)
+            #expect(r?.performance.metalFXUpscaling == true)
+        }
+    }
+
+    @Test
     func everyRecipeHasUniqueExecutablesAndANote() {
         var seen = Set<String>()
         for recipe in GameRecipeCatalog.all {

@@ -4,8 +4,10 @@ import SwiftUI
 struct BottleListView: View {
     @EnvironmentObject private var bottleManager: BottleManager
     @EnvironmentObject private var settingsManager: SettingsManager
+    @EnvironmentObject private var toastCenter: ToastCenter
     @State private var isShowingCreateSheet = false
     @State private var isShowingSteamSheet = false
+    @State private var isImporting = false
 
     private static let steamTemplate = BottleTemplateCatalog.all
         .first { $0.id == "steam-ready" } ?? BottleTemplateCatalog.default
@@ -50,7 +52,8 @@ struct BottleListView: View {
                         // Steam bottle. (No toolbar "+", per the games-first flow.)
                         NewBottleCard(
                             createBottle: { isShowingCreateSheet = true },
-                            createSteam: { isShowingSteamSheet = true }
+                            createSteam: { isShowingSteamSheet = true },
+                            importBottle: { importBottle() }
                         )
                     }
                     .padding([.horizontal, .bottom], 24)
@@ -72,6 +75,25 @@ struct BottleListView: View {
             BottleDetailView(bottleID: id)
         }
     }
+
+    /// The Friend Kit receiving end: pick a .fbottle, verify, adopt.
+    private func importBottle() {
+        guard !isImporting,
+              let archive = FilePicker.chooseFile(extension: BottleArchive.pathExtension)
+        else { return }
+        isImporting = true
+        toastCenter.success(L10n.string("toast.bottle.importing", archive.lastPathComponent))
+        Task {
+            defer { isImporting = false }
+            do {
+                let unpacked = try await BottleArchive.unpack(archive)
+                let imported = try bottleManager.importBottle(unpacked)
+                toastCenter.success(L10n.string("toast.bottle.imported", imported.name))
+            } catch {
+                toastCenter.error(error.localizedDescription)
+            }
+        }
+    }
 }
 
 /// Dashed ghost tile that creates a new bottle — a menu offering a plain or a
@@ -79,12 +101,15 @@ struct BottleListView: View {
 private struct NewBottleCard: View {
     let createBottle: () -> Void
     let createSteam: () -> Void
+    let importBottle: () -> Void
     @State private var isHovering = false
 
     var body: some View {
         Menu {
             Button("New Bottle", systemImage: "wineglass") { createBottle() }
             Button("New Steam Bottle", systemImage: "gamecontroller") { createSteam() }
+            Divider()
+            Button("Import Bottle (.fbottle)…", systemImage: "square.and.arrow.down") { importBottle() }
         } label: {
             VStack(spacing: 10) {
                 Image(systemName: "plus")

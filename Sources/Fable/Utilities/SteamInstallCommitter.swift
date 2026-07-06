@@ -62,9 +62,15 @@ enum SteamInstallCommitter {
         else { return nil }
         // Already installed — nothing to do.
         if app.int("StateFlags") == 4 { return nil }
-        // Ready only when the extracted payload matches the staged size
-        // exactly (Steam extracts the full depot, then stalls on commit).
-        guard directorySize(appDir, fm: fm) >= Int64(bytesToStage) else { return nil }
+        // Ready only when the extracted payload matches the staged size. Both
+        // measures must agree: Steam PRE-ALLOCATES depot files sparsely during
+        // download, so logical size alone can look "complete" for a paused
+        // half-download — allocated (on-disk) size can't be faked by sparse
+        // preallocation. Committing a half-download would move broken files
+        // into common/ and mark them installed.
+        let sizes = directorySizes(appDir, fm: fm)
+        guard sizes.logical >= Int64(bytesToStage),
+              sizes.allocated >= Int64(bytesToStage) else { return nil }
 
         // Move the real files into common/<installdir>, merging over any
         // stub directory a prior attempt left behind.
@@ -123,15 +129,25 @@ enum SteamInstallCommitter {
 
     /// Sum of regular-file sizes under `url`, in bytes.
     static func directorySize(_ url: URL, fm: FileManager = .default) -> Int64 {
-        guard let e = fm.enumerator(at: url, includingPropertiesForKeys: [.fileSizeKey, .isRegularFileKey]) else {
-            return 0
+        directorySizes(url, fm: fm).logical
+    }
+
+    /// Logical (st_size) and allocated (on-disk blocks) totals in one walk.
+    /// They diverge for sparse files: preallocated-but-unwritten regions count
+    /// toward logical but not allocated.
+    static func directorySizes(_ url: URL, fm: FileManager = .default) -> (logical: Int64, allocated: Int64) {
+        let keys: Set<URLResourceKey> = [.fileSizeKey, .totalFileAllocatedSizeKey, .isRegularFileKey]
+        guard let e = fm.enumerator(at: url, includingPropertiesForKeys: Array(keys)) else {
+            return (0, 0)
         }
-        var total: Int64 = 0
+        var logical: Int64 = 0
+        var allocated: Int64 = 0
         for case let item as URL in e {
-            let v = try? item.resourceValues(forKeys: [.fileSizeKey, .isRegularFileKey])
-            if v?.isRegularFile == true { total += Int64(v?.fileSize ?? 0) }
+            guard let v = try? item.resourceValues(forKeys: keys), v.isRegularFile == true else { continue }
+            logical += Int64(v.fileSize ?? 0)
+            allocated += Int64(v.totalFileAllocatedSize ?? 0)
         }
-        return total
+        return (logical, allocated)
     }
 
     /// Depot ids for `appid` from `downloading/state_<appid>_<depot>.patch`.

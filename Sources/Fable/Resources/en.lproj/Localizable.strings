@@ -141,3 +141,9 @@
 "recipes.imported_count"      = "%@ imported";
 "game.action.stop_named"      = "Stop %@";
 "game.action.launch_named"    = "Launch %@";
+
+// MARK: Bottle export/import (Friend Kit)
+"toast.bottle.exporting"      = "Packing “%@” — big bottles take a few minutes…";
+"toast.bottle.exported"       = "Exported %@";
+"toast.bottle.importing"      = "Unpacking %@ — verifying and installing…";
+"toast.bottle.imported"       = "Imported as “%@”";

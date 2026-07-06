@@ -15,6 +15,7 @@ struct BottleDetailView: View {
     @EnvironmentObject private var toastCenter: ToastCenter
     @EnvironmentObject private var settingsManager: SettingsManager
     @EnvironmentObject private var winetricksManager: WinetricksManager
+    @EnvironmentObject private var appState: AppState
     @Environment(\.dismiss) private var dismiss
 
     /// When off, the bottle page is a clean click-and-play view; when on,
@@ -29,6 +30,7 @@ struct BottleDetailView: View {
     @State private var importExe: PickedExecutable?
     @State private var gogInstallerExe: PickedExecutable?
     @State private var isShowingWinetricks = false
+    @State private var isExporting = false
     @State private var isShowingTriggers = false
     @State private var isRepairing = false
 
@@ -373,6 +375,14 @@ struct BottleDetailView: View {
                           : "bottle.help.duplicate"))
                 }
 
+                Button {
+                    exportBottle(bottle)
+                } label: {
+                    Label("Export", systemImage: "square.and.arrow.up")
+                }
+                .disabled(bottle.status != .ready || isAnyGameRunning(in: bottle) || isExporting)
+                .help("Pack this bottle into a shareable .fbottle archive — the Friend Kit donor")
+
                 Button(role: .destructive) {
                     isShowingDeleteConfirmation = true
                 } label: {
@@ -508,6 +518,28 @@ struct BottleDetailView: View {
 
     private func isAnyGameRunning(in bottle: Bottle) -> Bool {
         bottle.games.contains { gameLauncher.isRunning($0.id) }
+    }
+
+    private func exportBottle(_ bottle: Bottle) {
+        guard let destination = FilePicker.chooseSaveDestination(
+            suggestedName: "\(bottle.name).\(BottleArchive.pathExtension)"
+        ) else { return }
+        isExporting = true
+        toastCenter.success(L10n.string("toast.bottle.exporting", bottle.name))
+        Task {
+            defer { isExporting = false }
+            do {
+                try await BottleArchive.pack(
+                    bottle,
+                    bottleManager: bottleManager,
+                    catalog: appState.versionCatalog,
+                    to: destination
+                )
+                toastCenter.success(L10n.string("toast.bottle.exported", destination.lastPathComponent))
+            } catch {
+                toastCenter.error(error.localizedDescription)
+            }
+        }
     }
 
     private func duplicate(_ bottle: Bottle) {

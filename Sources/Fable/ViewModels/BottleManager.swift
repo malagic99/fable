@@ -157,6 +157,45 @@ final class BottleManager: ObservableObject {
         return clone
     }
 
+    /// Adopts an unpacked `.fbottle` (the Friend Kit path): fresh id, deduped
+    /// name, prefix moved into place, archive scratch cleaned. Machine
+    /// portability notes: game paths are C:-relative so they survive; the
+    /// dosdevices links and drive mappings are healed by `reconcileDrives`
+    /// on first launch.
+    @discardableResult
+    func importBottle(_ unpacked: BottleArchive.UnpackedBottle) throws -> Bottle {
+        var imported = unpacked.bottle
+        imported.id = UUID()
+        imported.name = dedupedName(unpacked.manifest.originalBottleName)
+        imported.createdAt = .now
+        imported.status = .ready
+
+        let fm = FileManager.default
+        try fm.createDirectory(at: directory(for: imported), withIntermediateDirectories: true)
+        if fm.fileExists(atPath: unpacked.prefixDirectory.path) {
+            try fm.moveItem(at: unpacked.prefixDirectory, to: prefixDirectory(for: imported))
+            // Stale wineserver bookkeeping from the donor machine.
+            try? fm.removeItem(at: prefixDirectory(for: imported).appending(path: ".update-timestamp"))
+        }
+        try save(imported)
+        bottles.append(imported)
+        try? fm.removeItem(at: unpacked.workingDirectory)
+        return imported
+    }
+
+    /// "Steam Ready", "Steam Ready 2", "Steam Ready 3", … — first free name.
+    private func dedupedName(_ base: String) -> String {
+        let trimmed = base.trimmingCharacters(in: .whitespacesAndNewlines)
+        let root = trimmed.isEmpty ? "Imported Bottle" : trimmed
+        var candidate = root
+        var counter = 2
+        while bottles.contains(where: { $0.name.caseInsensitiveCompare(candidate) == .orderedSame }) {
+            candidate = "\(root) \(counter)"
+            counter += 1
+        }
+        return candidate
+    }
+
     // MARK: Steam fast-path (clone a known-good install)
 
     /// A ready bottle that already holds a complete Steam install (its

@@ -49,6 +49,14 @@ enum FilePicker {
         return panel.runModal() == .OK ? panel.url : nil
     }
 
+    /// A save destination with a suggested filename ("My Bottle.fbottle").
+    static func chooseSaveDestination(suggestedName: String) -> URL? {
+        let panel = NSSavePanel()
+        panel.nameFieldStringValue = suggestedName
+        panel.canCreateDirectories = true
+        return panel.runModal() == .OK ? panel.url : nil
+    }
+
     /// One or more .app bundles, starting in /Applications.
     static func chooseApplications() -> [URL] {
         let panel = NSOpenPanel()

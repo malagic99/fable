@@ -41,6 +41,60 @@ import Testing
         #expect(finding?.suggestion.contains("Sikarugir") == true)
     }
 
+    // ——— The 2026-06 investigation signatures (docs/ARCHITECTURE.md) ———
+
+    @Test
+    func realLogLinesMatchTheInvestigationRules() {
+        // Each pair: a line as it actually appears in the wild → the rule id.
+        let cases: [(String, String)] = [
+            ("Assertion failed: (GFXTHandle), Failed to dlopen D3DMetal", "doctor-d3dmetal-dlopen"),
+            ("wine: could not load kernel32.dll, status c0000142", "doctor-abi-mismatch"),
+            ("dlopen: library load disallowed by system policy", "doctor-quarantine"),
+            ("Wine cannot find the FreeType font library.", "doctor-freetype"),
+            ("err:secur32:schan_imp_init Failed to load libgnutls, secure connections will not be available.", "doctor-gnutls"),
+            ("[service] Failed to create Service pipe (GLE 2)", "doctor-steamservice"),
+            ("Execution of the command buffer was aborted due to an error during execution", "doctor-gpu-hang"),
+            ("CreateTexture2D returned E_OUTOFMEMORY", "doctor-out-of-memory"),
+            ("Denuvo Anti-Tamper: integrity check", "doctor-denuvo"),
+            ("err:module:import_dll Library XAudio2_7.dll not found", "doctor-xaudio"),
+            ("PhysXLoader.dll failed to initialize", "doctor-physx"),
+        ]
+        for (line, ruleID) in cases {
+            #expect(ids(GameDoctor.diagnose(log: line)).contains(ruleID),
+                    "expected \(ruleID) to match: \(line)")
+        }
+    }
+
+    @Test
+    func denuvoIsABlockerAndPointsAtStreaming() {
+        let finding = GameDoctor.diagnose(log: "denuvo").first { $0.id == "doctor-denuvo" }
+        #expect(finding?.severity == .knownBlocker)
+        #expect(finding?.suggestion.contains("streaming") == true)
+    }
+
+    @Test
+    func steamServiceFailurePointsAtTheCommitter() {
+        let finding = GameDoctor.diagnose(log: "BOpenService failed (GLE 1060)")
+            .first { $0.id == "doctor-steamservice" }
+        #expect(finding?.suggestion.contains("Finish Stuck Steam Downloads") == true)
+    }
+
+    @Test
+    func rulesHaveUniqueIDsAndNonEmptyGuidance() {
+        // The database is data — lock its invariants so a bulk edit can't
+        // ship a duplicate id or an empty suggestion.
+        let ids = GameDoctor.rules.map(\.id)
+        #expect(Set(ids).count == ids.count)
+        for rule in GameDoctor.rules {
+            #expect(!rule.needles.isEmpty)
+            #expect(!rule.suggestion.isEmpty)
+            // Needles must be lowercase — matching lowercases the haystack only.
+            for needle in rule.needles {
+                #expect(needle == needle.lowercased(), "needle not lowercase: \(needle)")
+            }
+        }
+    }
+
     @Test
     func diagnosesFromAFile() throws {
         let dir = FileManager.default.temporaryDirectory.appending(path: "doc-\(UUID().uuidString)")

@@ -51,6 +51,34 @@ import Testing
     }
 
     @Test
+    func importAdoptsTheBottleWithFreshIdentityAndDedupedName() async throws {
+        // The Friend Kit receiving end: pack on machine A, import on
+        // machine B (a second, empty BottleManager here).
+        let (manager, bottle, catalog, root) = try makeFixture()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let archive = root.appending(path: "Archived.fbottle")
+        try await BottleArchive.pack(bottle, bottleManager: manager, catalog: catalog, to: archive)
+
+        let receiver = BottleManager(
+            bottlesDirectory: root.appending(path: "FriendBottles", directoryHint: .isDirectory)
+        )
+        let first = try receiver.importBottle(try await BottleArchive.unpack(archive))
+        #expect(first.name == "Archived")
+        #expect(first.id != bottle.id)          // fresh identity, never reused
+        #expect(first.status == .ready)
+        // Prefix landed in the receiver's tree, contents intact.
+        let marker = receiver.prefixDirectory(for: first).appending(path: "drive_c/marker.txt")
+        #expect(FileManager.default.fileExists(atPath: marker.path))
+        // Games survive (their paths are C:-relative).
+        #expect(first.games.map(\.name) == bottle.games.map(\.name))
+
+        // Importing the same archive again dedups the name.
+        let second = try receiver.importBottle(try await BottleArchive.unpack(archive))
+        #expect(second.name == "Archived 2")
+        #expect(receiver.bottles.count == 2)
+    }
+
+    @Test
     func manifestCarriesComponentVersionsAndOriginalIdentity() async throws {
         let (manager, bottle, catalog, root) = try makeFixture()
         defer { try? FileManager.default.removeItem(at: root) }
