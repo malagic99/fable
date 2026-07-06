@@ -55,7 +55,17 @@ enum GameRecipeCatalog {
             backend: .dxvk, metalFX: false, frameRateCap: nil,
             note: "NewDark D3D9. DXVK is the reliable path on Apple Silicon — wined3d's GL doesn't recognize the Apple GPU. The Dark engine is framerate-sensitive, so cap FPS in-game."
         ),
+        GameRecipe(
+            name: "Ready or Not", executables: ["readyornot.exe", "readyornot-win64-shipping.exe"],
+            backend: .sikarugir, metalFX: true, frameRateCap: 120,
+            note: "UE4, launched through Steam in the bottle. Validated ~4 h on an M4 Pro (24 GB) at a 120 fps cap with MetalFX. If a long session starts to slip, drop the cap to 60 — same fix as DEATHLOOP."
+        ),
     ]
+
+    // Adding an entry: only from a REAL tested setup — read the bottle's
+    // bottle.json (backend/override + performance) and game-stats.json
+    // (tracked playtime), don't work from memory; configSummary literally
+    // prints "Tested:". Never seed a recipe you can't defend with playtime.
 
     /// The recipe matching a game's executable path (by basename), if any.
     /// Robust to both `/` (Fable's stored form) and `\` (Windows) separators.
