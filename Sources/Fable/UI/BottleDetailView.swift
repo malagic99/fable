@@ -149,7 +149,8 @@ struct BottleDetailView: View {
                 // meaning with state (UI review).
                 LabeledContent {
                     HStack(spacing: 8) {
-                        Text(bottle.triggerProfile.isActive ? "On" : "Off")
+                        // Ternary makes this a String — localize explicitly.
+                        Text(L10n.string(bottle.triggerProfile.isActive ? "common.on" : "common.off"))
                             .foregroundStyle(bottle.triggerProfile.isActive ? .primary : .secondary)
                         Button("Configure…") { isShowingTriggers = true }
                             .controlSize(.small)
@@ -367,9 +368,9 @@ struct BottleDetailView: View {
                         Label("Duplicate", systemImage: "doc.on.doc")
                     }
                     .disabled(bottle.status != .ready || isAnyGameRunning(in: bottle))
-                    .help(isAnyGameRunning(in: bottle)
-                          ? "Stop running games before duplicating"
-                          : "Clone this bottle and its installed games")
+                    .help(L10n.string(isAnyGameRunning(in: bottle)
+                          ? "bottle.help.stop_before_duplicate"
+                          : "bottle.help.duplicate"))
                 }
 
                 Button(role: .destructive) {
@@ -433,16 +434,17 @@ struct BottleDetailView: View {
     @ViewBuilder
     private func heroStatusBadge(for bottle: Bottle) -> some View {
         switch bottle.status {
-        case .ready: StatusBadge(text: "Ready", color: .green)
-        case .provisioning: StatusBadge(text: "Setting up", color: .orange)
-        case .broken: StatusBadge(text: "Needs repair", color: .red)
+        case .ready: StatusBadge(text: L10n.string("bottle.status.ready"), color: .green)
+        case .provisioning: StatusBadge(text: L10n.string("bottle.status.provisioning"), color: .orange)
+        case .broken: StatusBadge(text: L10n.string("bottle.status.broken"), color: .red)
         }
     }
 
     private func heroMeta(for bottle: Bottle) -> String {
         var parts = [
             bottle.windowsVersion.displayName,
-            "\(bottle.games.count) \(bottle.games.count == 1 ? "game" : "games")",
+            L10n.string(bottle.games.count == 1 ? "bottle.meta.game_one" : "bottle.meta.game_many",
+                        String(bottle.games.count)),
         ]
         if let bytes = diskUsageStore.size(for: bottle.id) {
             parts.append(BottleDiskUsage.formatted(bytes))

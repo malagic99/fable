@@ -7,9 +7,9 @@ enum AppAppearance: String, Codable, CaseIterable, Identifiable, Sendable {
 
     var displayName: String {
         switch self {
-        case .system: "System"
-        case .light: "Light"
-        case .dark: "Dark"
+        case .system: L10n.string("appearance.system")
+        case .light: L10n.string("appearance.light")
+        case .dark: L10n.string("appearance.dark")
         }
     }
 
