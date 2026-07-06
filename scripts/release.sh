@@ -11,6 +11,14 @@
 #       Run on main AFTER the squash-merge: tags, pushes, rebuilds the app,
 #       zips, and creates the GitHub release with notes extracted from the
 #       CHANGELOG section. Refuses on a dirty tree or wrong branch.
+#
+# VERSIONING RULE (SemVer, 0.x flavor):
+#   0.MINOR.0  — a new user-facing capability (hardware detection, feedback).
+#   0.M.PATCH  — everything else: fixes, UI polish, localization, refactors,
+#                docs. When in doubt, it's a patch. Patches may accumulate on
+#                main and ship together — not every merge needs a release.
+# prepare warns when a minor bump lands on a CHANGELOG section that smells
+# like a patch; override consciously, not by reflex.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
