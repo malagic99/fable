@@ -70,8 +70,11 @@ final class ArtworkStore: ObservableObject {
 
         let file = directory.appending(path: "\(key).jpg")
 
-        // 1. Disk cache.
-        if let cached = await Self.loadImage(at: file) {
+        // 1. Disk cache. Bytes cross the actor boundary (NSImage is not
+        // Sendable); the image is constructed here on the main actor —
+        // NSImage(data:) defers the actual decode, so this stays cheap.
+        if let cachedData = await Self.loadImageData(at: file),
+           let cached = NSImage(data: cachedData) {
             images[key] = cached
             return
         }
@@ -164,10 +167,9 @@ final class ArtworkStore: ObservableObject {
 
     // MARK: Internals
 
-    nonisolated private static func loadImage(at url: URL) async -> NSImage? {
+    nonisolated private static func loadImageData(at url: URL) async -> Data? {
         await Task.detached(priority: .utility) {
-            guard let data = try? Data(contentsOf: url) else { return nil }
-            return NSImage(data: data)
+            try? Data(contentsOf: url)
         }.value
     }
 
