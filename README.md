@@ -1,13 +1,16 @@
 # Fable
 
+[![CI](https://github.com/malagic99/fable/actions/workflows/ci.yml/badge.svg)](https://github.com/malagic99/fable/actions/workflows/ci.yml)
+
 **Play Windows games on your Mac — for free, including Steam.** Fable is a
 native macOS app that manages Wine bottles with a choice of DirectX-to-Metal
 translation layers. It's a free, open alternative to CrossOver (€76): it
 renders Steam's login, installs games end-to-end, and plays modern DirectX 12
-titles — no paid engine required.
+titles — no paid engine required. The name is the point: games are fables,
+stories you play — Fable's job is getting out of the way of them.
 
 > Tested on Apple Silicon (M-series), macOS 14+. Built with Command-Line-Tools
-> Swift — no Xcode required.
+> Swift — no Xcode required. English · Español · Português.
 
 ## Highlights
 
@@ -24,6 +27,21 @@ titles — no paid engine required.
 - **Smart Bottle.** Fable scans a game, recommends the right backend, and
   applies a known-good setup in one click — backed by a growing, data-driven
   recipe catalog.
+- **DualSense adaptive triggers — under Wine.** Fable drives L2/R2 resistance
+  (feedback / weapon / vibration profiles) as hardware state via raw HID, so
+  even games with zero native support get resistive triggers. Per-bottle
+  default, per-game override, live preview. Confirmed in real gameplay.
+- **Fable Doctor.** When a game misbehaves, one click reads its Wine log
+  against 20 known failure signatures and says what's wrong in plain language
+  — including the verdict nobody else gives you: *the identical crash on two
+  different backends means it's the game's anti-tamper; stop switching
+  backends and stream it.*
+- **Hardware-aware.** Fable reads your chip, unified memory, and GPU cores at
+  startup and tunes its recommendations to the machine it's actually on.
+- **Yours to skin and share.** Themes travel as `.fableskin` files, tested
+  game setups as `.fablerecipe`, whole bottles as `.fbottle` — and
+  `scripts/friend-kit.sh` bundles the lot for handing to a friend
+  ([the friend README](docs/FRIEND-README.md)).
 
 ## Graphics backends
 
@@ -94,10 +112,16 @@ cd fable
 ./scripts/make-app.sh   # release build → ./Fable.app
 ```
 
-`swift run` works for development; `swift test` runs the suite (200+ tests;
-swift-testing is pulled as a pinned SwiftPM dependency because CLT ships
-neither XCTest nor swift-testing). `make-app.sh` embeds `innoextract` if
-Homebrew's copy is present.
+`swift run` works for development; `swift test` runs the suite (~400 tests,
+also run in CI on every PR; swift-testing is pulled as a pinned SwiftPM
+dependency because CLT ships neither XCTest nor swift-testing). `make-app.sh`
+embeds `innoextract` if Homebrew's copy is present.
+
+Contributor notes live in `docs/`: [ARCHITECTURE.md](docs/ARCHITECTURE.md)
+(why the stack is shaped this way — read before touching Wine/backend code),
+[wine-quirks.md](docs/wine-quirks.md) (every workaround and where it lives),
+and [LOCALIZATION.md](docs/LOCALIZATION.md) (a missing es/pt string fails the
+build — the doc explains the 30-second fix).
 
 ## How it works
 

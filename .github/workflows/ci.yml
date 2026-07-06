@@ -1,0 +1,36 @@
+name: CI
+
+# The gates only protect the codebase if they run without anyone remembering
+# to run them: 392 tests including the localization coverage gate (missing
+# es/pt strings fail the build) and the Doctor/recipe data invariants.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Swift version
+        run: swift --version
+
+      - name: Cache SwiftPM build
+        uses: actions/cache@v4
+        with:
+          path: .build
+          key: spm-${{ runner.os }}-${{ hashFiles('Package.resolved', 'Package.swift') }}
+          restore-keys: spm-${{ runner.os }}-
+
+      - name: Build
+        run: swift build
+
+      - name: Test
+        run: swift test

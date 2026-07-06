@@ -12,6 +12,48 @@ import Testing
     }
 
     @Test
+    func crashRecordsCorrelateAcrossBackendsAndClearOnCleanRun() throws {
+        let file = tempFile()
+        defer { try? fm.removeItem(at: file) }
+        let id = UUID()
+        let store = GameStatsStore(fileURL: file)
+
+        // One backend crashing is just a crash — could be config.
+        store.recordCrash(id, backend: "gptk", signature: "int3")
+        #expect(store.crossBackendCrash(id) == nil)
+
+        // The SAME signature on a second backend is the First Light tell.
+        store.recordCrash(id, backend: "sikarugir", signature: "int3")
+        let cross = try #require(store.crossBackendCrash(id))
+        #expect(cross.signature == "int3")
+        #expect(cross.backends == ["gptk", "sikarugir"])
+
+        // Verdict survives a reload (backend roulette spans days).
+        #expect(GameStatsStore(fileURL: file).crossBackendCrash(id) != nil)
+
+        // A clean run on one backend clears its record — game works now.
+        store.recordCrash(id, backend: "sikarugir", signature: nil)
+        #expect(store.crossBackendCrash(id) == nil)
+    }
+
+    @Test
+    func statsFileWithoutCrashFieldStillDecodes() throws {
+        // Pre-0.20 stats files have no crashSignatures key. (Swift encodes
+        // [UUID: Stats] as an alternating key/value ARRAY, not an object —
+        // matches the real game-stats.json on disk.)
+        let file = tempFile()
+        defer { try? fm.removeItem(at: file) }
+        let id = UUID()
+        try Data("""
+        ["\(id.uuidString)", {"totalSeconds": 120, "notes": "old"}]
+        """.utf8).write(to: file)
+
+        let store = GameStatsStore(fileURL: file)
+        #expect(store.stats[id]?.totalSeconds == 120)
+        #expect(store.crossBackendCrash(id) == nil)
+    }
+
+    @Test
     func sessionsAccumulateAndPersist() throws {
         let file = tempFile()
         defer { try? fm.removeItem(at: file) }
