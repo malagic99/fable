@@ -31,6 +31,7 @@ struct BottleDetailView: View {
     @State private var gogInstallerExe: PickedExecutable?
     @State private var isShowingWinetricks = false
     @State private var isExporting = false
+    @State private var exportProgress: String?
     @State private var isShowingTriggers = false
     @State private var isRepairing = false
 
@@ -378,7 +379,17 @@ struct BottleDetailView: View {
                 Button {
                     exportBottle(bottle)
                 } label: {
-                    Label("Export", systemImage: "square.and.arrow.up")
+                    if isExporting {
+                        // The button IS the progress readout — a 56 GB donor
+                        // bottle streams for minutes and must not look frozen.
+                        HStack(spacing: 6) {
+                            ProgressView().controlSize(.small)
+                            Text(exportProgress ?? L10n.string("bottle.export.preparing"))
+                                .monospacedDigit()
+                        }
+                    } else {
+                        Label("Export", systemImage: "square.and.arrow.up")
+                    }
                 }
                 .disabled(bottle.status != .ready || isAnyGameRunning(in: bottle) || isExporting)
                 .help("Pack this bottle into a shareable .fbottle archive — the Friend Kit donor")
@@ -524,10 +535,43 @@ struct BottleDetailView: View {
         guard let destination = FilePicker.chooseSaveDestination(
             suggestedName: "\(bottle.name).\(BottleArchive.pathExtension)"
         ) else { return }
+
+        // Preflight: the archive can approach the bottle's size (games barely
+        // compress). Refuse up front rather than fail at 90%.
+        let bottleBytes = diskUsageStore.size(for: bottle.id)
+        if let bottleBytes,
+           let free = try? destination.deletingLastPathComponent()
+               .resourceValues(forKeys: [.volumeAvailableCapacityForImportantUsageKey])
+               .volumeAvailableCapacityForImportantUsage,
+           free < bottleBytes {
+            toastCenter.error(L10n.string(
+                "toast.bottle.export_no_space",
+                BottleDiskUsage.formatted(bottleBytes),
+                BottleDiskUsage.formatted(free)
+            ))
+            return
+        }
+
         isExporting = true
-        toastCenter.success(L10n.string("toast.bottle.exporting", bottle.name))
+        exportProgress = nil
         Task {
-            defer { isExporting = false }
+            defer { isExporting = false; exportProgress = nil }
+            // Progress = the destination archive growing. Checked once a
+            // second off the file system — no plumbing through tar needed.
+            let progressTask = Task {
+                while !Task.isCancelled {
+                    try? await Task.sleep(for: .seconds(1))
+                    let written = (try? destination.resourceValues(forKeys: [.fileSizeKey]).fileSize).flatMap { Int64($0) }
+                    if let written, written > 0 {
+                        var text = BottleDiskUsage.formatted(written)
+                        if let bottleBytes, bottleBytes > 0 {
+                            text += " / ~" + BottleDiskUsage.formatted(bottleBytes)
+                        }
+                        exportProgress = text
+                    }
+                }
+            }
+            defer { progressTask.cancel() }
             do {
                 try await BottleArchive.pack(
                     bottle,

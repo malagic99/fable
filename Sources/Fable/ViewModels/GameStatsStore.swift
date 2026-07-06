@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 
 /// Per-game history: accumulated playtime, when it was last played, and the
@@ -29,6 +30,21 @@ final class GameStatsStore: ObservableObject {
         if let data = try? Data(contentsOf: fileURL),
            let loaded = try? JSONDecoder().decode([UUID: Stats].self, from: data) {
             stats = loaded
+        }
+        // Quitting Fable while a game runs must not lose the session —
+        // sessionEnded would otherwise never fire (games are children and
+        // may die with us, or keep running untracked either way).
+        NotificationCenter.default.addObserver(
+            forName: NSApplication.willTerminateNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.endAllSessions() }
+        }
+    }
+
+    /// Folds every open session into its total — the app-quit path.
+    func endAllSessions(at date: Date = .now) {
+        for id in Array(activeSessions.keys) {
+            sessionEnded(id, at: date)
         }
     }
 

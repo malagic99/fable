@@ -449,3 +449,9 @@
 "Export"                      = "Exportar";
 "Import Bottle (.fbottle)…"   = "Importar botella (.fbottle)…";
 "Pack this bottle into a shareable .fbottle archive — the Friend Kit donor" = "Empaqueta esta botella en un archivo .fbottle compartible — la donante del Friend Kit";
+
+// MARK: Progreso de exportación + compartir recetas
+"bottle.export.preparing"     = "Preparando…";
+"toast.bottle.export_no_space" = "No hay espacio suficiente: el archivo puede llegar a %@ y solo hay %@ libres.";
+"Share This Setup on GitHub…" = "Compartir esta configuración en GitHub…";
+"Export saves a .fablerecipe file anyone can import. Share opens a pre-filled GitHub issue with this setup and your hardware — you review and post it yourself; tested setups grow Fable's built-in catalog." = "Exportar guarda un archivo .fablerecipe que cualquiera puede importar. Compartir abre un issue de GitHub prellenado con esta configuración y tu hardware — lo revisas y publicas tú; las configuraciones probadas hacen crecer el catálogo integrado de Fable.";

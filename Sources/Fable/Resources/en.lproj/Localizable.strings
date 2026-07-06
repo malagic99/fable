@@ -147,3 +147,7 @@
 "toast.bottle.exported"       = "Exported %@";
 "toast.bottle.importing"      = "Unpacking %@ — verifying and installing…";
 "toast.bottle.imported"       = "Imported as “%@”";
+
+// MARK: Export progress + recipe sharing
+"bottle.export.preparing"     = "Preparing…";
+"toast.bottle.export_no_space" = "Not enough disk space: the archive can reach %@ but only %@ is free.";
