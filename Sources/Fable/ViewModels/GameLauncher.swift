@@ -51,6 +51,12 @@ final class GameLauncher: ObservableObject {
     /// Steam installs left stuck on the WoW64 commit step (no-op otherwise).
     var onGameFullyExited: ((Bottle.ID) -> Void)?
 
+    /// Fired after every exit with the backend used and the crash signature
+    /// (nil = clean run or an uncorrelatable crash). Wired to GameStatsStore
+    /// so the same-crash-on-two-backends verdict can be reached — the First
+    /// Light rule (docs/ARCHITECTURE.md).
+    var onCrashSignature: ((Game.ID, GraphicsBackend, String?) -> Void)?
+
     func isRunning(_ gameID: Game.ID) -> Bool {
         running[gameID] != nil
     }
@@ -59,6 +65,8 @@ final class GameLauncher: ObservableObject {
     /// on one wineserver at a time.
     private var runningRuntime: [Game.ID: String] = [:]
     private var runningBottle: [Game.ID: Bottle.ID] = [:]
+    /// The effective backend each run launched with (for crash correlation).
+    private var runningBackend: [Game.ID: GraphicsBackend] = [:]
 
     // MARK: Dependencies
 
@@ -360,6 +368,8 @@ final class GameLauncher: ObservableObject {
         running[game.id] = process
         runningRuntime[game.id] = plan.runtimeKey
         runningBottle[game.id] = bottle.id
+        // Same rule as composeLaunchPlan: per-game override wins.
+        runningBackend[game.id] = game.graphicsBackend ?? bottle.graphicsBackend
         lastLog[game.id] = plan.logFile
         lastExitCode[game.id] = nil
         onProcessLifecycle?(game.id, process.processIdentifier)
@@ -379,14 +389,25 @@ final class GameLauncher: ObservableObject {
                     environment: ["WINEPREFIX": prefixPath]
                 )
             }
+            let backend = self?.runningBackend[game.id]
             self?.running[game.id] = nil
             self?.runningRuntime[game.id] = nil
             self?.runningBottle[game.id] = nil
+            self?.runningBackend[game.id] = nil
             self?.lastExitCode[game.id] = code
             self?.onProcessLifecycle?(game.id, nil)
             // SIGTERM (user pressed Stop) isn't a crash worth announcing.
             if code != 0 && code != 15 {
                 self?.onAbnormalExit?("“\(gameName)” exited with code \(code) — check its log")
+            }
+            // Crash correlation: classify this run for the backend it used.
+            // Clean runs report nil, which CLEARS a stale record — the game
+            // evidently works on this backend now.
+            if let backend {
+                let signature = (code != 0 && code != 15)
+                    ? GameDoctor.crashSignature(exitCode: code, logTail: Self.logTail(of: plan.logFile))
+                    : nil
+                self?.onCrashSignature?(game.id, backend, signature)
             }
             // Prefix is idle now — a Steam quit is the natural moment to
             // finish any install stuck on the WoW64 commit step.
@@ -396,6 +417,18 @@ final class GameLauncher: ObservableObject {
 
     func stop(_ gameID: Game.ID) {
         running[gameID]?.terminate()
+    }
+
+    /// Last ~64 KB of a log — enough for the crash tail without reading a
+    /// multi-GB Wine log into memory.
+    nonisolated static func logTail(of url: URL, maxBytes: Int = 1 << 16) -> String {
+        guard let handle = try? FileHandle(forReadingFrom: url) else { return "" }
+        defer { try? handle.close() }
+        let size = (try? handle.seekToEnd()) ?? 0
+        let offset = size > UInt64(maxBytes) ? size - UInt64(maxBytes) : 0
+        try? handle.seek(toOffset: offset)
+        let data = (try? handle.readToEnd()) ?? Data()
+        return String(decoding: data, as: UTF8.self)
     }
 }
 

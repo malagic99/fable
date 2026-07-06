@@ -10,6 +10,7 @@ struct GameLauncherView: View {
     @EnvironmentObject private var gameLauncher: GameLauncher
     @EnvironmentObject private var metricsStore: RunningGameMetricsStore
     @EnvironmentObject private var activityMonitor: ActivityMonitor
+    @EnvironmentObject private var gameStats: GameStatsStore
 
     @State private var launchError: String?
     @State private var isShowingSettings = false
@@ -68,7 +69,21 @@ struct GameLauncherView: View {
                     .help("A double-clickable app on your Desktop that launches this game directly")
                 if let log = gameLauncher.lastLog[game.id] {
                     Button("View Last Log") { logToView = PickedExecutable(url: log) }
-                    Button("Diagnose Last Run…") { doctorFindings = GameDoctor.diagnose(logFile: log); isShowingDoctor = true }
+                    Button("Diagnose Last Run…") {
+                        doctorFindings = GameDoctor.diagnose(logFile: log)
+                        // The strongest diagnosis first: identical crash on
+                        // two backends means it's the game, not the setup.
+                        if let cross = gameStats.crossBackendCrash(game.id) {
+                            doctorFindings.insert(
+                                GameDoctor.crossBackendFinding(
+                                    signature: cross.signature,
+                                    backends: cross.backends.map { GraphicsBackend(rawValue: $0)?.shortName ?? $0 }
+                                ),
+                                at: 0
+                            )
+                        }
+                        isShowingDoctor = true
+                    }
                         .help("Fable Doctor reads the log and explains what went wrong")
                 }
                 Button("Reveal in Finder") {

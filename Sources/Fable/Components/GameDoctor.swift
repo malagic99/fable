@@ -147,15 +147,69 @@ enum GameDoctor {
              suggestion: "Run “Install Dependencies” on the game, or the `physx` winetricks verb."),
     ]
 
+    // MARK: Cross-backend crash correlation (the First Light rule)
+
+    /// Classifies an abnormal exit into a comparable crash signature, or nil
+    /// when the crash isn't in the anti-tamper/CPU-gate class worth
+    /// correlating. Deliberately narrow: only the deliberate-breakpoint
+    /// family, which is what protectors and Rosetta CPU gates produce — the
+    /// crashes that look identical no matter which backend runs the game.
+    static func crashSignature(exitCode: Int32, logTail: String) -> String? {
+        let haystack = logTail.lowercased()
+        let breakpointTells = ["int3", "0x80000003", "exception_breakpoint", "illegal instruction"]
+        if breakpointTells.contains(where: { haystack.contains($0) }) {
+            return "int3"
+        }
+        return nil
+    }
+
+    /// The verdict when the same signature shows up on two different
+    /// backends: it's the game rejecting the environment, not a backend
+    /// problem — switching further is wasted evenings. Documented in
+    /// docs/ARCHITECTURE.md ("the First Light rule"); validated the hard way
+    /// (GPTK, DXVK, Sikarugir, AND CrossOver all hit the identical int3).
+    static func crossBackendFinding(signature: String, backends: [String]) -> CompatibilityFinding {
+        CompatibilityFinding(
+            id: "doctor-cross-backend",
+            severity: .knownBlocker,
+            title: "Same crash on \(backends.count) different backends",
+            detail: "This game hit the identical failure (\(signature)) on \(backends.joined(separator: " and ")). When a crash doesn't change with the graphics backend, it's the game itself checking its environment (anti-tamper, or a CPU gate under Rosetta) — no backend switch will fix it.",
+            suggestion: "Stop switching backends. If you own a Windows PC that runs it, stream it (Moonlight/Sunshine/Steam Link); otherwise a cloud service. A clean, un-repacked copy is occasionally the difference."
+        )
+    }
+
+    /// DLL names Wine failed to import, parsed from the log
+    /// (`err:module:import_dll Library FOO.dll … not found`). Order of first
+    /// appearance, deduplicated case-insensitively.
+    static func missingDLLs(in log: String) -> [String] {
+        let pattern = /import_dll\s+Library\s+(\S+\.dll)/.ignoresCase()
+        var seen = Set<String>()
+        var names: [String] = []
+        for match in log.matches(of: pattern) {
+            let name = String(match.1)
+            if seen.insert(name.lowercased()).inserted { names.append(name) }
+        }
+        return names
+    }
+
     /// Diagnoses raw log text. Empty result = no known problems matched.
     static func diagnose(log: String) -> [CompatibilityFinding] {
         let haystack = log.lowercased()
         return rules
             .filter { rule in rule.needles.contains { haystack.contains($0) } }
-            .map {
-                CompatibilityFinding(
-                    id: "doctor-\($0.id)", severity: $0.severity,
-                    title: $0.title, detail: $0.detail, suggestion: $0.suggestion
+            .map { rule in
+                var detail = rule.detail
+                // Name the culprit instead of telling the user to go read
+                // the log themselves.
+                if rule.id == "missing-dll" {
+                    let dlls = missingDLLs(in: log)
+                    if !dlls.isEmpty {
+                        detail = "Wine couldn't resolve: \(dlls.joined(separator: ", "))."
+                    }
+                }
+                return CompatibilityFinding(
+                    id: "doctor-\(rule.id)", severity: rule.severity,
+                    title: rule.title, detail: detail, suggestion: rule.suggestion
                 )
             }
     }

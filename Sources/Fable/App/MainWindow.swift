@@ -82,6 +82,13 @@ struct FableApp: App {
                     gameLauncher.onAbnormalExit = { [weak toastCenter] message in
                         toastCenter?.error(message)
                     }
+                    // Crash correlation (the First Light rule): every exit
+                    // records/clears the run's signature for its backend, so
+                    // "same crash on two backends" can be diagnosed instead
+                    // of suggesting more backend roulette.
+                    gameLauncher.onCrashSignature = { [weak gameStatsStore] id, backend, signature in
+                        gameStatsStore?.recordCrash(id, backend: backend.rawValue, signature: signature)
+                    }
                     gameLauncher.onProcessLifecycle = { [weak metricsStore, weak gameLauncher, weak gameStatsStore] id, pid in
                         if let pid {
                             metricsStore?.startTracking(id, rootPID: pid)

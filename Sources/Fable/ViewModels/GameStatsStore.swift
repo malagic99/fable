@@ -13,6 +13,11 @@ final class GameStatsStore: ObservableObject {
         var totalSeconds: Double = 0
         var lastPlayedAt: Date?
         var notes: String = ""
+        /// Crash signature per backend tried (backend rawValue → signature,
+        /// e.g. "sikarugir" → "int3"). Optional so pre-existing stats files
+        /// decode unchanged. Feeds the cross-backend "it's the game, not the
+        /// backend" verdict — see GameDoctor.crossBackendFinding.
+        var crashSignatures: [String: String]?
     }
 
     @Published private(set) var stats: [UUID: Stats] = [:]
@@ -50,6 +55,33 @@ final class GameStatsStore: ObservableObject {
     func touch(_ id: UUID, at date: Date = .now) {
         stats[id, default: Stats()].lastPlayedAt = date
         save()
+    }
+
+    // MARK: Crash correlation
+
+    /// Records that this game crashed with `signature` on `backend`.
+    /// A later clean exit on that backend clears it (the game evidently
+    /// runs now — config or game update fixed it).
+    func recordCrash(_ id: UUID, backend: String, signature: String?) {
+        var signatures = stats[id]?.crashSignatures ?? [:]
+        if let signature {
+            signatures[backend] = signature
+        } else {
+            signatures[backend] = nil
+        }
+        stats[id, default: Stats()].crashSignatures = signatures.isEmpty ? nil : signatures
+        save()
+    }
+
+    /// The signature seen on two or more DIFFERENT backends, if any —
+    /// the tell that the crash is the game's own doing.
+    func crossBackendCrash(_ id: UUID) -> (signature: String, backends: [String])? {
+        guard let signatures = stats[id]?.crashSignatures else { return nil }
+        let bySignature = Dictionary(grouping: signatures.keys, by: { signatures[$0]! })
+        guard let (signature, backends) = bySignature.first(where: { $0.value.count >= 2 }) else {
+            return nil
+        }
+        return (signature, backends.sorted())
     }
 
     // MARK: Notes

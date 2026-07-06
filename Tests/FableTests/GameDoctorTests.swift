@@ -79,6 +79,41 @@ import Testing
         #expect(finding?.suggestion.contains("Finish Stuck Steam Downloads") == true)
     }
 
+    // ——— Cross-backend crash correlation (the First Light rule) ———
+
+    @Test
+    func crashSignatureClassifiesOnlyTheBreakpointFamily() {
+        #expect(GameDoctor.crashSignature(exitCode: 1, logTail: "Unhandled exception: 0x80000003") == "int3")
+        #expect(GameDoctor.crashSignature(exitCode: 5, logTail: "wine: int3 in 64-bit code") == "int3")
+        #expect(GameDoctor.crashSignature(exitCode: 5, logTail: "EXCEPTION_BREAKPOINT at 0xcb9dd8") == "int3")
+        // Ordinary failures don't correlate — they're config, not protector.
+        #expect(GameDoctor.crashSignature(exitCode: 1, logTail: "err:module:import_dll Library FOO.dll") == nil)
+        #expect(GameDoctor.crashSignature(exitCode: 3, logTail: "") == nil)
+    }
+
+    @Test
+    func crossBackendFindingIsABlockerThatNamesTheBackends() {
+        let finding = GameDoctor.crossBackendFinding(signature: "int3", backends: ["GPTK", "Sikarugir"])
+        #expect(finding.severity == .knownBlocker)
+        #expect(finding.detail.contains("GPTK and Sikarugir"))
+        #expect(finding.suggestion.contains("Stop switching backends"))
+    }
+
+    // ——— Naming the culprit DLL ———
+
+    @Test
+    func missingDLLIsNamedInTheFinding() {
+        let log = """
+        err:module:import_dll Library XAPOFX1_5.dll (which is needed by L"C:\\\\game\\\\game.exe") not found
+        err:module:import_dll Library D3DX9_43.dll (which is needed by L"C:\\\\game\\\\game.exe") not found
+        err:module:import_dll Library xapofx1_5.dll (which is needed by L"C:\\\\game\\\\other.exe") not found
+        """
+        #expect(GameDoctor.missingDLLs(in: log) == ["XAPOFX1_5.dll", "D3DX9_43.dll"])
+
+        let finding = GameDoctor.diagnose(log: log).first { $0.id == "doctor-missing-dll" }
+        #expect(finding?.detail.contains("XAPOFX1_5.dll, D3DX9_43.dll") == true)
+    }
+
     @Test
     func rulesHaveUniqueIDsAndNonEmptyGuidance() {
         // The database is data — lock its invariants so a bulk edit can't
