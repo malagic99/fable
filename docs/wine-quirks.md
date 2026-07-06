@@ -6,6 +6,9 @@ launch flags, post-install repair. This file is the **map**: every quirk, the
 symptom it fixes, and the one place to change it. It exists so debugging a
 regression or upgrading the Wine build is a lookup, not an archaeology dig.
 
+> Deep background — why the stack is shaped this way, the ABI law, the Steam
+> CEF saga, and the closed dead ends — lives in [ARCHITECTURE.md](ARCHITECTURE.md).
+
 > **Maintenance rule:** a quirk lives in exactly one place in code, documented
 > at that place. If you find the same magic string in two files, centralize it
 > (that's how `WineEnv` and `SteamPaths` came to be). When you add a fix, add a
