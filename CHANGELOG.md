@@ -1,5 +1,27 @@
 # Changelog
 
+## v0.20.0 — 2026-07-06
+
+Fable learns the most expensive lesson we ever paid for — and CI makes sure
+nothing forgets it.
+
+- **The First Light rule, as behavior.** Every game exit now records (or
+  clears) its crash signature per backend. When the *identical* int3-family
+  crash shows up on two different backends, Diagnose Last Run leads with the
+  honest verdict: it's the game's anti-tamper or a Rosetta CPU gate — no
+  backend switch will fix it, stream it instead. Ends backend roulette; the
+  verdict persists across relaunches and clears itself after a clean run.
+- **Doctor names the culprit DLL.** `err:module:import_dll` lines are parsed
+  and the missing DLLs named in the finding ("Wine couldn't resolve:
+  XAPOFX1_5.dll, D3DX9_43.dll.") instead of sending you to read the log.
+- **CI.** Every PR and push to main now builds and runs the full suite
+  (397 tests) on GitHub Actions — including the localization gate and the
+  data-catalog invariants. It caught its first real bug before it ever ran
+  green: a Sendability hole in ArtworkStore's disk-cache load that the local
+  toolchain tolerated.
+- README refresh for the public repo: triggers, Doctor, hardware awareness,
+  sharing formats, CI badge, contributor doc links.
+
 ## v0.19.0 — 2026-07-06
 
 The Friend Kit — Fable's actual finish line — plus a knowledge-transfer sweep.
