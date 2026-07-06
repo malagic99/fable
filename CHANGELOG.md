@@ -1,5 +1,20 @@
 # Changelog
 
+## v0.18.1 — 2026-07-06
+
+Patch: the translations a Portuguese tester could still see through.
+
+- **Enum labels localized** — trigger modes (Desligado / Resistência / Arma /
+  Vibração), backend names (Integrado), Winetricks categories.
+- **The String-ternary and interpolation traps closed**: `Text(flag ? "On" :
+  "Off")` and `Text("…\(x)…")` silently skip localization; every occurrence
+  (Tune sheet footers, trigger lab sliders, update banner, installer modes,
+  counts) now routes through `L10n`.
+- **New regression gate** fails the build on any future ternary/interpolation
+  in `Text`/`.help`, with a short justified allowlist for verbatim data.
+- Versioning rule written into `release.sh`: new capability = minor,
+  everything else = patch (like this one).
+
 ## v0.18.0 — 2026-07-05
 
 Tell Fable what broke — now that the repo is public.
