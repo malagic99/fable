@@ -36,7 +36,7 @@ struct GamePlayButton: View {
         }
         .buttonStyle(.plain)
         .disabled(bottle.status != .ready)
-        .help(isRunning ? "Stop \(game.name)" : "Launch \(game.name)")
+        .help(L10n.string(isRunning ? "game.action.stop_named" : "game.action.launch_named", game.name))
         .alert("Couldn't Launch", isPresented: .init(
             get: { launchError != nil },
             set: { if !$0 { launchError = nil } }

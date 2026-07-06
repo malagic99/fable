@@ -516,9 +516,9 @@ private struct NativeInspector: View {
             }
             .font(.callout)
 
-            Text(game.steamAppID != nil
-                 ? "Launches through the native Steam client — login, DRM, and cloud saves are Steam's."
-                 : "A regular Mac app — Fable just launches it.")
+            Text(L10n.string(game.steamAppID != nil
+                 ? "native.runtime.steam"
+                 : "native.runtime.app"))
                 .font(.caption)
                 .foregroundStyle(.secondary)
 

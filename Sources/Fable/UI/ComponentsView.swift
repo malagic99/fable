@@ -57,7 +57,7 @@ struct ComponentsView: View {
                 }
             } footer: {
                 if let lastChecked = updateManager.lastChecked {
-                    Text("Last checked \(lastChecked.formatted(date: .omitted, time: .shortened))")
+                    Text(L10n.string("components.last_checked", lastChecked.formatted(date: .omitted, time: .shortened)))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -92,7 +92,7 @@ private struct GPTKOverlayRow: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text("D3DMetal")
                     .font(.callout)
-                Text(gptkManager.d3dMetalVersionNote ?? "as shipped with the environment")
+                Text(gptkManager.d3dMetalVersionNote ?? L10n.string("components.d3dmetal.as_shipped"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

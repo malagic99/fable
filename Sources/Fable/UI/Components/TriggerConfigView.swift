@@ -11,7 +11,7 @@ struct TriggerConfigView: View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
                 Circle().fill(triggers.isDualSense ? .green : .secondary).frame(width: 8, height: 8)
-                Text(triggers.isDualSense ? "DualSense connected — changes preview live" : "Connect a DualSense to feel changes")
+                Text(L10n.string(triggers.isDualSense ? "trigger.connected" : "trigger.disconnected"))
                     .font(.caption).foregroundStyle(.secondary)
                 Spacer()
                 Menu("Presets") {
@@ -44,7 +44,7 @@ private struct TriggerEffectPanel: View {
         VStack(alignment: .leading, spacing: 10) {
             Text(title).font(.headline)
             VStack(alignment: .leading, spacing: 2) {
-                Text("Pull: \(Int(live * 100))%").font(.caption2).monospacedDigit().foregroundStyle(.secondary)
+                Text(L10n.string("trigger.pull", String(Int(live * 100)))).font(.caption2).monospacedDigit().foregroundStyle(.secondary)
                 ProgressView(value: Double(min(max(live, 0), 1))).tint(live > 0.01 ? .green : .gray)
             }
             Picker("Mode", selection: $effect.mode) {
@@ -57,16 +57,16 @@ private struct TriggerEffectPanel: View {
             case .off:
                 Text("No resistance.").font(.caption).foregroundStyle(.secondary)
             case .feedback:
-                slider("Start", $effect.start)
-                slider("Strength", $effect.strength)
+                slider("trigger.param.start", $effect.start)
+                slider("trigger.param.strength", $effect.strength)
             case .weapon:
-                slider("Start (wall)", $effect.start)
-                slider("End (release)", $effect.end)
-                slider("Strength", $effect.strength)
+                slider("trigger.param.start_wall", $effect.start)
+                slider("trigger.param.end_release", $effect.end)
+                slider("trigger.param.strength", $effect.strength)
             case .vibration:
-                slider("Start", $effect.start)
-                slider("Amplitude", $effect.amplitude)
-                slider("Frequency", $effect.frequency)
+                slider("trigger.param.start", $effect.start)
+                slider("trigger.param.amplitude", $effect.amplitude)
+                slider("trigger.param.frequency", $effect.frequency)
             }
         }
         .padding(12)
@@ -74,10 +74,11 @@ private struct TriggerEffectPanel: View {
         .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 10))
     }
 
+    /// `label` is an L10n key (the params share strings across effect modes).
     private func slider(_ label: String, _ value: Binding<Float>) -> some View {
         VStack(alignment: .leading, spacing: 1) {
             HStack {
-                Text(label).font(.caption)
+                Text(L10n.string(label)).font(.caption)
                 Spacer()
                 Text(String(format: "%.2f", value.wrappedValue)).font(.caption2).monospacedDigit().foregroundStyle(.secondary)
             }

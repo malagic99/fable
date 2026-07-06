@@ -40,7 +40,8 @@ struct BottleCard: View {
                 .lineLimit(1)
 
             HStack(spacing: 5) {
-                Text("\(bottle.games.count) \(bottle.games.count == 1 ? "game" : "games")")
+                Text(L10n.string(bottle.games.count == 1 ? "bottle.meta.game_one" : "bottle.meta.game_many",
+                                 String(bottle.games.count)))
                 dot
                 Text(bottle.windowsVersion.displayName)
                 if let bytes = diskUsageStore.size(for: bottle.id) {

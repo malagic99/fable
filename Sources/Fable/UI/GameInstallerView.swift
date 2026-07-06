@@ -188,11 +188,11 @@ struct ImportGameView: View {
                 }
 
                 Picker("Add to bottle", selection: $mode) {
-                    Text("Copy folder “\(executable.deletingLastPathComponent().lastPathComponent)” (recommended)")
+                    Text(L10n.string("install.mode.copy_folder", executable.deletingLastPathComponent().lastPathComponent))
                         .tag(GameInstaller.ImportMode.wholeFolder)
                     Text("Link folder without copying — saves disk, game must stay where it is")
                         .tag(GameInstaller.ImportMode.linkFolder)
-                    Text("Copy just \(executable.lastPathComponent)")
+                    Text(L10n.string("install.mode.copy_exe", executable.lastPathComponent))
                         .tag(GameInstaller.ImportMode.executableOnly)
                 }
                 .pickerStyle(.radioGroup)

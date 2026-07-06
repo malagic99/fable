@@ -61,6 +61,44 @@ import Testing
         return found
     }
 
+    /// `Text(cond ? "a" : "b")` and `Text("… \(x) …")` are String-typed, so
+    /// they skip localization even though they look like literals — the exact
+    /// trap that shipped English into the Tune sheet and trigger lab. This
+    /// flags any such site not wrapped in `L10n.string`. Genuinely-verbatim
+    /// cases (data, universal formats) are allowlisted by the source line.
+    @Test
+    func noStringTernaryOrInterpolationSkipsLocalization() throws {
+        // Substrings of source lines that are legitimately non-localizable:
+        // runtime data, empty fallbacks, or universal formats (hardware specs,
+        // "120 fps"). Keep this list short and justified.
+        let allowed = [
+            "launchError ??",       // error text, verbatim
+            "isEmpty ? \" \"",      // raw log line
+            "performanceCores)P +", // "8P + 4E" — universal hardware spec
+            "fps\" }",              // "120 fps" — universal
+        ]
+        let ternary = try NSRegularExpression(pattern: #"(?:Text|\.help)\([^)\n]*\?[^)\n]*"[^"]+"[^)\n]*:"#)
+        let interp = try NSRegularExpression(pattern: #"Text\("[^"]*\\\([^)]*\)[^"]*"\)"#)
+
+        var offenders: [String] = []
+        let enumerator = FileManager.default.enumerator(at: Self.sourcesRoot, includingPropertiesForKeys: nil)!
+        for case let url as URL in enumerator where url.pathExtension == "swift" {
+            let text = try String(contentsOf: url, encoding: .utf8)
+            for (n, line) in text.split(separator: "\n", omittingEmptySubsequences: false).enumerated() {
+                let s = String(line)
+                if s.contains("L10n.string") { continue }
+                if allowed.contains(where: s.contains) { continue }
+                let range = NSRange(s.startIndex..., in: s)
+                if ternary.firstMatch(in: s, range: range) != nil
+                    || interp.firstMatch(in: s, range: range) != nil {
+                    offenders.append("\(url.lastPathComponent):\(n + 1)  \(s.trimmingCharacters(in: .whitespaces))")
+                }
+            }
+        }
+        #expect(offenders.isEmpty,
+                "String ternary/interpolation in Text/help skips localization — wrap in L10n.string or allowlist if truly verbatim:\n\(offenders.joined(separator: "\n"))")
+    }
+
     @Test
     func everyViewLiteralHasSpanishAndPortuguese() throws {
         let es = try stringsKeys("es")

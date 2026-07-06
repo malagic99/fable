@@ -109,23 +109,17 @@ enum GraphicsBackend: String, Codable, CaseIterable, Identifiable, Sendable {
     var id: String { rawValue }
 
     /// One-line label for the backend picker: name — what it does (note).
-    var displayName: String {
-        switch self {
-        case .off: "Built-in Wine — DirectX 9–11, older games"
-        case .dxmt: "DXMT — DirectX 10/11 → Metal"
-        case .gptk: "Apple GPTK — DirectX → Metal (legacy, Wine 7.7)"
-        case .dxvk: "DXVK + vkd3d — DirectX → Vulkan → Metal"
-        case .crossover: "CrossOver — uses your installed copy (paid)"
-        case .sikarugir: "Sikarugir — DirectX 12 + Steam → Metal (free)"
-        }
-    }
+    /// The descriptive tail is translated; the backend names inside stay
+    /// as-is (proper nouns) within each localized string.
+    var displayName: String { L10n.string("backend.display.\(rawValue)") }
 
     /// Compact label for inline UI ("DXMT", "GPTK", "DXVK", "CrossOver",
     /// "Built-in"). `.off` is NOT "Wine" — everything here is Wine; .off means
-    /// Wine's built-in D3D path.
+    /// Wine's built-in D3D path. Only `.off` translates; the rest are proper
+    /// nouns identical in every language.
     var shortName: String {
         switch self {
-        case .off: "Built-in"
+        case .off: L10n.string("backend.short.off")
         case .dxmt: "DXMT"
         case .gptk: "GPTK"
         case .dxvk: "DXVK"
