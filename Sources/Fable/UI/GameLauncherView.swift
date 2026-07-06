@@ -137,11 +137,11 @@ struct GameLauncherView: View {
             }
             .font(.caption)
         } else if let code = gameLauncher.lastExitCode[game.id], code != 0 {
-            Text("Last run exited with code \(code)")
+            Text(L10n.string("game.last_exit_code", String(code)))
                 .font(.caption)
                 .foregroundStyle(.orange)
         } else if let override = game.graphicsBackend, override != bottle.graphicsBackend {
-            Text("Backend override: \(override.shortName)")
+            Text(L10n.string("game.backend_override", override.shortName))
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }

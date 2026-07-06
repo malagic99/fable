@@ -33,6 +33,24 @@ Plus a UI-hierarchy polish pass now that Fable is in the wild:
 - Advanced → Folders buttons say "Open in Finder" once, not
   "Open Bottles Folder" next to a row already labeled Bottles.
 
+And a full localization sweep (tester screenshots showed whole footers still
+in English):
+
+- **All 272 view literals now have es/pt entries** — settings footers, help
+  tooltips, installer flows, Winetricks, onboarding, everything. Proper nouns
+  ("D3DMetal", "120 fps") carry identical-value entries so the gate below
+  stays exception-free.
+- **Code-built strings localized**: bottle status badges (Pronta / Configurando
+  / Precisa de reparo), "Backend override:", games count, DualSense On/Off,
+  controller guidance, System/Light/Dark appearance names. The `String`-ternary
+  trap (`Text(flag ? "On" : "Off")` silently skips localization) is documented
+  and fixed everywhere it occurred.
+- **The gate**: `LocalizationCoverageTests` scans the real source tree —
+  every view literal must exist in es and pt, every `L10n.string` key in all
+  three languages — and fails naming the exact strings you forgot.
+- **The template**: `docs/LOCALIZATION.md` — how strings resolve, the
+  30-second recipe for adding one, how to add a whole language.
+
 ## v0.17.0 — 2026-07-05
 
 Fable knows your Mac.

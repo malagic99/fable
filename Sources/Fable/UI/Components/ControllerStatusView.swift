@@ -17,7 +17,7 @@ struct ControllerStatusView: View {
             HStack {
                 Label {
                     Text(controllers.isEmpty
-                         ? "No controller detected"
+                         ? L10n.string("controller.none")
                          : controllers.joined(separator: ", "))
                 } icon: {
                     Image(systemName: "gamecontroller")
@@ -38,10 +38,7 @@ struct ControllerStatusView: View {
     /// Honest guidance: pads pass through automatically; Steam Input is the
     /// best path for a DualSense / DualShock 4.
     private var guidance: String {
-        if isSteamBottle {
-            return "Controllers pass through to games automatically. For a DualSense / DualShock 4, turn on Steam → Settings → Controller (Steam Input) for full button, touchpad, and haptics support."
-        }
-        return "Controllers pass through to games as a gamepad. For the best PlayStation-pad support in DirectX games, add the game to Steam and launch it through Steam Input."
+        L10n.string(isSteamBottle ? "controller.guidance.steam" : "controller.guidance.generic")
     }
 
     private func refresh() {

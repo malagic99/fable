@@ -77,3 +77,22 @@
 "feedback.category.bug"       = "Bug";
 "feedback.category.idea"      = "Idea";
 "feedback.category.question"  = "Question";
+
+// MARK: Code-resolved strings (full-coverage sweep)
+"common.on"                   = "On";
+"common.off"                  = "Off";
+"appearance.system"           = "System";
+"appearance.light"            = "Light";
+"appearance.dark"             = "Dark";
+"bottle.status.ready"         = "Ready";
+"bottle.status.provisioning"  = "Setting up";
+"bottle.status.broken"        = "Needs repair";
+"bottle.meta.game_one"        = "%@ game";
+"bottle.meta.game_many"       = "%@ games";
+"bottle.help.duplicate"       = "Clone this bottle and its installed games";
+"bottle.help.stop_before_duplicate" = "Stop running games before duplicating";
+"game.backend_override"       = "Backend override: %@";
+"game.last_exit_code"         = "Last run exited with code %@";
+"controller.none"             = "No controller detected";
+"controller.guidance.steam"   = "Controllers pass through to games automatically. For a DualSense / DualShock 4, turn on Steam → Settings → Controller (Steam Input) for full button, touchpad, and haptics support.";
+"controller.guidance.generic" = "Controllers pass through to games as a gamepad. For the best PlayStation-pad support in DirectX games, add the game to Steam and launch it through Steam Input.";
