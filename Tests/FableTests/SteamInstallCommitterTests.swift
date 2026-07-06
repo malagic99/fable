@@ -104,6 +104,32 @@ import Testing
     }
 
     @Test
+    func sparsePreallocatedDownloadIsNotCommitted() throws {
+        // Steam PRE-ALLOCATES depot files sparsely while downloading: logical
+        // size looks complete long before the bytes exist. Committing then
+        // would move a half-download into common/ and mark it installed —
+        // the allocated-size check is what stands in the way.
+        let root = try makeSteam(bytesToStage: 1_000_000, extractedBytes: 0)
+        defer { try? fm.removeItem(at: root) }
+        let appDir = root.appending(path: "steamapps/downloading/999")
+        try fm.removeItem(at: appDir.appending(path: "game.bin"))
+        let sparse = appDir.appending(path: "depot.resources")
+        #expect(fm.createFile(atPath: sparse.path, contents: nil))
+        let handle = try FileHandle(forWritingTo: sparse)
+        try handle.truncate(atOffset: 1_000_000)
+        try handle.close()
+
+        let sizes = SteamInstallCommitter.directorySizes(appDir)
+        #expect(sizes.logical >= 1_000_000)     // looks complete…
+        #expect(sizes.allocated < 1_000_000)    // …but isn't — the tell
+
+        #expect(SteamInstallCommitter.commitStuckInstalls(steamRoot: root).isEmpty)
+        // Left exactly where it was, still downloading.
+        #expect(fm.fileExists(atPath: sparse.path))
+        #expect(!fm.fileExists(atPath: root.appending(path: "steamapps/common/My Game").path))
+    }
+
+    @Test
     func mergesOverAStubInstallDir() throws {
         // A prior failed attempt left an empty common/<installdir> — commit
         // must merge the real files in, not choke on the existing dir.
