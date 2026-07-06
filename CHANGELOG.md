@@ -1,5 +1,35 @@
 # Changelog
 
+## v0.19.0 — 2026-07-06
+
+The Friend Kit — Fable's actual finish line — plus a knowledge-transfer sweep.
+
+- **Bottle export/import is real.** The `.fbottle` archive layer (pack /
+  verify / unpack, checksummed) existed but was wired to nothing. Now:
+  bottle page → **Export** packs a shareable archive; Bottles → New Bottle
+  tile → **Import Bottle (.fbottle)…** adopts one with a fresh identity and
+  deduped name. Round-trip covered by tests, including double-import.
+- **`scripts/friend-kit.sh`** assembles the whole kit: fresh app zip +
+  friend README + any exported bottles/recipes staged in `kit-payload/`.
+- **docs/FRIEND-README.md** — the one-pager a friend actually needs:
+  the right-click→Open Gatekeeper ritual, Sikarugir/D3DMetal setup,
+  importing the donor bottle, recipes.
+- **Fable Doctor: 11 new signatures** from the June investigations —
+  D3DMetal dlopen, dispatch-ABI mismatch (c0000142), quarantined dylibs,
+  missing FreeType/GnuTLS, the Steam service WoW64 pipe, Metal command-buffer
+  aborts, out-of-memory, Denuvo, XAudio, PhysX — each pinned to a real log line.
+- **Committer hardening**: refuse sparse-preallocated downloads (logical
+  size lies mid-download; allocated size can't) — closes a path where a
+  paused download could be "committed" broken.
+- **Recipes**: Ready or Not (Sikarugir + 120 fps + MetalFX), seeded from the
+  real tested bottle (~4 h tracked).
+- **docs/ARCHITECTURE.md**: the matched-pair thesis, the ABI law, the Steam
+  CEF saga, and the dead-ends table — the repo now carries the systems
+  knowledge, not just the code.
+
+Known remainder: a cold-start onboarding dry-run on a fresh account is still
+pending — do it before handing the first kit to a friend.
+
 ## v0.18.1 — 2026-07-06
 
 Patch: the translations a Portuguese tester could still see through.

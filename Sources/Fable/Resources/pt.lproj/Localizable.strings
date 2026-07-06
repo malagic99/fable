@@ -440,3 +440,12 @@
 "recipes.imported_count"      = "%@ importadas";
 "game.action.stop_named"      = "Parar %@";
 "game.action.launch_named"    = "Abrir %@";
+
+// MARK: Exportar/importar garrafas (Friend Kit)
+"toast.bottle.exporting"      = "Empacotando “%@” — garrafas grandes levam alguns minutos…";
+"toast.bottle.exported"       = "Exportado %@";
+"toast.bottle.importing"      = "Desempacotando %@ — verificando e instalando…";
+"toast.bottle.imported"       = "Importada como “%@”";
+"Export"                      = "Exportar";
+"Import Bottle (.fbottle)…"   = "Importar garrafa (.fbottle)…";
+"Pack this bottle into a shareable .fbottle archive — the Friend Kit donor" = "Empacota esta garrafa num arquivo .fbottle compartilhável — a doadora do Friend Kit";
