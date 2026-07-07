@@ -32,6 +32,7 @@ struct BottleDetailView: View {
     @State private var isShowingWinetricks = false
     @State private var isExporting = false
     @State private var exportProgress: String?
+    @State private var isShowingExportChoice = false
     @State private var isShowingTriggers = false
     @State private var isRepairing = false
 
@@ -377,7 +378,14 @@ struct BottleDetailView: View {
                 }
 
                 Button {
-                    exportBottle(bottle)
+                    // A Steam bottle carries licensed game files and the
+                    // owner's login — sharing those is not Fable's call to
+                    // make silently. Offer donor vs. full backup.
+                    if bottleHasSteamClient(bottle) {
+                        isShowingExportChoice = true
+                    } else {
+                        exportBottle(bottle)
+                    }
                 } label: {
                     if isExporting {
                         // The button IS the progress readout — a 56 GB donor
@@ -413,6 +421,15 @@ struct BottleDetailView: View {
                     errorMessage = error.localizedDescription
                 }
             }
+        }
+        .confirmationDialog("Export Bottle", isPresented: $isShowingExportChoice) {
+            Button("Donor for a Friend (no games, no login)") {
+                exportBottle(BottleArchive.donorBottle(bottle), excluding: BottleArchive.donorExclusions())
+            }
+            Button("Full Backup (everything, for yourself)") { exportBottle(bottle) }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Donor strips installed games, downloads, and your Steam login — your friend signs in as themselves. Full keeps everything; only share it with yourself.")
         }
         .sheet(isPresented: $isShowingWinetricks) {
             WinetricksSheetView(bottle: bottle)
@@ -531,9 +548,14 @@ struct BottleDetailView: View {
         bottle.games.contains { gameLauncher.isRunning($0.id) }
     }
 
-    private func exportBottle(_ bottle: Bottle) {
+    private func bottleHasSteamClient(_ bottle: Bottle) -> Bool {
+        bottle.games.contains { $0.executablePath.lowercased().hasSuffix("steam.exe") }
+    }
+
+    private func exportBottle(_ bottle: Bottle, excluding: [String] = []) {
+        let suffix = excluding.isEmpty ? "" : " (Donor)"
         guard let destination = FilePicker.chooseSaveDestination(
-            suggestedName: "\(bottle.name).\(BottleArchive.pathExtension)"
+            suggestedName: "\(bottle.name)\(suffix).\(BottleArchive.pathExtension)"
         ) else { return }
 
         // Preflight: the archive can approach the bottle's size (games barely
@@ -577,7 +599,8 @@ struct BottleDetailView: View {
                     bottle,
                     bottleManager: bottleManager,
                     catalog: appState.versionCatalog,
-                    to: destination
+                    to: destination,
+                    excluding: excluding
                 )
                 toastCenter.success(L10n.string("toast.bottle.exported", destination.lastPathComponent))
             } catch {

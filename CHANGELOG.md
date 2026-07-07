@@ -1,5 +1,21 @@
 # Changelog
 
+## v0.22.0 — 2026-07-06
+
+Legal-hygiene release: the donor bottle is now clean by construction.
+
+- **Donor export.** Exporting a Steam bottle now asks: *Donor for a Friend*
+  strips installed games (licensed content the recipient may not own),
+  downloads, per-account data, and the owner's Steam login/session — the
+  client itself travels and the friend signs in as themselves. *Full Backup*
+  keeps everything, labeled for what it is. The exclusions feed both the
+  archive and its checksum, so donor imports verify; the archived bottle.json
+  drops the stripped game entries too.
+- **LICENSE (MIT)** — the public repo finally has one — and
+  **THIRD-PARTY-NOTICES.md** inventorying what Fable redistributes
+  (innoextract + its dylibs), what it only downloads at runtime, and the
+  D3DMetal never-bundle rule.
+
 ## v0.21.0 — 2026-07-06
 
 The kit's scariest moment made boring, and the moat learns to grow itself.

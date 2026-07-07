@@ -79,6 +79,51 @@ import Testing
     }
 
     @Test
+    func donorExportStripsGamesAndLoginButKeepsTheClient() async throws {
+        // The legal/privacy guard: a donor .fbottle must NOT carry installed
+        // games (licensed content) or the owner's Steam session — but the
+        // client itself travels. Checksum must verify on import, which is
+        // only true if the SAME exclusions fed both tars.
+        let (manager, bottle, catalog, root) = try makeFixture()
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let steam = manager.prefixDirectory(for: bottle)
+            .appending(path: "drive_c/\(SteamPaths.clientDirRelative)", directoryHint: .isDirectory)
+        let fm = FileManager.default
+        try fm.createDirectory(at: steam.appending(path: "steamapps/common/Game"), withIntermediateDirectories: true)
+        try fm.createDirectory(at: steam.appending(path: "config"), withIntermediateDirectories: true)
+        try Data("exe".utf8).write(to: steam.appending(path: "Steam.exe"))
+        try Data("48GB of game".utf8).write(to: steam.appending(path: "steamapps/common/Game/game.bin"))
+        try Data("account tokens".utf8).write(to: steam.appending(path: "config/loginusers.vdf"))
+        try Data("sentry".utf8).write(to: steam.appending(path: "ssfn1234567890"))
+
+        // Metadata side: the steamapps game entry is stripped, Steam stays.
+        var withGames = bottle
+        withGames.games = [
+            Game(name: "Steam", executablePath: "\(SteamPaths.exeRelative)"),
+            Game(name: "Big Game", executablePath: "\(SteamPaths.clientDirRelative)/steamapps/common/Game/game.bin"),
+        ]
+        let donor = BottleArchive.donorBottle(withGames)
+        #expect(donor.games.map(\.name) == ["Steam"])
+
+        let archive = root.appending(path: "Donor.fbottle")
+        try await BottleArchive.pack(donor, bottleManager: manager, catalog: catalog,
+                                     to: archive, excluding: BottleArchive.donorExclusions())
+
+        // Import verifies the checksum — the moment of truth for exclusion
+        // symmetry — then the stripped files must be gone, the client not.
+        let unpacked = try await BottleArchive.unpack(archive)
+        defer { try? FileManager.default.removeItem(at: unpacked.workingDirectory) }
+        let outSteam = unpacked.prefixDirectory.appending(path: "drive_c/\(SteamPaths.clientDirRelative)")
+        #expect(fm.fileExists(atPath: outSteam.appending(path: "Steam.exe").path))
+        #expect(!fm.fileExists(atPath: outSteam.appending(path: "steamapps").path))
+        #expect(!fm.fileExists(atPath: outSteam.appending(path: "config").path))
+        #expect(!fm.fileExists(atPath: outSteam.appending(path: "ssfn1234567890").path))
+        // The keeper from the fixture still travels.
+        #expect(fm.fileExists(atPath: unpacked.prefixDirectory.appending(path: "drive_c/marker.txt").path))
+    }
+
+    @Test
     func manifestCarriesComponentVersionsAndOriginalIdentity() async throws {
         let (manager, bottle, catalog, root) = try makeFixture()
         defer { try? FileManager.default.removeItem(at: root) }

@@ -72,6 +72,39 @@ enum BottleArchive {
 
     // MARK: Pack
 
+    /// Tar patterns (relative to the archive root, `prefix/...`) that turn a
+    /// Steam bottle into a shareable DONOR: the client itself travels, but
+    /// installed games (licensed content that the recipient may not own),
+    /// downloads, per-account data, and the owner's login/session state stay
+    /// home. The friend logs in as themselves; Steam regenerates config.
+    static func donorExclusions() -> [String] {
+        let steam = "\(prefixEntryName)/drive_c/\(SteamPaths.clientDirRelative)"
+        return [
+            "\(steam)/steamapps",   // installed games, manifests, downloads
+            "\(steam)/userdata",    // per-account cloud/config
+            "\(steam)/config",      // loginusers.vdf + session tokens
+            "\(steam)/logs",
+            "\(steam)/dumps",
+            "\(steam)/appcache",
+            "\(steam)/depotcache",
+            "\(steam)/ssfn*",       // sentry files (machine auth)
+        ]
+    }
+
+    /// The bottle metadata that matches `donorExclusions()`: game entries
+    /// living under steamapps are stripped (their files won't travel), the
+    /// Steam client entry itself stays.
+    static func donorBottle(_ bottle: Bottle) -> Bottle {
+        var donor = bottle
+        donor.games.removeAll { game in
+            game.executablePath
+                .replacingOccurrences(of: "\\", with: "/")
+                .lowercased()
+                .contains("steamapps/")
+        }
+        return donor
+    }
+
     /// Tar+zstd the bottle (manifest + bottle.json + prefix tree) into
     /// `destination`. Returns the destination URL on success.
     /// MainActor-isolated because it reads BottleManager paths.
@@ -81,13 +114,19 @@ enum BottleArchive {
     /// entry name the archive wants) and the checksum is streamed through a
     /// pipe — no staged copy of the prefix, no full-size temp tar. Only the
     /// two small JSON files are staged.
+    ///
+    /// `excluding` takes tar patterns relative to the archive root (see
+    /// `donorExclusions()`). The SAME exclusions feed the checksum stream and
+    /// the archive — they must agree, or the import-side verification would
+    /// reject every donor archive.
     @MainActor
     @discardableResult
     static func pack(
         _ bottle: Bottle,
         bottleManager: BottleManager,
         catalog: VersionCatalog,
-        to destination: URL
+        to destination: URL,
+        excluding: [String] = []
     ) async throws -> URL {
         let fm = FileManager.default
         let source = bottleManager.directory(for: bottle)
@@ -119,7 +158,8 @@ enum BottleArchive {
         // Checksum the prefix tar stream so the importer can validate
         // before doing anything irreversible.
         let checksum = try await prefixChecksum(
-            stagingPrefix: prefixParent.appending(path: prefixEntryName, directoryHint: .isDirectory)
+            stagingPrefix: prefixParent.appending(path: prefixEntryName, directoryHint: .isDirectory),
+            excluding: excluding
         )
 
         let manifest = Manifest(
@@ -152,7 +192,7 @@ enum BottleArchive {
 
         let result = try await ProcessRunner.run(
             URL(filePath: "/usr/bin/tar"),
-            arguments: [
+            arguments: excluding.map { "--exclude=\($0)" } + [
                 "--zstd",
                 "-cf", destination.path,
                 "-C", staging.path,
@@ -264,16 +304,19 @@ enum BottleArchive {
     /// shell pipeline, so a 56 GB prefix never touches a temp file. The
     /// digest is over the uncompressed tar bytes (same invocation as ever,
     /// so archives written by older Fable versions still verify).
-    private static func prefixChecksum(stagingPrefix: URL) async throws -> String {
+    private static func prefixChecksum(stagingPrefix: URL, excluding: [String] = []) async throws -> String {
         guard FileManager.default.fileExists(atPath: stagingPrefix.path) else { return emptyChecksum }
 
+        // Exclusions ride in ${3}… so no pattern ever touches shell parsing
+        // (braces: $10 would otherwise parse as ${1}0).
+        let excludeArgs = (3..<(3 + excluding.count)).map { #"--exclude="${\#($0)}""# }.joined(separator: " ")
         let result = try await ProcessRunner.run(
             URL(filePath: "/bin/sh"),
             arguments: [
-                "-c", #"tar -cf - -C "$1" "$2" | shasum -a 256"#, "--",
+                "-c", #"tar \#(excludeArgs) -cf - -C "$1" "$2" | shasum -a 256"#, "--",
                 stagingPrefix.deletingLastPathComponent().path,
                 stagingPrefix.lastPathComponent,
-            ]
+            ] + excluding
         )
         guard result.succeeded,
               let hex = result.standardOutput.split(separator: " ").first,
