@@ -58,6 +58,9 @@ import Testing
             ("Denuvo Anti-Tamper: integrity check", "doctor-denuvo"),
             ("err:module:import_dll Library XAudio2_7.dll not found", "doctor-xaudio"),
             ("PhysXLoader.dll failed to initialize", "doctor-physx"),
+            // The VotV/YeetPatch session, 2026-07-07 — both real lines:
+            ("wine client error:0: version mismatch 856/942.\nYour wineserver binary was not upgraded correctly", "doctor-wineserver-mismatch"),
+            ("Failed to resolve hostfxr.dll [not found]. Error code: 0x80008083", "doctor-dotnet-modern"),
         ]
         for (line, ruleID) in cases {
             #expect(ids(GameDoctor.diagnose(log: line)).contains(ruleID),
