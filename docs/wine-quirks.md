@@ -49,6 +49,8 @@ regression or upgrading the Wine build is a lookup, not an archaeology dig.
 | **MetalFX + 60 fps cap** | AAA D3DMetal FPS decays over a session (unified-memory creep) | `D3DM_USE_METALFX_UPSCALER=1` + `D3DM_FRAME_RATE_LIMIT` | `PerformanceOptions` / recipes | `fable-current-state` |
 | **GOG/Inno installers** | InnoSetup installer SIGKILLs WoW64 | Extract via bundled `innoextract`; quarantine xattr → SIGKILL | `GameInstaller` | `fable-wow64-gog-installers` |
 | **runaway logs** | A spammy channel balloons one log to tens of GB | Per-file 200 MB + 500 MB total budget, skip active logs | `LogPruner` | `fable-msync-iocp-spin` |
+| **mixed wineservers** | winetricks/installers fail `version mismatch NNN/NNN` while a game's (Sikarugir) wineserver holds the prefix | Quit games / `wineserver -k` + `-w` before running tools with the default wine | procedure + Doctor `wineserver-mismatch` | — |
+| **.NET 6/7/8 apps** | "You must install .NET" / `hostfxr.dll not found` (e.g. VotV's YeetPatch = .NET 8) | Run MS's official windowsdesktop-runtime x64 exe in the bottle with `/install /quiet /norestart` — winetricks 20240105 has no dotnet8 verb. Verified: 8.0.28 installs clean on Wine Devel 11.10 | manual / Run Installer + Doctor `dotnet-modern` | — |
 
 ## Performance stability — the "rubber mat"
 
