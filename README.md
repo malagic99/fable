@@ -149,7 +149,11 @@ already-extracted files into place and writing the Steam manifest.
 
 ## License & credits
 
-Fable stands on Wine (LGPL), DXMT (zlib), DXVK/vkd3d-proton, MoltenVK, Apple's
-Game Porting Toolkit (D3DMetal), Sikarugir, innoextract (zlib), and the Gcenx
-packaging work. Respect the licenses of any games you run, and each store's
-terms for their installers.
+Fable's own code is **MIT** ([LICENSE](LICENSE)); everything it stands on and
+what that implies is inventoried in
+[THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) — Wine (LGPL), DXMT (zlib),
+DXVK/vkd3d-proton, MoltenVK, Apple's Game Porting Toolkit (D3DMetal, never
+bundled), Sikarugir, innoextract (zlib), and the Gcenx packaging work.
+Respect the licenses of any games you run, and each store's terms for their
+installers. Sharing bottles? Use the **Donor** export — it strips installed
+games and your Steam login by design.

@@ -455,3 +455,9 @@
 "toast.bottle.export_no_space" = "No hay espacio suficiente: el archivo puede llegar a %@ y solo hay %@ libres.";
 "Share This Setup on GitHub…" = "Compartir esta configuración en GitHub…";
 "Export saves a .fablerecipe file anyone can import. Share opens a pre-filled GitHub issue with this setup and your hardware — you review and post it yourself; tested setups grow Fable's built-in catalog." = "Exportar guarda un archivo .fablerecipe que cualquiera puede importar. Compartir abre un issue de GitHub prellenado con esta configuración y tu hardware — lo revisas y publicas tú; las configuraciones probadas hacen crecer el catálogo integrado de Fable.";
+
+// MARK: Exportación de donante
+"Export Bottle"               = "Exportar botella";
+"Donor for a Friend (no games, no login)" = "Donante para un amigo (sin juegos, sin sesión)";
+"Full Backup (everything, for yourself)" = "Copia completa (todo, para ti)";
+"Donor strips installed games, downloads, and your Steam login — your friend signs in as themselves. Full keeps everything; only share it with yourself." = "Donante quita los juegos instalados, las descargas y tu sesión de Steam — tu amigo inicia sesión con su cuenta. Completa lo conserva todo; compártela solo contigo mismo.";
