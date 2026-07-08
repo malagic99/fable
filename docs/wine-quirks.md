@@ -51,6 +51,8 @@ regression or upgrading the Wine build is a lookup, not an archaeology dig.
 | **runaway logs** | A spammy channel balloons one log to tens of GB | Per-file 200 MB + 500 MB total budget, skip active logs | `LogPruner` | `fable-msync-iocp-spin` |
 | **mixed wineservers** | winetricks/installers fail `version mismatch NNN/NNN` while a game's (Sikarugir) wineserver holds the prefix | Quit games / `wineserver -k` + `-w` before running tools with the default wine | procedure + Doctor `wineserver-mismatch` | — |
 | **.NET 6/7/8 apps** | "You must install .NET" / `hostfxr.dll not found` (e.g. VotV's YeetPatch = .NET 8) | Run MS's official windowsdesktop-runtime x64 exe in the bottle with `/install /quiet /norestart` — winetricks 20240105 has no dotnet8 verb. Verified: 8.0.28 installs clean on Wine Devel 11.10 | manual / Run Installer + Doctor `dotnet-modern` | — |
+| **mscoree kills .NET Core** | With .NET installed, a Core app still fails `System.Runtime.dll: module not found` | Do NOT disable `mscoree` at launch — Wine's mscoree bootstraps IL. `WineEnv.base` skips only gecko (`mshtml=`); mono-dialog skip moved to `WineEnv.provisioning` (wineboot only) | `WineEnv.skipGeckoDialog` / `.provisioning` | — |
+| **.NET Core ICU crash** | `Could not load ICU data. UErrorCode: 2` → every WPF/.NET-Core app crashes at start | `DOTNET_SYSTEM_GLOBALIZATION_USENLS=1` (use Wine's NLS, not .NET's bundled ICU) + `DOTNET_EnableWriteXorExecute=0` (JIT under Rosetta) — always-on, .NET-only | `WineEnv.dotnetCoreOnWine` | — |
 
 ## Performance stability — the "rubber mat"
 
