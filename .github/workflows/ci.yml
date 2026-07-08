@@ -14,20 +14,28 @@ concurrency:
 
 jobs:
   test:
-    runs-on: macos-latest
+    # Pin the image: macos-latest rolls its Swift toolchain, which poisons a
+    # restored .build (prebuilt swift-syntax macros are compiler-version-locked
+    # → "module compiled with Swift X cannot be imported by Y").
+    runs-on: macos-15
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
       - name: Swift version
-        run: swift --version
+        id: swift
+        run: |
+          swift --version
+          echo "v=$(swift --version | shasum | cut -c1-12)" >> "$GITHUB_OUTPUT"
 
       - name: Cache SwiftPM build
         uses: actions/cache@v4
         with:
           path: .build
-          key: spm-${{ runner.os }}-${{ hashFiles('Package.resolved', 'Package.swift') }}
-          restore-keys: spm-${{ runner.os }}-
+          # Key on the exact toolchain too — a Swift upgrade must not restore
+          # macro binaries the new compiler can't read.
+          key: spm-${{ runner.os }}-${{ steps.swift.outputs.v }}-${{ hashFiles('Package.resolved', 'Package.swift') }}
+          restore-keys: spm-${{ runner.os }}-${{ steps.swift.outputs.v }}-
 
       - name: Build
         run: swift build
