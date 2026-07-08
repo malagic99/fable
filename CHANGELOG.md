@@ -1,5 +1,22 @@
 # Changelog
 
+## v0.22.1 — 2026-07-08
+
+Patch: .NET games work now (they never did).
+
+- **Fable disabled `mscoree` on every launch** — a leftover from the
+  Mono-installer-dialog skip. Harmless for native games, but it stopped Wine
+  bootstrapping IL, so any .NET (Core) 6/7/8 app failed with "System.Runtime.dll
+  not found" *even with .NET installed*. Launch now skips only the Gecko dialog;
+  the Mono-dialog skip moved to prefix creation (`wineboot`), the one place it
+  belongs. Fixes an entire category, root-caused live on Voices of the Void.
+- **.NET-on-Wine globalization**: `DOTNET_SYSTEM_GLOBALIZATION_USENLS=1` (its
+  bundled ICU can't load on Wine → instant crash) + `DOTNET_EnableWriteXorExecute=0`
+  (JIT under Rosetta). Always-on, read only by the .NET runtime.
+- Two new Fable Doctor signatures: wineserver-version collision (a game's
+  Sikarugir server still holding the prefix when a tool runs on the default
+  Wine) and modern-.NET-missing (`hostfxr.dll`), each pinned to real log lines.
+
 ## v0.22.0 — 2026-07-06
 
 Legal-hygiene release: the donor bottle is now clean by construction.
