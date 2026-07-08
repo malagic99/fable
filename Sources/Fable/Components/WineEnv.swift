@@ -38,9 +38,30 @@ enum WineEnv {
 
     // MARK: - Always-on base fixes
 
-    /// Skip the Mono/Gecko installer dialogs so prefix creation never blocks on
-    /// UI. Games that need .NET get it through the bottle's dependencies later.
+    /// Skip the Gecko (embedded-IE) installer dialog so prefix creation never
+    /// blocks on UI. Deliberately does NOT disable `mscoree`: a bottle with a
+    /// real Microsoft .NET runtime installed needs Wine's mscoree to bootstrap
+    /// IL assemblies, and disabling it breaks every .NET (Core) 6/7/8 app with
+    /// "System.Runtime.dll: module not found". The Mono dialog is a rarer,
+    /// non-fatal, .NET-Framework-only prompt — skipped instead only during
+    /// unattended prefix init (see `WineEnv.provisioning`), where a blocking
+    /// modal would actually break setup.
+    static let skipGeckoDialog = "mshtml="
+
+    /// Prefix-init only: also suppress the Mono dialog so `wineboot --init`
+    /// stays unattended. Not used at game launch — see `skipGeckoDialog`.
     static let skipMonoGeckoDialogs = "mscoree,mshtml="
+
+    /// .NET (Core) on Wine, always-on and inert for everything else:
+    /// - USENLS routes globalization through Wine's Windows NLS instead of
+    ///   .NET's bundled ICU, which fails to load on Wine ("Could not load ICU
+    ///   data") and otherwise crashes every WPF/.NET-Core app on start.
+    /// - EnableWriteXorExecute=0 keeps the JIT working under Rosetta + Wine.
+    /// Both are read only by the .NET runtime; native games ignore them.
+    static let dotnetCoreOnWine: [String: String] = [
+        "DOTNET_SYSTEM_GLOBALIZATION_USENLS": "1",
+        "DOTNET_EnableWriteXorExecute": "0",
+    ]
 
     /// Makes Rosetta 2 advertise AVX/AVX2/FMA/BMI2 to the translated x86 game.
     /// Default Rosetta hides them, so a game whose CPU check requires AVX aborts
@@ -67,10 +88,19 @@ enum WineEnv {
         var env = [
             Self.prefix: prefixURL.path,
             debug: debugSilent,
-            dllOverrides: skipMonoGeckoDialogs,
+            dllOverrides: skipGeckoDialog,
             advertiseAVX.key: advertiseAVX.value,
         ]
         env.merge(playstationControllers) { _, new in new }
+        env.merge(dotnetCoreOnWine) { _, new in new }
+        return env
+    }
+
+    /// Prefix-creation environment: the base plus the Mono-dialog skip so
+    /// `wineboot --init` never stalls on a modal. Launch never uses this.
+    static func provisioning(prefix prefixURL: URL) -> [String: String] {
+        var env = base(prefix: prefixURL)
+        env[dllOverrides] = skipMonoGeckoDialogs
         return env
     }
 

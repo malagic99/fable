@@ -146,7 +146,10 @@ final class WineManager: ObservableObject {
     /// Initializes a fresh Wine prefix and pins its Windows version.
     func createPrefix(at prefix: URL, windowsVersion: WindowsVersion) async throws {
         let wine = try wineBinary()
-        let env = environment(forPrefix: prefix)
+        // Prefix init runs unattended — use the provisioning env, which also
+        // suppresses the Mono dialog (launch deliberately does not, so .NET
+        // Core apps keep working; see WineEnv.skipGeckoDialog).
+        let env = WineEnv.provisioning(prefix: prefix)
         try FileManager.default.createDirectory(at: prefix, withIntermediateDirectories: true)
 
         let boot = try await ProcessRunner.run(wine, arguments: ["wineboot", "--init"], environment: env)
