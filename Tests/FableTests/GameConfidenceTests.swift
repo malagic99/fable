@@ -32,6 +32,32 @@ import Testing
         #expect(GameConfidence.assess(hasRecipe: false, findings: []) == .unknown)
         #expect(GameConfidence.assess(hasRecipe: false, findings: [finding(.info)]) == .unknown)
     }
+
+    @Test
+    func realSessionsEarnPlayedButNeverVerified() {
+        var stats = GameStatsStore.Stats()
+        stats.totalSeconds = 3600
+
+        // An hour of tracked play, no crashes → "played on this Mac".
+        #expect(GameConfidence.assess(hasRecipe: false, findings: [], stats: stats) == .played)
+        // A recipe still outranks observation (a recipe says HOW it works;
+        // playtime only says THAT it ran — see Absolute Drift's white screen).
+        #expect(GameConfidence.assess(hasRecipe: true, findings: [], stats: stats) == .verified)
+        // Findings outrank observation too.
+        #expect(GameConfidence.assess(hasRecipe: false, findings: [finding(.knownBlocker)], stats: stats) == .blocked)
+
+        // A few launch attempts aren't evidence.
+        stats.totalSeconds = 120
+        #expect(GameConfidence.assess(hasRecipe: false, findings: [], stats: stats) == .unknown)
+
+        // Crash signatures poison the claim — it ran, but not cleanly.
+        stats.totalSeconds = 7200
+        stats.crashSignatures = ["sikarugir": "int3"]
+        #expect(GameConfidence.assess(hasRecipe: false, findings: [], stats: stats) == .unknown)
+
+        // No stats at all (the pre-tracking world) stays unknown.
+        #expect(GameConfidence.assess(hasRecipe: false, findings: [], stats: nil) == .unknown)
+    }
 }
 
 /// Interface style: persistence default + round-trip.

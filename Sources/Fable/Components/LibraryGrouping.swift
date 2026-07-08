@@ -50,7 +50,10 @@ extension LibraryGrouping {
             for entry in entries { byVerdict[confidence(entry), default: []].append(entry) }
             var result: [LibrarySection] = GameConfidence.allCases.compactMap { verdict in
                 guard let games = byVerdict[verdict], !games.isEmpty else { return nil }
-                return LibrarySection(id: verdict.label, title: verdict.label.capitalized, wine: games)
+                // First letter only — .capitalized would title-case every
+                // word ("Played On This Mac").
+                let title = verdict.label.prefix(1).uppercased() + verdict.label.dropFirst()
+                return LibrarySection(id: verdict.label, title: title, wine: games)
             }
             if !natives.isEmpty {
                 result.append(LibrarySection(id: "native", title: L10n.string("wall.section.native"), native: natives))

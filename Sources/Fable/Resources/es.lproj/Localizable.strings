@@ -461,3 +461,5 @@
 "Donor for a Friend (no games, no login)" = "Donante para un amigo (sin juegos, sin sesión)";
 "Full Backup (everything, for yourself)" = "Copia completa (todo, para ti)";
 "Donor strips installed games, downloads, and your Steam login — your friend signs in as themselves. Full keeps everything; only share it with yourself." = "Donante quita los juegos instalados, las descargas y tu sesión de Steam — tu amigo inicia sesión con su cuenta. Completa lo conserva todo; compártela solo contigo mismo.";
+"confidence.played"           = "jugado en este Mac";
+"played — real sessions on this Mac, no crashes" = "jugado — sesiones reales en este Mac, sin fallos";

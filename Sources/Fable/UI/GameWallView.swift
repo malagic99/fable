@@ -59,7 +59,8 @@ struct GameWallView: View {
     }
 
     private func confidence(_ entry: LibraryEntry) -> GameConfidence {
-        .assess(entry.game, recipes: userRecipeStore, quirks: quirkService)
+        .assess(entry.game, recipes: userRecipeStore, quirks: quirkService,
+                stats: gameStats.stats[entry.game.id])
     }
 
     /// The wall sliced by the active grouping (pure logic in LibraryGrouping).
@@ -119,6 +120,7 @@ struct GameWallView: View {
                             legendDot(.green, "verified — a tested recipe exists")
                             legendDot(.orange, "works with tweaks")
                             legendDot(.red, "won't run")
+                            legendDot(.blue, "played — real sessions on this Mac, no crashes")
                             legendDot(Color.secondary.opacity(0.6), "untested")
                             Divider()
                             HStack(spacing: 5) {
@@ -255,9 +257,11 @@ private struct GameCoverCard: View {
     @EnvironmentObject private var artworkStore: ArtworkStore
     @EnvironmentObject private var bottleManager: BottleManager
     @EnvironmentObject private var settingsManager: SettingsManager
+    @EnvironmentObject private var gameStats: GameStatsStore
 
     var body: some View {
-        let confidence = GameConfidence.assess(entry.game, recipes: userRecipeStore, quirks: quirkService)
+        let confidence = GameConfidence.assess(entry.game, recipes: userRecipeStore, quirks: quirkService,
+                                               stats: gameStats.stats[entry.game.id])
         CoverCard(
             artwork: artworkStore.image(for: entry.game),
             name: entry.game.name,
