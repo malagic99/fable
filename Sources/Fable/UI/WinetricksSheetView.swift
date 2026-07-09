@@ -17,6 +17,7 @@ struct WinetricksSheetView: View {
     @State private var selectedCategory: WinetricksVerb.Category? = nil
     @State private var isPreparing = false
     @State private var prepError: String?
+    @State private var destructiveVerb: WinetricksVerb?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -39,6 +40,20 @@ struct WinetricksSheetView: View {
             .padding(16)
         }
         .frame(width: 640, height: 520)
+        .confirmationDialog(
+            "Install \(destructiveVerb?.id ?? "") anyway?",
+            isPresented: .init(get: { destructiveVerb != nil },
+                               set: { if !$0 { destructiveVerb = nil } }),
+            titleVisibility: .visible
+        ) {
+            Button("Install Anyway", role: .destructive) {
+                if let verb = destructiveVerb { install(verb) }
+                destructiveVerb = nil
+            }
+            Button("Cancel", role: .cancel) { destructiveVerb = nil }
+        } message: {
+            Text("Microsoft's .NET Framework installer doesn't work under Wine on Apple Silicon, and this verb deletes Wine Mono first — so a failed run leaves the bottle with no .NET at all. Wine Mono already provides .NET Framework 4.x. Only proceed if you know this specific app needs the real Microsoft runtime.")
+        }
     }
 
     private var header: some View {
@@ -137,8 +152,13 @@ struct WinetricksSheetView: View {
                     .labelStyle(.iconOnly)
                     .help("Installed")
             } else {
-                Button("Install") { install(verb) }
-                    .controlSize(.small)
+                Button("Install") {
+                    // The .NET Framework verbs delete Wine Mono then fail —
+                    // confirm before letting someone brick their .NET.
+                    if verb.isDestructiveDotNet { destructiveVerb = verb }
+                    else { install(verb) }
+                }
+                .controlSize(.small)
             }
         }
         .padding(.vertical, 2)

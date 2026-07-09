@@ -65,6 +65,26 @@ import Testing
     }
 
     @Test
+    func flagsDestructiveDotNetFrameworkVerbsButNotCoreOrOthers() {
+        func verb(_ id: String) -> WinetricksVerb {
+            WinetricksVerb(id: id, category: .dlls, title: id)
+        }
+        // The Microsoft .NET Framework installers — known-broken + delete
+        // Wine Mono. All flagged.
+        for id in ["dotnet40", "dotnet45", "dotnet452", "dotnet462", "dotnet48"] {
+            #expect(verb(id).isDestructiveDotNet, "\(id) should be flagged")
+        }
+        // .NET Core verbs are a different, working runtime — never flagged.
+        for id in ["dotnetcore3", "dotnetdesktop6", "dotnetdesktop7", "dotnetcoredesktop3"] {
+            #expect(!verb(id).isDestructiveDotNet, "\(id) must NOT be flagged")
+        }
+        // Unrelated verbs.
+        for id in ["corefonts", "vcrun2022", "dxvk", "d3dcompiler_47"] {
+            #expect(!verb(id).isDestructiveDotNet, "\(id) must NOT be flagged")
+        }
+    }
+
+    @Test
     func categoryPickerCoversAllRawValues() {
         // If upstream adds a new category, parsing it should fail silently
         // (returns nil) rather than crash — that's by design.

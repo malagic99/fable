@@ -36,3 +36,8 @@ Htz.eVisitor*
 /*.webp
 kit-payload/
 Friend-Kit-*
+
+# Downloaded Windows installers (user support artifacts — never commit)
+*.exe
+BsgLauncher*.exe
+NDP*.exe
