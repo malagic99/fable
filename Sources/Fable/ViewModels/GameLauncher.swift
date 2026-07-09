@@ -302,6 +302,20 @@ final class GameLauncher: ObservableObject {
             for: fresh, runtime: prepared.graphicsBackend ?? fresh.graphicsBackend
         )
 
+        // Cold bottle (no live server after the drain) → safe to repair the
+        // user.reg keyboard layout that crashes WPF apps on non-US locales.
+        // A running server would hold the registry in memory and clobber the
+        // file, so only heal when nothing's running here.
+        let idle = !fresh.games.contains { isRunning($0.id) }
+            && !PrefixRuntimeGate.hasProcesses(
+                commands: ProcessActivity.runningCommands(), bottleID: fresh.id
+            )
+        if idle {
+            deps.wineManager.reconcileKeyboardLayout(
+                at: deps.bottleManager.prefixDirectory(for: fresh)
+            )
+        }
+
         try launch(prepared, in: fresh)
         refreshTriggers()
     }

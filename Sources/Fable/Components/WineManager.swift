@@ -173,6 +173,10 @@ final class WineManager: ObservableObject {
         // Wait for wineserver to finish flushing the new prefix.
         _ = try await ProcessRunner.run(try wineserverBinary(), arguments: ["-w"], environment: env)
 
+        // Repair the keyboard layout if the host locale left Wine's invalid
+        // 0x1000 placeholder (crashes WPF apps). Safe now: server drained.
+        reconcileKeyboardLayout(at: prefix)
+
         // Sanity check that the prefix actually materialized.
         let driveC = prefix.appending(path: "drive_c")
         guard FileManager.default.fileExists(atPath: driveC.path) else {
@@ -180,6 +184,43 @@ final class WineManager: ObservableObject {
         }
 
         reconcileDrives(at: prefix)
+    }
+
+    /// Wine's placeholder for a keyboard layout it can't map to a real
+    /// Windows LCID — set when the host locale has no standard Windows
+    /// equivalent (e.g. en-DK). WPF then calls `new CultureInfo(0x1000)`,
+    /// which throws `CultureNotFoundException` and crashes the app before
+    /// its window appears. Any non-US-locale friend hits this.
+    nonisolated static let invalidKeyboardLayout = "00001000"
+    /// US English — the safe universal layout (what CrossOver seeds), whose
+    /// LCID maps to a real culture so WPF's input-language query succeeds.
+    nonisolated static let fallbackKeyboardLayout = "00000409"
+
+    /// Pure transform: given `user.reg` text, returns a repaired copy if the
+    /// `[Keyboard Layout\Preload]` "1" entry is the invalid `0x1000`
+    /// placeholder, else nil (nothing to do). Only the broken value is
+    /// touched — a prefix with a real layout is left exactly as-is.
+    nonisolated static func keyboardLayoutRepaired(_ regText: String) -> String? {
+        // Match the Preload section's `"1"="00001000"` line specifically.
+        let needle = "\"1\"=\"\(invalidKeyboardLayout)\""
+        guard regText.contains(needle) else { return nil }
+        return regText.replacingOccurrences(
+            of: needle, with: "\"1\"=\"\(fallbackKeyboardLayout)\""
+        )
+    }
+
+    /// Repairs the prefix's keyboard layout when Wine left the invalid
+    /// `0x1000` placeholder (see above). Idempotent no-op otherwise. Edits
+    /// `user.reg` directly, so the CALLER must ensure no wineserver is live
+    /// on this prefix (a running server holds the registry in memory and
+    /// would overwrite the file on flush) — createPrefix and the idle
+    /// bottle-heal path satisfy that.
+    nonisolated func reconcileKeyboardLayout(at prefix: URL) {
+        let userReg = prefix.appending(path: "user.reg")
+        guard let text = try? String(contentsOf: userReg, encoding: .utf8),
+              let repaired = Self.keyboardLayoutRepaired(text)
+        else { return }
+        try? repaired.write(to: userReg, atomically: true, encoding: .utf8)
     }
 
     /// Ensures the standard DOS drive mappings exist: `C:` → `drive_c` and
