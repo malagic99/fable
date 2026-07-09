@@ -61,6 +61,8 @@ import Testing
             // The VotV/YeetPatch session, 2026-07-07 — both real lines:
             ("wine client error:0: version mismatch 856/942.\nYour wineserver binary was not upgraded correctly", "doctor-wineserver-mismatch"),
             ("Failed to resolve hostfxr.dll [not found]. Error code: 0x80008083", "doctor-dotnet-modern"),
+            // Absolute Drift on DXMT, 2026-07-08:
+            ("InitializeEngineGraphics failed", "doctor-unity-graphics-init"),
         ]
         for (line, ruleID) in cases {
             #expect(ids(GameDoctor.diagnose(log: line)).contains(ruleID),

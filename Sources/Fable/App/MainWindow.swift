@@ -106,7 +106,7 @@ struct FableApp: App {
                     // on the WoW64 commit step, then run the runtimes Steam
                     // unpacked but never executed — both no-ops for non-Steam
                     // bottles and idempotent once done.
-                    gameLauncher.onGameFullyExited = { [weak bottleManager, weak toastCenter, weak wineManager, weak redistInstaller] bottleID in
+                    gameLauncher.onGameFullyExited = { [weak bottleManager, weak toastCenter, weak wineManager, weak redistInstaller, weak gameLauncher] bottleID in
                         guard let bottleManager, let bottle = bottleManager.bottle(with: bottleID) else { return }
                         Task {
                             let committed = await bottleManager.commitStuckSteamInstalls(in: bottle)
@@ -115,6 +115,10 @@ struct FableApp: App {
                             }
                             // Run any bundled VC++/DirectX redists the install left behind.
                             if let wineManager, let redistInstaller {
+                                // Redists run the DEFAULT wine; the game that
+                                // just exited may have left its runtime's
+                                // wineserver — drain it (no-op if busy again).
+                                await gameLauncher?.drainForeignServersIfIdle(for: bottle, runtime: .off)
                                 let runtimes = await bottleManager.installPendingSteamRedists(
                                     in: bottle, redistInstaller: redistInstaller, wineManager: wineManager
                                 )

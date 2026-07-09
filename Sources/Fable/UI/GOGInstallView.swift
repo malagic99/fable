@@ -11,6 +11,7 @@ struct GOGInstallView: View {
 
     @EnvironmentObject private var bottleManager: BottleManager
     @EnvironmentObject private var wineManager: WineManager
+    @EnvironmentObject private var gameLauncher: GameLauncher
     @Environment(\.dismiss) private var dismiss
 
     @StateObject private var gameInstaller = GameInstaller()
@@ -206,6 +207,8 @@ struct GOGInstallView: View {
         phase = .installingRedists
         Task {
             do {
+                // Redists run the DEFAULT wine — one runtime per prefix.
+                try await gameLauncher.prepareExclusivePrefix(for: bottle, runtime: .off)
                 try await redistInstaller.install(
                     redists,
                     bottle: bottle,

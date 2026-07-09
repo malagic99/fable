@@ -151,3 +151,6 @@
 // MARK: Export progress + recipe sharing
 "bottle.export.preparing"     = "Preparing…";
 "toast.bottle.export_no_space" = "Not enough disk space: the archive can reach %@ but only %@ is free.";
+"confidence.played"           = "played on this Mac";
+
+"gate.bottle_busy"            = "“%@” has games running — stop them first, then retry. Two Wine versions can't share a bottle at once.";

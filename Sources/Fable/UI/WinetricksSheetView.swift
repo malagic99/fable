@@ -10,6 +10,7 @@ struct WinetricksSheetView: View {
     @EnvironmentObject private var wineManager: WineManager
     @EnvironmentObject private var winetricksManager: WinetricksManager
     @EnvironmentObject private var toastCenter: ToastCenter
+    @EnvironmentObject private var gameLauncher: GameLauncher
     @Environment(\.dismiss) private var dismiss
 
     @State private var searchText = ""
@@ -161,6 +162,10 @@ struct WinetricksSheetView: View {
     private func install(_ verb: WinetricksVerb) {
         Task {
             do {
+                // Winetricks runs the DEFAULT wine — a game's (Sikarugir)
+                // wineserver on this prefix makes it fail with 'version
+                // mismatch'. Drain or refuse first.
+                try await gameLauncher.prepareExclusivePrefix(for: bottle, runtime: .off)
                 try await winetricksManager.install(
                     verb: verb,
                     in: bottle,

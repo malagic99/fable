@@ -8,6 +8,7 @@ struct GameInstallerView: View {
 
     @EnvironmentObject private var bottleManager: BottleManager
     @EnvironmentObject private var wineManager: WineManager
+    @EnvironmentObject private var gameLauncher: GameLauncher
     @Environment(\.dismiss) private var dismiss
 
     @StateObject private var installer = GameInstaller()
@@ -116,6 +117,9 @@ struct GameInstallerView: View {
 
     private func runInstaller() async {
         do {
+            // Installers run the DEFAULT wine — drain any game runtime's
+            // wineserver first or fail with 'version mismatch'.
+            try await gameLauncher.prepareExclusivePrefix(for: bottle, runtime: .off)
             let exitCode = try await installer.runInstaller(
                 installerExe,
                 bottle: bottle,
