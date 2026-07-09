@@ -65,6 +65,8 @@ import Testing
             ("InitializeEngineGraphics failed", "doctor-unity-graphics-init"),
             // YeetPatch/VotV WPF on en-DK, 2026-07-09:
             ("System.Globalization.CultureNotFoundException: Culture is not supported. 4096 (0x1000) is an invalid culture identifier.", "doctor-wpf-culture-4096"),
+            // BSG Tarkov launcher single-instance IPC on Wine Mono, 2026-07-09:
+            ("System.Runtime.InteropServices.MarshalDirectiveException: Type CriticalHandle which is passed to unmanaged code must have a StructLayout attribute at IpcServerChannel.StartListening", "doctor-mono-ipc-singleinstance"),
         ]
         for (line, ruleID) in cases {
             #expect(ids(GameDoctor.diagnose(log: line)).contains(ruleID),
