@@ -8,6 +8,7 @@ struct DependenciesSection: View {
     @EnvironmentObject private var bottleManager: BottleManager
     @EnvironmentObject private var wineManager: WineManager
     @EnvironmentObject private var toastCenter: ToastCenter
+    @EnvironmentObject private var gameLauncher: GameLauncher
 
     @StateObject private var installer = DependencyInstaller()
     @State private var isShowingWinetricks = false
@@ -62,6 +63,9 @@ struct DependenciesSection: View {
     private func install(_ dependency: Dependency) {
         Task {
             do {
+                // Dependency installs run the DEFAULT wine — one runtime
+                // per prefix at a time.
+                try await gameLauncher.prepareExclusivePrefix(for: bottle, runtime: .off)
                 try await installer.install(
                     dependency,
                     bottle: bottle,

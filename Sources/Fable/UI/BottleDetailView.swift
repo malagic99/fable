@@ -654,11 +654,16 @@ struct BottleDetailView: View {
 
     private func openTool(_ tool: String) {
         guard let bottle = bottleManager.bottle(with: bottleID) else { return }
-        do {
-            try wineManager.openTool(tool, inPrefix: bottleManager.prefixDirectory(for: bottle))
-            errorMessage = nil
-        } catch {
-            errorMessage = error.localizedDescription
+        Task {
+            do {
+                // winecfg/regedit run the DEFAULT wine — drain a game
+                // runtime's wineserver first or fail with 'version mismatch'.
+                try await gameLauncher.prepareExclusivePrefix(for: bottle, runtime: .off)
+                try wineManager.openTool(tool, inPrefix: bottleManager.prefixDirectory(for: bottle))
+                errorMessage = nil
+            } catch {
+                errorMessage = error.localizedDescription
+            }
         }
     }
 
@@ -684,6 +689,9 @@ struct BottleDetailView: View {
     private func setGraphicsBackend(_ backend: GraphicsBackend, bottle: Bottle) {
         Task {
             do {
+                // Backend setup (DXMT enable, DXVK winetricks) runs the
+                // DEFAULT wine — one runtime per prefix at a time.
+                try await gameLauncher.prepareExclusivePrefix(for: bottle, runtime: .off)
                 switch backend {
                 case .dxmt:
                     try await dxmtManager.ensureInstalled()

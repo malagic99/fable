@@ -293,6 +293,15 @@ final class GameLauncher: ObservableObject {
         )
         let fresh = deps.bottleManager.bottle(with: bottle.id) ?? bottle
 
+        // A helper (winetricks, an installer, winecfg) may have left the
+        // DEFAULT wine's server on this prefix — a different build's server
+        // makes this launch fail with 'version mismatch'. Idle bottle →
+        // drain it first; busy bottle → leave it, same-runtime launches
+        // coexist and launch() refuses mixed ones.
+        await drainForeignServersIfIdle(
+            for: fresh, runtime: prepared.graphicsBackend ?? fresh.graphicsBackend
+        )
+
         try launch(prepared, in: fresh)
         refreshTriggers()
     }
@@ -317,6 +326,58 @@ final class GameLauncher: ObservableObject {
             }
         }
         deps.triggerController.reset()
+    }
+
+    // MARK: One runtime per prefix (the version-mismatch gate)
+
+    /// Prepares `bottle`'s prefix for work on `runtime`'s Wine build by
+    /// draining every OTHER runtime's wineserver. Throws
+    /// `PrefixRuntimeGate.BottleBusyError` while games run — surface it,
+    /// never force. Helpers that spawn the default Wine (winetricks,
+    /// installers, winecfg/regedit) MUST call this with `.off` first;
+    /// `launch()` calls it with the game's effective backend. See
+    /// docs/wine-quirks.md "mixed wineservers".
+    func prepareExclusivePrefix(for bottle: Bottle, runtime: GraphicsBackend) async throws {
+        guard let deps else { throw GameLaunchError.notConfigured }
+
+        let fableLaunched = bottle.games.contains { isRunning($0.id) }
+        let detected = PrefixRuntimeGate.hasProcesses(
+            commands: ProcessActivity.runningCommands(), bottleID: bottle.id
+        )
+
+        // Every runtime family's wineserver except the one about to run.
+        // A missing/uninstalled runtime just drops out of the list.
+        var foreign: [URL] = []
+        if runtimeFamily(of: runtime) != "wine" { foreign.append(contentsOf: [try? deps.wineManager.wineserverBinary()].compactMap { $0 }) }
+        if runtimeFamily(of: runtime) != "gptk" { foreign.append(contentsOf: [try? deps.gptkManager.wineserverBinary()].compactMap { $0 }) }
+        if runtimeFamily(of: runtime) != "crossover" { foreign.append(contentsOf: [try? deps.crossOverManager.wineserverBinary()].compactMap { $0 }) }
+        if runtimeFamily(of: runtime) != "sikarugir" { foreign.append(contentsOf: [try? deps.sikarugirManager.wineserverBinary()].compactMap { $0 }) }
+
+        try await PrefixRuntimeGate.ensureExclusive(
+            prefix: deps.bottleManager.prefixDirectory(for: bottle),
+            bottleName: bottle.name,
+            foreignWineservers: foreign,
+            hasLiveProcesses: fableLaunched || detected
+        )
+    }
+
+    /// Launch-side variant: drains foreign servers only when the bottle is
+    /// idle. A busy bottle is left alone — launching alongside a running
+    /// game is legal on the same runtime, and the runtime-conflict check
+    /// in launch() refuses the mixed case.
+    func drainForeignServersIfIdle(for bottle: Bottle, runtime: GraphicsBackend) async {
+        try? await prepareExclusivePrefix(for: bottle, runtime: runtime)
+    }
+
+    /// The wineserver family a backend runs on — mirrors composeLaunchPlan's
+    /// runtimeKey exactly (off/dxmt/dxvk share the default wine).
+    private func runtimeFamily(of backend: GraphicsBackend) -> String {
+        switch backend {
+        case .gptk: "gptk"
+        case .crossover: "crossover"
+        case .sikarugir: "sikarugir"
+        case .off, .dxmt, .dxvk: "wine"
+        }
     }
 
     /// Stop what Fable launched; for a game that's only *detected* (started
