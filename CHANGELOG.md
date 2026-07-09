@@ -1,5 +1,28 @@
 # Changelog
 
+## v0.22.2 — 2026-07-09
+
+Reliability patch — the fixes from real-game debugging sessions.
+
+- **WPF/.NET apps run on non-US Macs.** The last piece after v0.22.1's .NET
+  runtime fix: a WPF app (Voices of the Void's YeetPatch patcher) still crashed
+  with `CultureNotFoundException: 4096` before its window appeared — Wine writes
+  an invalid keyboard layout (`0x1000`) when the Mac's locale has no standard
+  Windows equivalent (any non-US-English user). Fable now repairs it in the
+  prefix registry (→ US input layout) at creation and as an idle-bottle heal,
+  touching only the input layout, not display language. Proven: the patcher
+  launches to a visible window on plain launch env.
+- **One live Wine build per prefix.** Winetricks, installers, winecfg/regedit,
+  and backend setup no longer collide with a game's running Wine (the
+  `version mismatch NNN/NNN` failures) — helpers drain or politely refuse while
+  games run; launches drain stale helper servers first.
+- **Health learns from play.** A new blue "played" dot marks games with real
+  tracked sessions on this Mac (15 min+, no crashes) — honestly weaker than a
+  verified recipe, so a game that runs-but-renders-wrong (Absolute Drift's white
+  screen) never earns a false green.
+- **Doctor** gained signatures for the WPF culture crash and the Unity
+  graphics-init failure.
+
 ## v0.22.1 — 2026-07-08
 
 Patch: .NET games work now (they never did).
