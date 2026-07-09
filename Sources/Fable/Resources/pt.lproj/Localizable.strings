@@ -465,3 +465,5 @@
 "played — real sessions on this Mac, no crashes" = "jogado — sessões reais neste Mac, sem falhas";
 
 "gate.bottle_busy"            = "“%@” tem jogos em execução — pare-os primeiro e tente de novo. Duas versões do Wine não podem compartilhar uma garrafa ao mesmo tempo.";
+"Install Anyway"              = "Instalar mesmo assim";
+"Microsoft's .NET Framework installer doesn't work under Wine on Apple Silicon, and this verb deletes Wine Mono first — so a failed run leaves the bottle with no .NET at all. Wine Mono already provides .NET Framework 4.x. Only proceed if you know this specific app needs the real Microsoft runtime." = "O instalador do .NET Framework da Microsoft não funciona no Wine em Apple Silicon, e este verbo apaga o Wine Mono primeiro — então uma tentativa falha deixa a garrafa sem .NET. O Wine Mono já fornece o .NET Framework 4.x. Prossiga apenas se souber que este app específico precisa do runtime real da Microsoft.";

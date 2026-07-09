@@ -21,6 +21,25 @@ struct WinetricksVerb: Identifiable, Hashable, Sendable {
 
     /// Combined haystack for filtering — `dotnet48 .NET Framework 4.8`.
     var searchText: String { "\(id) \(title)".lowercased() }
+
+    /// Verbs that are known-broken AND destructive under Wine on Apple
+    /// Silicon: the Microsoft .NET *Framework* installers (dotnet40/45/46x/
+    /// 47/48). Their first step deletes Wine Mono, then the installer's
+    /// mscorsvw precompilation fails — a failed run leaves the bottle with
+    /// NO .NET at all. Wine Mono already provides .NET Framework 4.x, so
+    /// these are almost never needed. (.NET *Core* verbs — dotnetdesktop6/7,
+    /// dotnetcore3 — are fine; those are a different runtime.)
+    /// This warns; the user can still proceed. Real-world casualty:
+    /// dotnet48 on a Steam bottle, 2026-07-09.
+    var isDestructiveDotNet: Bool {
+        // "dotnet" + a Framework version number, but NOT the Core verbs
+        // (which carry "core"/"desktop" in the slug).
+        guard id.hasPrefix("dotnet"),
+              !id.contains("core"), !id.contains("desktop"),
+              id.dropFirst("dotnet".count).first?.isNumber == true
+        else { return false }
+        return true
+    }
 }
 
 /// Parses the upstream winetricks shell script's `w_metadata` blocks
