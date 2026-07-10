@@ -1,5 +1,28 @@
 # Changelog
 
+## v0.22.3 — 2026-07-10
+
+Patch — .NET footgun guarded, and the launcher-class map filled in from real
+debugging.
+
+- **The `.NET Framework` footgun is guarded.** winetricks `dotnet40/45/46x/47/48`
+  delete Wine Mono then fail on WoW64 — leaving a bottle with *no* .NET and
+  its Windows version silently reset. Fable's own Doctor used to *recommend*
+  `dotnet48`; now it says use Wine Mono (which already provides 4.x), the
+  Winetricks sheet warns before running a destructive verb
+  (`WinetricksVerb.isDestructiveDotNet`), and wine-quirks documents the
+  repair. (#62)
+- **Doctor learns the Wine Mono single-instance IPC crash** — WPF launchers
+  using `Microsoft.Shell.SingleInstance` (Escape from Tarkov's launcher)
+  crash in `IpcServerChannel` on Wine Mono; the rule explains why and points
+  at the honest path. (#63)
+- **Documented the GPTK + real .NET Framework 4.8 finding** and, crucially,
+  why the "modern wine + 32-on-64" build path is a dead end (Apple's
+  32-on-64 layer is in no free source). Saved a doomed multi-hour build by
+  checking first. New [DOTNET-FRAMEWORK-LAUNCHERS.md](docs/DOTNET-FRAMEWORK-LAUNCHERS.md). (#64)
+- Reclaimed 5.7 GB of dead `build/wine-crossover` artifacts (both its goals
+  settled); ARCHITECTURE.md updated.
+
 ## v0.22.2 — 2026-07-09
 
 Reliability patch — the fixes from real-game debugging sessions.
