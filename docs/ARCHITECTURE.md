@@ -171,9 +171,20 @@ cache is the whole play.
 | Prebuilt free wine-crossover | Gone | Gcenx pruned them; only upstream wine tracked now |
 | HDR | No lever | Nothing to wire; don't fake it |
 
-## Assets on disk (not shipped, kept)
+## The from-source wine-crossover build (removed 2026-07-10)
 
-`build/wine-crossover/wine-build/dist` (~1.5 GB): the complete from-source
-CrossOver 26.2 wine build (boots, runs Steam, zero GPU crashes). Not used by
-the shipping path — the Sikarugir matched pair supersedes it — but it's a
-proven fallback and the BUILD-RESULTS.md there documents the toolchain.
+We once kept `build/wine-crossover/` (5.7 GB: CrossOver 26.2 LGPL source
+tarball + extracted tree + a wine-11.0 `dist`). **Deleted** — both of its
+purposes are dead:
+
+- **Steam CEF** (its original goal): superseded by the Sikarugir matched pair,
+  and the build still black-squared Steam anyway.
+- **32-on-64 for .NET Framework launchers** (2026-07 goal): impossible — the
+  CrossOver LGPL source contains **zero** 32-on-64 code (verified: whole-tree
+  grep = 0; `configure.ac` knows only standard WoW64). The `x86_32on64-unix`
+  layer is Apple's proprietary GPTK addition, ABI-locked to wine-7.7, in no
+  buildable free source. See [DOTNET-FRAMEWORK-LAUNCHERS.md](DOTNET-FRAMEWORK-LAUNCHERS.md).
+
+To resurrect: re-fetch `crossover-sources-26.2.0.tar.gz` from
+`media.codeweavers.com/pub/crossover/source/` and rebuild per that doc's
+notes — but there's no reason to, given both goals are settled.
