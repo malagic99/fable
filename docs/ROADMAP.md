@@ -1,105 +1,104 @@
-# Fable — Development Roadmap
+# Fable — Roadmap (month of 2026-07)
 
-> **Status: living document, last updated 2026-07-06 (v0.20.0).**
-> Supersedes `roadmap-tier-1-3.md` and `roadmap-tier-4-plus.md` (retained as
-> history). The five-lane plan that used to live here is done — Lane 1 swept,
-> the UI review series shipped, the Friend Kit shipped. This is the post-kit
-> roadmap.
+> **Status: living document, last updated 2026-07-10 (v0.22.3).**
+> A themed one-month plan, not a burndown. Real-game debugging *will*
+> interrupt it — that's fine, it has found every important bug so far.
+> Supersedes the post-Friend-Kit menu (history in git).
 
 ## The governing goal (unchanged)
 
 Fable is a **polished personal tool I share with friends — not a published
-product.** No launch, no deadline, no growth target. **"Done" = boringly
-reliable in real use.** This roadmap is a menu ordered by value, not a
-schedule to burn down.
+product.** No launch, no growth target. **"Done" = boringly reliable in real
+use.** **1.0 = a friend is playing on it.** Everything below serves that or is
+honestly parked.
 
-## Where we are (v0.20.0)
-
-Everything the original plan called for exists and is tested (398 tests,
-CI-enforced on every PR):
+## Where we are (v0.22.3, 408 tests, CI green on every PR)
 
 - **Six backends**, flagship Sikarugir (modern Wine + matched D3DMetal): free
-  Steam CEF renders, installs self-heal, AAA D3D12 plays. The why lives in
-  [ARCHITECTURE.md](ARCHITECTURE.md); the fix map in [wine-quirks.md](wine-quirks.md).
-- **One library** (Wine + native Mac games), themes, DualSense raw-HID
-  triggers, playtime/notes, hardware-aware performance, three languages with
-  a build-breaking coverage gate.
-- **Fable Doctor**: 20 log signatures, named missing DLLs, and the
-  cross-backend verdict ("same int3 on two backends ⇒ it's the game —
-  stream it").
-- **Sharing formats**: `.fablerecipe`, `.fableskin`, `.fbottle`
-  (export streams with progress + disk preflight; import adopts with fresh
-  identity), `scripts/friend-kit.sh`, and two zero-backend GitHub pipes
-  (Send Feedback, Share This Setup).
+  Steam CEF renders, installs self-heal, AAA D3D12 plays. Why:
+  [ARCHITECTURE.md](ARCHITECTURE.md). Fix map: [wine-quirks.md](wine-quirks.md).
+- **One library** (Wine + native Mac), themes, DualSense raw-HID triggers,
+  playtime/notes/health, hardware-aware perf, en/es/pt with a build-breaking
+  coverage gate.
+- **Fable Doctor**: ~24 log signatures incl. the cross-backend "it's the game,
+  stream it" verdict, named missing DLLs, and the .NET-Framework / WPF /
+  wineserver-collision rules from real debugging.
+- **Sharing**: `.fablerecipe`, `.fableskin`, `.fbottle` (donor export strips
+  games + login, streams with progress + disk preflight), `friend-kit.sh`,
+  Send Feedback + Share This Setup (zero-backend GitHub pipes).
+- **.NET**: Core (6/7/8) apps run (VotV/YeetPatch verified); the destructive
+  `dotnet4x` footgun is guarded; real .NET Framework 4.8 installs on the GPTK
+  backend (32-on-64) — see [DOTNET-FRAMEWORK-LAUNCHERS.md](DOTNET-FRAMEWORK-LAUNCHERS.md).
 
-## 1.0 — a friend is playing (days, not weeks)
+---
 
-1. **Cold-start dry-run**: reset onboarding on a fresh account, walk the
-   wizard, fix any dev-machine assumption. *The last real gate.*
-2. **Export the donor Steam bottle** into `kit-payload/`, run
-   `friend-kit.sh`, hand the zip over.
-3. Fix whatever the first friend actually hits. Then it's 1.0 — the version
-   number finally matching the goal.
+## 🪨 Rock 1 (leads the month) — Memory Diet
 
-## 1.x — the menu (pull when the mood strikes)
+The STALKER 2 / TLOU2 unified-memory bleed: AAA ports budget against separate
+RAM+VRAM pools, but on a 24 GB Mac that's one pool D3DMetal double-counts, so
+streaming caches grow toward a budget that doesn't physically exist → wired-
+memory crash. Two Fable-shaped pieces:
 
-- **Recipe catalog growth** — the moat. Intake is built (Share This Setup →
-  `[Recipe]` issues); convert honest reports into `GameRecipeCatalog` lines.
-  Never fake "Tested:".
-- **More game testing** — every real session either grows the catalog or
-  feeds the Doctor a new signature.
-- **Doctor prose localization** (deliberate gap — [LOCALIZATION.md](LOCALIZATION.md)).
-- **Bottle-page toolbar wedge** — last `.toolbar`-in-Gamer-face offender
-  (same fix pattern as the Settings pills, v0.18.0).
-- **Playtime for Steam-launched games** — needs poll-based session tracking;
-  weigh against the rubber-mat policy (never compete with a running game).
-- **Theme editor in-app** — author a `.fableskin` from a color-picker sheet;
-  the export path already exists.
-- **More library sources**: GOG Galaxy, Lutris (mirror the Heroic importer).
-- **.NET Framework launchers via GPTK + real .NET 4.8** — proven direction
-  (see [DOTNET-FRAMEWORK-LAUNCHERS.md](DOTNET-FRAMEWORK-LAUNCHERS.md)):
-  Fable can install real .NET Framework 4.8 on the GPTK backend (its
-  32-on-64 layer makes it possible; Sikarugir/WoW64 can't). Ships now for the
-  broad class of .NET-Framework apps. The single-instance-IPC subclass (BSG
-  Escape from Tarkov launcher) needs one more component — **a modern wine
-  build WITH 32-on-64** (rebuild `build/wine-crossover` with the 32-on-64
-  config; source already in repo). Productize: Doctor/Smart Bottle route
-  .NET-Framework launchers to GPTK + one-click real-.NET-4.8.
-- **Steamworks redist pre-install** at Steam-bottle setup (kills the
-  download-scheduler starvation case).
-- **Wall sort by recently played** — the data exists in GameStatsStore.
+1. **Engine.ini streaming-pool cap writer.** Detect UE4/UE5 via the existing
+   `CompatibilityScanner`, size the cap from `HardwareProfile` (already knows
+   24 GB), write `[SystemSettings] r.Streaming.PoolSize=…` into the game's
+   config as a **reversible per-game toggle**. A config-file ritual becomes a
+   checkbox. Pure writer + tests; UI in the bottle's Performance section.
+2. **Memory-pressure nudge.** The `ThermalMonitor` pattern for memory — a
+   toast *before* the OOM crash, not the Doctor's `E_OUTOFMEMORY` verdict
+   after. Only while a game runs (rubber-mat policy).
+3. Verify on STALKER 2 + TLOU2 → **mint both as recipes** (feeds Rock 3).
 
-## 2.0 — the money gate
+## 🪨 Rock 2 — Ship 1.0 (stop deferring the finish line)
 
-- **Apple Developer ID → notarization → Sparkle auto-update.** The only item
-  gated by a purchase rather than effort. Kills the right-click→Open ritual
-  and makes the update banner one-click. Everything is structured so this
-  bolts on without rework.
+It's been "one dry-run away" for weeks. Pair it with a hands-on-at-the-machine
+session.
 
-## Honest non-goals (don't chase, don't fake)
+1. **Cold-start dry-run** — reset onboarding on a fresh account, walk the
+   wizard, fix every dev-machine assumption. *The last real gate.*
+2. **Real donor export** — first live run of the 56 GB streaming/strip path on
+   the actual Steam bottle (only unit-tested so far) → `friend-kit.sh`.
+3. **Hand a friend the kit → fix what they hit → tag 1.0.**
 
-- **True HDR** — no honest lever in SwiftUI/D3DMetal for extended-range
-  output; Pitch Black gives real OLED black, which is the deliverable part.
-- **The game's own contextual triggers/haptics** — Sony SDK calls don't
-  execute under Wine; static user profiles are the ceiling.
-- **Steam in-game overlay** — cross-process CEF GPU texture fails on
-  D3DMetal; CrossOver-level Wine work. Controller config works from the main
-  Steam window.
-- **Anti-tamper titles (First Light and kin)** — identical int3 on every
-  backend including CrossOver; the Doctor now delivers the streaming verdict
-  automatically.
-- **CrossOver's 20-year fix database** — unwinnable on breadth; Fable wins on
-  architecture parity + automation + diagnostics instead.
+## 🌱 Ongoing — Grow the moat (recipes)
+
+Only ~5 catalog entries; the intake pipe (Share This Setup) exists but the
+catalog is thin. **Every game tuned this month becomes a recipe** — DEATHLOOP,
+Mafia 3, SS2, VotV, the two memory-diet titles. The one thing CrossOver can't
+out-automate. **Target: ~12 recipes by month end.** Never fake a "Tested:".
+
+## 🧹 Fill-in — polish debts (between the rocks)
+
+- **Last toolbar wedge** — bottle-page pencil/trash still float into the Gamer
+  titlebar (same class fixed for Settings in v0.18.0). Finish the cleanup.
+- **Website** — version badge stale (`v0.9`), Sikarugir-sourcing line is
+  factually wrong, 2.7 MB JS bundle. Wire version to the releases API, fix the
+  copy, host on GitHub Pages.
+- **Doctor prose es/pt** — the one deliberate localization gap.
+
+## 🅿️ Parked (with reasons — don't chase)
+
+- **#82 newer Apple GPTK** (the EFT-launcher finish): blocked *externally* —
+  Apple must ship modern-wine-with-32-on-64; the free build path is dead
+  (source has no 32-on-64). Watch, don't build.
+- **Notarization / auto-update** — 2.0, gated by a paid Developer ID, not
+  effort. Bolts on without rework when the goal changes.
+- **Absolute Drift / Unity D3DMetal present bug**, **d9vk** — research-grade;
+  only if a dull evening wants it.
+- **GOG Galaxy / Lutris importers**, **Steam-launched playtime** — additive.
+- **True HDR**, **game-native triggers/haptics**, **Steam overlay**,
+  **anti-tamper titles** — honest non-goals (no lever / Wine-boundary /
+  CrossOver-level). The Doctor already delivers the streaming verdict for the
+  last one.
 
 ## How we work (keep)
 
-- Build fully — no TODOs, no stubs. `swift build` + `swift test` after
-  changes; CI enforces both on every PR.
+- Build fully — no TODOs. `swift build` + `swift test`; CI enforces both per PR.
 - New UI strings get es/pt entries or the localization gate fails the build.
-- GUI-first; terminal only as a debug fallback.
-- Ship through `scripts/release.sh`. Versioning: new capability = minor,
-  everything else = patch; not every merge needs a release.
-- Start any Wine-quirk work at [wine-quirks.md](wine-quirks.md); read
+- New wine-spawning helpers MUST call `PrefixRuntimeGate` (one live Wine per
+  prefix).
+- Ship through `scripts/release.sh`. Versioning: new capability = minor, else
+  patch; not every merge needs a release.
+- Start Wine-quirk work at [wine-quirks.md](wine-quirks.md); read
   [ARCHITECTURE.md](ARCHITECTURE.md) before touching backend code.
-- Hardware- and reboot-dependent claims get **live** validation on a real
-  machine before they're trusted — the lab isn't enough.
+- Hardware/reboot-dependent claims get **live** validation on a real machine.
