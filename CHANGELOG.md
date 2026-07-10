@@ -1,5 +1,27 @@
 # Changelog
 
+## v0.23.0 — 2026-07-11
+
+**Memory Diet** — the first piece of the memory-bleed fix for AAA Unreal games
+on unified-memory Macs.
+
+- On Apple Silicon, RAM and VRAM are one pool, and D3DMetal reports the whole
+  thing as "GPU memory" — so a UE game sizes its texture-streaming cache
+  toward a budget that doesn't physically exist and grows into a wired-memory
+  crash over a session (the STALKER 2 / TLOU2 "bleed").
+- **Game Settings → Memory** now shows a **Memory Diet** toggle for Unreal
+  games. It caps the streaming pool via the game's `Engine.ini`, sized to your
+  Mac's unified memory (3 GB on a 16/24 GB machine, more on bigger). The edit
+  is a marker-delimited block Fable owns: **reversible** (toggle off restores
+  the file), **idempotent**, and it wins over the game's own settings.
+- Detection is automatic — the toggle only appears for Unreal games (found via
+  the `*-Win64-Shipping.exe` marker), resolving the real user `Engine.ini`
+  (UE5 `Windows/`, UE4 `WindowsNoEditor/`). Verified against real Ready or Not
+  and Voices of the Void installs.
+- Pure, fully-tested core (`MemoryDiet` + `MemoryDietLocator`, 10 tests).
+
+Next: a live memory-pressure nudge that warns *before* the crash.
+
 ## v0.22.3 — 2026-07-10
 
 Patch — .NET footgun guarded, and the launcher-class map filled in from real
