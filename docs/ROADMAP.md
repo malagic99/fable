@@ -56,6 +56,15 @@ CI-enforced on every PR):
 - **Theme editor in-app** — author a `.fableskin` from a color-picker sheet;
   the export path already exists.
 - **More library sources**: GOG Galaxy, Lutris (mirror the Heroic importer).
+- **.NET Framework launchers via GPTK + real .NET 4.8** — proven direction
+  (see [DOTNET-FRAMEWORK-LAUNCHERS.md](DOTNET-FRAMEWORK-LAUNCHERS.md)):
+  Fable can install real .NET Framework 4.8 on the GPTK backend (its
+  32-on-64 layer makes it possible; Sikarugir/WoW64 can't). Ships now for the
+  broad class of .NET-Framework apps. The single-instance-IPC subclass (BSG
+  Escape from Tarkov launcher) needs one more component — **a modern wine
+  build WITH 32-on-64** (rebuild `build/wine-crossover` with the 32-on-64
+  config; source already in repo). Productize: Doctor/Smart Bottle route
+  .NET-Framework launchers to GPTK + one-click real-.NET-4.8.
 - **Steamworks redist pre-install** at Steam-bottle setup (kills the
   download-scheduler starvation case).
 - **Wall sort by recently played** — the data exists in GameStatsStore.
