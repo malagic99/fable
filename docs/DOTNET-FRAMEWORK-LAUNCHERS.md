@@ -88,3 +88,36 @@ physically cannot do this.
 A scratch prefix with real .NET 4.8 already installed is preserved at
 `~/Library/Application Support/Fable/scratch-gptk-prefix` as the working
 artifact / next-attempt base.
+
+## ⚠️ CORRECTION (2026-07-10, verified): the build path is DEAD
+Attempted task #82 (rebuild wine-crossover WITH 32-on-64) and checked the
+source FIRST. **CrossOver 26.2's LGPL source drop contains ZERO 32-on-64
+code** — `grep -rli '32on64|win32on64'` over the entire `src/` tree = 0 hits;
+`configure.ac` knows only standard `wow64` (`enable_archs`,
+`enable_wow64=aarch64,x86_64`). So the `x86_32on64-unix` layer is **Apple's
+proprietary GPTK addition, NOT in any buildable free source.**
+
+Confirmed on this machine: GPTK (`gptk/4.0-heroic`) AND Whisky both ship
+`x86_32on64-unix` but BOTH are **wine-7.7** with wine-mono 7.4.1. No newer
+GPTK present. And Apple's 32-on-64 `.so`s are ABI-locked to wine-7.7 (the ABI
+law — can't drop them into Sikarugir wine-10 / crossover wine-11).
+
+**So "modern wine + 32-on-64" is not achievable from free source today.** It
+exists only in (a) Apple GPTK (currently wine-7.7, too old for the real .NET
+shim / mono WindowsIdentity), or (b) CrossOver's shipped binaries (not in
+their LGPL drop). This is the SAME class of wall as the winemac.drv/D3DMetal-
+runtime frontier in ARCHITECTURE.md — Apple-proprietary Mac-wine additions
+absent from free source.
+
+### The only real routes left to finish the EFT launcher (all gated externally)
+1. **A NEWER Apple GPTK** that pairs 32-on-64 with a modern wine (8/9/10+) —
+   IF Apple ships one. Download-and-test, not a build. Fable's `GPTKManager`
+   already supports GPTK; a newer version would drop in. **Best hope.**
+2. Upstream wine-mono fix for `WindowsIdentity.GetCurrent()` under Wine
+   (unblocks the Mono-core config on existing GPTK 7.7) — not ours to make.
+3. Copy the game files from a Windows machine (the pragmatic non-launcher path).
+
+Task #82 is therefore NOT DOABLE as a build. Reframed: watch for a newer
+Apple GPTK; when one appears, test the real-.NET-4.8 + BSG-launcher recipe on
+it (steps above). The bankable GPTK + real-.NET-4.8 capability (for non-IPC
+.NET-Framework apps) stands regardless.
