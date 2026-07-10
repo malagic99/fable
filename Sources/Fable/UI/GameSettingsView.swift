@@ -19,6 +19,7 @@ struct GameSettingsView: View {
     @State private var notes = ""
     @State private var isShowingTriggers = false
     @State private var errorMessage: String?
+    @State private var dietStatus = MemoryDietLocator.Status(iniURL: nil, appliedPoolMB: nil)
 
     /// Whether the effective backend can drive MetalFX (a D3DMetal feature).
     private var effectiveBackend: GraphicsBackend { backendOverride ?? bottle.graphicsBackend }
@@ -106,6 +107,24 @@ struct GameSettingsView: View {
                         .foregroundStyle(.secondary)
                 }
 
+                // Only Unreal Engine games have a streaming pool to cap.
+                if dietStatus.isApplicable {
+                    Section {
+                        Toggle(isOn: Binding(
+                            get: { dietStatus.isApplied },
+                            set: { setMemoryDiet($0) }
+                        )) {
+                            Text("Memory Diet")
+                        }
+                    } header: {
+                        Text("Memory")
+                    } footer: {
+                        Text(L10n.string("memdiet.footer", String(recommendedPoolMB), String(HardwareProfile.current.memoryGB)))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
                 Section {
                     Toggle("Override bottle's DualSense triggers", isOn: Binding(
                         get: { triggerOverride != nil },
@@ -182,6 +201,10 @@ struct GameSettingsView: View {
             triggerOverride = game.triggerProfile
             performance = bottle.performance
             notes = gameStats.notes(for: game.id)
+            dietStatus = MemoryDietLocator.status(
+                driveC: bottleManager.driveCDirectory(for: bottle),
+                executablePath: game.executablePath
+            )
         }
         .sheet(isPresented: $isShowingTriggers) {
             TriggerProfileSheet(title: "DualSense Triggers — \(game.name)",
@@ -208,6 +231,31 @@ struct GameSettingsView: View {
             return "Routes through your installed CrossOver. Different wineserver — can't share the bottle with other backends running."
         case .sikarugir:
             return "Routes through Sikarugir's wine-10.0 + D3DMetal. The free D3D12 path for modern games."
+        }
+    }
+
+    /// Streaming-pool cap sized to this Mac's unified memory.
+    private var recommendedPoolMB: Int {
+        MemoryDiet.recommendedPoolMB(forMemoryGB: HardwareProfile.current.memoryGB)
+    }
+
+    /// Writes (or reverts) the Engine.ini cap immediately — this edits a file,
+    /// not a per-game setting, so it doesn't wait for Save.
+    private func setMemoryDiet(_ on: Bool) {
+        do {
+            try MemoryDietLocator.setEnabled(
+                on,
+                driveC: bottleManager.driveCDirectory(for: bottle),
+                executablePath: game.executablePath,
+                poolMB: recommendedPoolMB
+            )
+            dietStatus = MemoryDietLocator.status(
+                driveC: bottleManager.driveCDirectory(for: bottle),
+                executablePath: game.executablePath
+            )
+            errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
         }
     }
 

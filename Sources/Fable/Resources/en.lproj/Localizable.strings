@@ -154,3 +154,7 @@
 "confidence.played"           = "played on this Mac";
 
 "gate.bottle_busy"            = "“%@” has games running — stop them first, then retry. Two Wine versions can't share a bottle at once.";
+
+// MARK: Memory Diet
+"memdiet.footer"              = "Caps the game's texture-streaming pool at %@ MB so it can't grow into a crash — unified memory is shared with the GPU. Tuned for your %@ GB. Reversible; edits the game's Engine.ini.";
+"memdiet.error.not_unreal"    = "Couldn't find this game's Unreal Engine config — Memory Diet only applies to Unreal games that have run at least once.";
