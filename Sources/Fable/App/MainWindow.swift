@@ -22,6 +22,7 @@ struct FableApp: App {
     @StateObject private var settingsManager = SettingsManager()
     @StateObject private var redistInstaller = RedistInstaller()
     @StateObject private var thermalMonitor = ThermalMonitor()
+    @StateObject private var memoryPressureMonitor = MemoryPressureMonitor()
     @StateObject private var quirkService = QuirkService()
     @StateObject private var userRecipeStore = UserRecipeStore()
     @StateObject private var shaderCacheStore = ShaderCacheStore()
@@ -137,6 +138,13 @@ struct FableApp: App {
                     thermalMonitor.onThrottleOnset = { [weak gameLauncher, weak toastCenter] in
                         guard let gameLauncher, !gameLauncher.running.isEmpty else { return }
                         toastCenter?.error("Your Mac is thermal-throttling. Open the bottle's Performance section and tap Rock Solid to hold a steadier frame rate.")
+                    }
+                    // Unified memory is shared with the GPU, so a texture-hungry
+                    // game can walk the Mac into an OOM crash. Warn on the
+                    // pressure onset — only while a game runs.
+                    memoryPressureMonitor.onPressureOnset = { [weak gameLauncher, weak toastCenter] in
+                        guard let gameLauncher, !gameLauncher.running.isEmpty else { return }
+                        toastCenter?.error(L10n.string("nudge.memory_pressure"))
                     }
                     Task { await appUpdateChecker.checkIfDue() }
                     // Restore warmed shaders if macOS purged the volatile darwin
