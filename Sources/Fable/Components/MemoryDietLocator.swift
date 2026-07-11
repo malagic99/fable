@@ -102,6 +102,7 @@ enum MemoryDietLocator {
     private static func normalizedPath(_ p: String) -> String {
         p.replacingOccurrences(of: "\\", with: "/")
     }
+
 }
 
 // MARK: - Disk state (read / toggle)

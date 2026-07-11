@@ -473,3 +473,4 @@
 "Memory"                      = "Memoria";
 "memdiet.footer"              = "Limita el grupo de streaming de texturas del juego a %@ MB para que no crezca hasta bloquearse — la memoria unificada se comparte con la GPU. Ajustado a tus %@ GB. Reversible; edita el Engine.ini del juego.";
 "memdiet.error.not_unreal"    = "No se encontró la configuración de Unreal Engine de este juego — la Dieta de memoria solo se aplica a juegos Unreal que se hayan ejecutado al menos una vez.";
+"nudge.memory_pressure"       = "La memoria se está agotando — el juego comparte un solo grupo con la GPU. Cierra otras apps o baja la calidad de texturas antes de que se bloquee. Activa la Dieta de memoria en el juego para limitarla en el próximo arranque.";

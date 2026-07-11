@@ -158,3 +158,4 @@
 // MARK: Memory Diet
 "memdiet.footer"              = "Caps the game's texture-streaming pool at %@ MB so it can't grow into a crash — unified memory is shared with the GPU. Tuned for your %@ GB. Reversible; edits the game's Engine.ini.";
 "memdiet.error.not_unreal"    = "Couldn't find this game's Unreal Engine config — Memory Diet only applies to Unreal games that have run at least once.";
+"nudge.memory_pressure"       = "Memory is running tight — the game shares one pool with the GPU. Close other apps, or lower texture quality, before it crashes. Enable Memory Diet on the game to cap it next launch.";

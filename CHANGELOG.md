@@ -19,8 +19,12 @@ on unified-memory Macs.
   (UE5 `Windows/`, UE4 `WindowsNoEditor/`). Verified against real Ready or Not
   and Voices of the Void installs.
 - Pure, fully-tested core (`MemoryDiet` + `MemoryDietLocator`, 10 tests).
-
-Next: a live memory-pressure nudge that warns *before* the crash.
+- **Live memory-pressure nudge.** The Memory Diet is a next-launch fix and the
+  Doctor only sees `E_OUTOFMEMORY` *after* the crash — so `MemoryPressureMonitor`
+  now watches the kernel's own memory-pressure signal and, *while a game is
+  running*, warns the moment pressure spikes: close apps / drop textures before
+  it crashes. Event-driven (no polling), edge-triggered (never spams), and
+  gated on an active game — the memory sibling of the thermal nudge.
 
 ## v0.22.3 — 2026-07-10
 
