@@ -34,9 +34,9 @@ Fable's setup wizard walks you through everything. Two things it will ask for:
   bottle. Nothing to do.
 - **D3DMetal** (Apple's DirectX 12 graphics layer — the thing that makes
   modern games fast): Apple doesn't allow it to be bundled, so the wizard
-  points you at **Sikarugir Creator** (free): install it from
-  https://github.com/CrossOver-Mac-Oficial/Sikarugir-App and Fable finds
-  everything itself. One-time.
+  points you at **Sikarugir** (free): install it from
+  https://github.com/Sikarugir-App/Sikarugir, **open it once** so it
+  downloads its engine, and Fable finds everything itself. One-time.
 
 ## 3. Got a `.fbottle`? Import it and skip the slow part
 

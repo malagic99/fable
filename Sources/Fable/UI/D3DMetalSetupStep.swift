@@ -61,7 +61,7 @@ struct D3DMetalSetupStep: View {
         case .notInstalled(let available):
             "Sikarugir \(SikarugirManager.displayVersion(available)) found. Set it up so Fable can render Steam and D3D12 games."
         case .missing:
-            "Fable uses Apple's D3DMetal (via the free Sikarugir) to render Steam and modern games. Install Sikarugir, then come back — or continue with just the built-in backends for older games."
+            "Fable uses Apple's D3DMetal (via the free Sikarugir) to render Steam and modern games. Install Sikarugir and open it once so it downloads its engine, then Re-check — or continue with just the built-in backends for older games."
         }
     }
 
@@ -85,7 +85,7 @@ struct D3DMetalSetupStep: View {
             case .missing:
                 Button("Re-check") { refresh() }
                 Button("Continue without it") { onboardingState.advance() }
-                Button("Get Sikarugir") { NSWorkspace.shared.open(URL(string: "https://sikarugir.app")!) }
+                Button("Get Sikarugir") { NSWorkspace.shared.open(URL(string: "https://github.com/Sikarugir-App/Sikarugir")!) }
                     .buttonStyle(.borderedProminent).keyboardShortcut(.defaultAction)
             }
         }
