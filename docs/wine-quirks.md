@@ -74,6 +74,47 @@ Steady FPS, not peak FPS. The levers, and which are real vs advisory:
 > re-capping. Don't try to wire a dynamic cap to a running game; the channel
 > doesn't exist.
 
+## D3DMetal env vars (strings-dump inventory, 2026-07-12)
+
+Apple ships no documentation for D3DMetal's knobs, so this inventory comes
+from `strings` over every D3DMetal binary Fable routes: Sikarugir 1.x,
+GPTK 3.0-3, GPTK 4.0-heroic (`…/lib/external/D3DMetal.framework`). Only the
+framework reads them — `libd3dshared.dylib` and the PE-side DLLs getenv
+nothing of interest.
+
+**The headline negative: there is NO VRAM/memory-report override.** The
+advertised "dedicated VRAM" is hardwired to Metal's
+`recommendedMaxWorkingSetSize` (~3/4 of unified memory). That's why the
+Memory Diet corrects the *engine's* budget (UE `Engine.ini`) and, on the
+DXVK backend, the *report itself* (`fable-dxvk.conf` via `DXVK_CONFIG_FILE`)
+— there is nothing to set on the D3DMetal path. The only system-wide lever
+is the root-only `iogpu.wired_limit_mb` sysctl; not a per-game option.
+
+Vars we wire (verified present):
+
+| Var | Meaning | Versions |
+|---|---|---|
+| `D3DM_ENABLE_METALFX` | MetalFX upscaler (was misnamed `D3DM_USE_METALFX_UPSCALER` in Fable ≤0.23.0 — a silent no-op) | all |
+| `D3DM_MAX_FPS` | Frame cap (was misnamed `D3DM_FRAME_RATE_LIMIT` — no-op) | 4.0+ only |
+
+Other confirmed vars, unwired but interesting:
+
+- `D3DM_LOD_BIAS` / `D3DM_MIN_LOD_CLAMP` — global mip bias; a *blunt*
+  texture-memory emergency lever for the D3DMetal path (blurrier textures,
+  less wired memory). Candidate for a future "extreme diet" toggle.
+- `D3DM_SHOW_HUD_STATS` — D3DMetal's own stats HUD.
+- `D3DM_DEVICE_ID` / `D3DM_VENDOR_ID` / `D3DM_DEVICE_DESCRIPTION` /
+  `D3DM_DEVICE_REVISION` / `D3DM_DEVICE_SUBSYS` — adapter identity spoofing
+  (games that gate features on recognized GPUs).
+- `D3DM_SUPPORT_DXR`, `D3DM_NVNGX_PATH` (DLSS/NGX plumbing),
+  `D3DM_NO_WINDOW`, `D3DM_EXE_OVERRIDE`, `D3DM_BOUNDS_CHECK`,
+  `D3DM_MTL4` (4.0: Metal 4 path?), plus debug/precision toggles
+  (`D3DM_FLUSH_POS_INF_TO_NAN`, `D3DM_SAMPLE_NAN_TO_ZERO`,
+  `D3DM_POSITION_INVARIANCE`, `D3DM_IGNORE_D3D11_RENDER_BARRIERS`).
+
+Re-run the dump when a new GPTK/Sikarugir drops — 4.0 both added
+(`D3DM_MAX_FPS`, `D3DM_MTL4`) and removed vars.
+
 ## Known dead ends (don't re-attempt blindly)
 
 - **Steam in-game overlay (Shift+Tab)** composites black — cross-process CEF

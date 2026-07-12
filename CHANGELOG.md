@@ -1,5 +1,30 @@
 # Changelog
 
+## v0.23.1 — 2026-07-12
+
+**Memory Diet, part two — VRAM honesty on DXVK, and two GPTK knobs that were
+silently doing nothing.**
+
+The hunt: Apple documents none of D3DMetal's knobs, so we strings-dumped
+every D3DMetal binary Fable routes (Sikarugir 1.x, GPTK 3.0, GPTK 4.0-heroic)
+looking for a way to cap the inflated VRAM report at the source. Verdict: no
+such knob exists — the report is hardwired to Metal's ~3/4-of-RAM working
+set. The full env-var inventory now lives in `docs/wine-quirks.md`.
+
+- **DXVK backend: the diet now fixes the report itself.** Fable writes a
+  hardware-sized `fable-dxvk.conf` into the prefix and wires it via
+  `DXVK_CONFIG_FILE`: advertised dedicated VRAM = a quarter of unified
+  memory (clamped 2–12 GB), covering DXGI dedicated + shared and D3D9's
+  `GetAvailableTextureMem`. Engine-agnostic — every game on the DXVK path
+  budgets toward memory that actually exists, no toggle needed. A per-game
+  `DXVK_CONFIG_FILE` env override still wins.
+- **Fixed two no-op GPTK perf vars** (found by the same dump): the MetalFX
+  toggle set `D3DM_USE_METALFX_UPSCALER` and the frame cap set
+  `D3DM_FRAME_RATE_LIMIT` — neither exists in any D3DMetal binary. Now
+  `D3DM_ENABLE_METALFX` and `D3DM_MAX_FPS` (the latter is honored by
+  GPTK 4.0+; older D3DMetal ignores it, same as before).
+- 4 new tests (425 total green).
+
 ## v0.23.0 — 2026-07-11
 
 **Memory Diet** — the first piece of the memory-bleed fix for AAA Unreal games

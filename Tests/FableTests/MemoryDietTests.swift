@@ -148,4 +148,43 @@ import Testing
         let ini = MemoryDietLocator.engineINI(driveC: driveC, executablePath: "STALKER 2/Stalker2.exe")
         #expect(ini?.path.hasSuffix("Local/Stalker2/Saved/Config/Windows/Engine.ini") == true)
     }
+
+    // MARK: Advertised VRAM (the DXVK face of the diet)
+
+    @Test
+    func advertisedVRAMIsAQuarterOfUnifiedMemoryClamped() {
+        #expect(MemoryDiet.advertisedVRAMMB(forMemoryGB: 8) == 2048)    // clamped floor
+        #expect(MemoryDiet.advertisedVRAMMB(forMemoryGB: 16) == 4096)
+        #expect(MemoryDiet.advertisedVRAMMB(forMemoryGB: 24) == 6144)
+        #expect(MemoryDiet.advertisedVRAMMB(forMemoryGB: 32) == 8192)
+        #expect(MemoryDiet.advertisedVRAMMB(forMemoryGB: 64) == 12288)  // clamped ceiling
+        #expect(MemoryDiet.advertisedVRAMMB(forMemoryGB: 128) == 12288)
+    }
+
+    @Test
+    func dxvkConfigCoversAllThreeReportPaths() {
+        let conf = MemoryDiet.dxvkConfig(vramMB: 6144)
+        #expect(conf.contains("dxgi.maxDeviceMemory = 6144"))
+        #expect(conf.contains("dxgi.maxSharedMemory = 6144"))
+        #expect(conf.contains("d3d9.maxAvailableMemory = 6144"))
+    }
+
+    @Test
+    func ensureMemoryDietConfigWritesAndIsIdempotent() throws {
+        let prefix = FileManager.default.temporaryDirectory
+            .appending(path: "fable-dxvkconf-\(UUID().uuidString)", directoryHint: .isDirectory)
+        try fm.createDirectory(at: prefix, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: prefix) }
+
+        let url = try DXVKManager.ensureMemoryDietConfig(at: prefix, vramMB: 4096)
+        #expect(url.lastPathComponent == DXVKManager.memoryDietConfigName)
+        let first = try String(contentsOf: url, encoding: .utf8)
+        #expect(first.contains("dxgi.maxDeviceMemory = 4096"))
+
+        // Re-run: same content, no error. Re-size: content follows.
+        _ = try DXVKManager.ensureMemoryDietConfig(at: prefix, vramMB: 4096)
+        #expect(try String(contentsOf: url, encoding: .utf8) == first)
+        _ = try DXVKManager.ensureMemoryDietConfig(at: prefix, vramMB: 8192)
+        #expect(try String(contentsOf: url, encoding: .utf8).contains("dxgi.maxDeviceMemory = 8192"))
+    }
 }

@@ -94,13 +94,19 @@ struct PerformanceOptions: Codable, Hashable, Sendable {
     }
 
     /// Env additions specific to the GPTK/D3DMetal backend.
+    ///
+    /// Var names verified by strings-dump of every D3DMetal binary we ship —
+    /// the previous D3DM_USE_METALFX_UPSCALER / D3DM_FRAME_RATE_LIMIT appear
+    /// in none of them (silent no-ops). D3DM_MAX_FPS exists in GPTK 4.0+
+    /// only; older D3DMetal ignores it, matching the old behavior. Full
+    /// inventory: wine-quirks.md, "D3DMetal env vars".
     func gptkEnvironment() -> [String: String] {
         var env: [String: String] = [:]
         if metalFXUpscaling {
-            env["D3DM_USE_METALFX_UPSCALER"] = "1"
+            env["D3DM_ENABLE_METALFX"] = "1"
         }
         if let frameRateCap, frameRateCap > 0 {
-            env["D3DM_FRAME_RATE_LIMIT"] = String(frameRateCap)
+            env["D3DM_MAX_FPS"] = String(frameRateCap)
         }
         return env
     }

@@ -33,8 +33,8 @@ import Testing
         perf.metalFXUpscaling = true
         perf.frameRateCap = 60
         let env = perf.gptkEnvironment()
-        #expect(env["D3DM_USE_METALFX_UPSCALER"] == "1")
-        #expect(env["D3DM_FRAME_RATE_LIMIT"] == "60")
+        #expect(env["D3DM_ENABLE_METALFX"] == "1")
+        #expect(env["D3DM_MAX_FPS"] == "60")
     }
 
     @Test
