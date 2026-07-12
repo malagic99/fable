@@ -137,6 +137,23 @@ import Testing
                             bottle: bottle, prefix: prefix, driveC: driveC)
         #expect(plan.environment["DXVK_FRAME_RATE"] == "72")
         #expect(plan.environment["WINEDLLOVERRIDES"]?.hasSuffix("=n") == true)
+        // Memory Diet: the hardware-sized VRAM cap is written into the prefix
+        // and wired via DXVK_CONFIG_FILE.
+        let conf = prefix.appending(path: DXVKManager.memoryDietConfigName)
+        #expect(plan.environment["DXVK_CONFIG_FILE"] == conf.path)
+        let content = try String(contentsOf: conf, encoding: .utf8)
+        #expect(content.contains("dxgi.maxDeviceMemory = "))
+    }
+
+    @Test
+    func dxvkMemoryDietYieldsToPerGameOverride() throws {
+        let (prefix, driveC) = try makePrefix()
+        defer { try? fm.removeItem(at: prefix) }
+        let bottle = Bottle(name: "B", graphicsBackend: .dxvk)
+        var game = Game(name: "D", executablePath: "Games/Demo/demo.exe")
+        game.environment = ["DXVK_CONFIG_FILE": "/dev/null"]
+        let plan = try plan(game: game, bottle: bottle, prefix: prefix, driveC: driveC)
+        #expect(plan.environment["DXVK_CONFIG_FILE"] == "/dev/null")
     }
 
     @Test
@@ -170,8 +187,8 @@ import Testing
         #expect(plan.environment["WINEMSYNC"] == "1")
         #expect(plan.environment["WINEDLLOVERRIDES"]?.contains("d3d11,d3d12,dxgi,nvapi64=b") == true)
         // D3DMetal perf knobs ride along on the D3DMetal-family backends.
-        #expect(plan.environment["D3DM_FRAME_RATE_LIMIT"] == "60")
-        #expect(plan.environment["D3DM_USE_METALFX_UPSCALER"] == "1")
+        #expect(plan.environment["D3DM_MAX_FPS"] == "60")
+        #expect(plan.environment["D3DM_ENABLE_METALFX"] == "1")
     }
 
     @Test

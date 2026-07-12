@@ -182,10 +182,18 @@ final class GameLauncher: ObservableObject {
             // with d3d11/d3d12/dxgi routed to native so DXVK's prefix DLLs
             // win over Wine's stubs.
             runtimeKey = "wine"
+            // Memory Diet: cap the VRAM DXVK advertises to what the unified
+            // pool can spare (D3DMetal offers no equivalent knob). Best-effort;
+            // per-game env overrides can still point elsewhere.
+            let dietConfig = try? DXVKManager.ensureMemoryDietConfig(
+                at: prefix,
+                vramMB: MemoryDiet.advertisedVRAMMB(forMemoryGB: HardwareProfile.current.memoryGB)
+            )
             environment.merge(DXVKManager.launchEnvironment(
                 baseOverrides: baseOverrides,
                 frameRateCap: bottle.performance.frameRateCap,
-                logFile: logFile
+                logFile: logFile,
+                configFile: dietConfig
             )) { _, new in new }
         case .crossover:
             // CrossOver provides its own version-matched wine + D3DMetal.

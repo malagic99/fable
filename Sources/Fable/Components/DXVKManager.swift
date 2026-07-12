@@ -32,13 +32,32 @@ final class DXVKManager: ObservableObject {
         return size > 256 * 1024
     }
 
+    /// The Memory Diet's DXVK face: a prefix-level config file capping the
+    /// VRAM DXVK advertises (MoltenVK otherwise reports Metal's ~3/4-of-RAM
+    /// working set as *dedicated* VRAM, so games budget toward memory the
+    /// unified pool can't actually spare). `DXVK_CONFIG_FILE` works on every
+    /// DXVK we route, unlike the 2.1+ `DXVK_CONFIG` var.
+    nonisolated static let memoryDietConfigName = "fable-dxvk.conf"
+
+    /// Writes (or refreshes) the hardware-sized config into the prefix and
+    /// returns its URL. Skips the write when content already matches.
+    nonisolated static func ensureMemoryDietConfig(at prefix: URL, vramMB: Int) throws -> URL {
+        let url = prefix.appending(path: memoryDietConfigName)
+        let content = MemoryDiet.dxvkConfig(vramMB: vramMB) + "\n"
+        if (try? String(contentsOf: url, encoding: .utf8)) != content {
+            try content.write(to: url, atomically: true, encoding: .utf8)
+        }
+        return url
+    }
+
     /// Environment fragment routing d3d10core/d3d11/d3d12/dxgi to
     /// native so DXVK's DLLs win over Wine's built-ins. DXVK reads
     /// extra config from `DXVK_*` vars the user can set per-game.
     nonisolated static func launchEnvironment(
         baseOverrides: String,
         frameRateCap: Int?,
-        logFile: URL?
+        logFile: URL?,
+        configFile: URL? = nil
     ) -> [String: String] {
         var env: [String: String] = [:]
         env["WINEDLLOVERRIDES"] = "\(baseOverrides);\(routedDLLs.joined(separator: ","))=n"
@@ -47,6 +66,9 @@ final class DXVKManager: ObservableObject {
         }
         if let logFile {
             env["DXVK_LOG_PATH"] = logFile.deletingLastPathComponent().path
+        }
+        if let configFile {
+            env["DXVK_CONFIG_FILE"] = configFile.path
         }
         return env
     }

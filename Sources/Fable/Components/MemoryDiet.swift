@@ -32,6 +32,29 @@ enum MemoryDiet {
         }
     }
 
+    /// Dedicated-VRAM figure (MB) to advertise on backends that let us
+    /// correct the report (DXVK; D3DMetal has no such knob — it hardwires
+    /// Metal's ~3/4-of-RAM working set, verified by strings-dump of every
+    /// D3DMetal generation we ship). A quarter of unified memory leaves the
+    /// game's own CPU side, macOS, and Wine room in the same pool; clamped
+    /// so small machines still pass min-spec checks and big ones don't
+    /// re-inflate the budget.
+    static func advertisedVRAMMB(forMemoryGB gb: Int) -> Int {
+        min(max(gb * 1024 / 4, 2048), 12288)
+    }
+
+    /// DXVK config capping what the game is told about memory. Covers all
+    /// three report paths: DXGI dedicated + shared (D3D10/11/12) and D3D9's
+    /// `GetAvailableTextureMem`.
+    static func dxvkConfig(vramMB: Int) -> String {
+        """
+        # Fable Memory Diet (managed - safe to delete)
+        dxgi.maxDeviceMemory = \(vramMB)
+        dxgi.maxSharedMemory = \(vramMB)
+        d3d9.maxAvailableMemory = \(vramMB)
+        """
+    }
+
     /// The managed block. `LimitPoolSizeToVRAM=0` stops the engine from
     /// re-deriving the pool from D3DMetal's (inflated) VRAM report and
     /// overriding our cap.
