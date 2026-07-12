@@ -9,7 +9,7 @@ enum SikarugirError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .notInstalled:
-            "Sikarugir isn't installed. Get it from sikarugir.app, then this backend works without further setup."
+            "Sikarugir isn't installed. Get it from github.com/Sikarugir-App/Sikarugir, then this backend works without further setup."
         case .engineTarballMissing(let path):
             "Sikarugir is installed but its Wine engine tarball wasn't found under \(path)."
         case .rendererMissing(let path):
