@@ -67,6 +67,10 @@ import Testing
             ("System.Globalization.CultureNotFoundException: Culture is not supported. 4096 (0x1000) is an invalid culture identifier.", "doctor-wpf-culture-4096"),
             // BSG Tarkov launcher single-instance IPC on Wine Mono, 2026-07-09:
             ("System.Runtime.InteropServices.MarshalDirectiveException: Type CriticalHandle which is passed to unmanaged code must have a StructLayout attribute at IpcServerChannel.StartListening", "doctor-mono-ipc-singleinstance"),
+            // .NET 8 single-file app: CoreCLR won't host on an older Wine, 2026-07:
+            ("Failed to create CoreCLR, HRESULT: 0x8007046C", "doctor-coreclr-dotnet-host"),
+            // Avalonia desktop app with no renderable surface under Wine, 2026-07:
+            ("[WinUIComposition]Unable to initialize WinUI compositor: System.NotImplementedException", "doctor-avalonia-no-surface"),
         ]
         for (line, ruleID) in cases {
             #expect(ids(GameDoctor.diagnose(log: line)).contains(ruleID),
