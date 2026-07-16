@@ -75,6 +75,14 @@ out-automate. **Target: ~12 recipes by month end.** Never fake a "Tested:".
   factually wrong, 2.7 MB JS bundle. Wire version to the releases API, fix the
   copy, host on GitHub Pages.
 - **Doctor prose es/pt** — the one deliberate localization gap.
+- **Feasibility precheck (Smart Bottle)** — the recurring expensive lesson: verify
+  a title is even *possible* (framework/runtime it needs, anti-cheat present,
+  known-working version) before the user sinks an afternoon. Surface it up front,
+  next to the compatibility banner. Grew out of the modern-.NET-app frontier work
+  (`docs/wine-quirks.md`, new Doctor rules `coreclr-dotnet-host` / `avalonia-no-surface`).
+- **Clonefile bottle duplication** — the prefix is on APFS; `cp -c` clones a
+  multi-GB bottle in seconds for ~0 bytes. Route bottle clone / donor export /
+  try-on-a-copy through clonefile instead of a full byte copy.
 
 ## 🅿️ Parked (with reasons — don't chase)
 

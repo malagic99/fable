@@ -115,6 +115,49 @@ Other confirmed vars, unwired but interesting:
 Re-run the dump when a new GPTK/Sikarugir drops — 4.0 both added
 (`D3DM_MAX_FPS`, `D3DM_MTL4`) and removed vars.
 
+## Modern-app frontier — .NET runtimes & GUI toolkits under Mac-Wine (2026-07)
+
+From pushing Wine on Mac past games into modern .NET desktop apps. Generic — this
+applies to any such Windows app, not any one program.
+
+**Which Wine hosts which .NET runtime**
+- **.NET Framework 4.x** — Wine Mono already provides it (see the .NET rows above).
+  Real Microsoft .NET Framework 4.8 needs a 32-on-64 Wine (GPTK); install it with
+  the prefix set to **win7** — on win10 the installer treats 4.8 as an OS component
+  and refuses.
+- **.NET 6 / 7** — runs on modern Wine; install the Desktop Runtime (Doctor `dotnet-modern`).
+- **.NET 8 CoreCLR — a hard Wine-version boundary.** Older Wine (including GPTK's)
+  cannot create the CoreCLR host (`Failed to create CoreCLR, HRESULT 0x8007046C`);
+  a newer Wine (Sikarugir's Wine 10) can. Rule of thumb: **.NET 8+ app → Sikarugir
+  backend.** Self-contained single-file apps then need no runtime install.
+  (Doctor `coreclr-dotnet-host`.)
+
+**Which GUI toolkit renders under Mac-Wine**
+- **WPF — yes, in software.** Reg `HKCU\Software\Microsoft\Avalon.Graphics`
+  `DisableHWAcceleration=1` fixes both the black window and the `GetParent` /
+  `HwndTarget` mono-io crash. Also repair the 0x1000 keyboard layout (Doctor
+  `wpf-culture-4096`).
+- **CEF / Chromium — yes, via D3DMetal.** The Steam-CEF path (`D3DMETAL_FRAMEWORK_PATH`)
+  composites it; without it, a black square. Keyboard often can't reach the
+  offscreen browser — a `--remote-debugging-port` DevTools (CDP) channel is the
+  input backdoor when it can't.
+- **Avalonia — no (current wall).** Hosts fine on Wine 10 but gets **no renderable
+  window surface**: MoltenVK exposes no `VK_KHR_win32_surface` and winemac.drv has
+  no WinUI compositor, so `UsePlatformDetect` finds no backend and the app exits in
+  a few seconds with no window (`Unable to initialize WinUI compositor`). Class
+  limitation, not a per-app bug. Unblocks only when Wine gains a win32 Vulkan
+  surface path on Mac. (Doctor `avalonia-no-surface`.)
+
+**Spurious Wine I/O errors** — `File.Delete` / `Directory.Delete` of a missing (or
+`\\?\`-prefixed) path can return a garbage `GetLastError` that Mono surfaces as
+`IOException: "Success"` (or `Unknown error 0x…`), crashing apps that treat
+delete-of-nonexistent as non-fatal on real Windows. A class of bug, not one app.
+
+**Fast bottle duplication** — the bottle/prefix lives on APFS, so `cp -c`
+(clonefile, copy-on-write) duplicates a multi-GB prefix in seconds for ~0 bytes;
+only diverging files consume real space. Use it for clone/donor/try-on-a-copy
+flows instead of a full byte copy.
+
 ## Known dead ends (don't re-attempt blindly)
 
 - **Steam in-game overlay (Shift+Tab)** composites black — cross-process CEF
@@ -123,6 +166,10 @@ Re-run the dump when a new GPTK/Sikarugir drops — 4.0 both added
 - **Protected/packed exes** (certain Denuvo/repack int3 fail-fasts) abort
   identically on *every* backend including CrossOver — not a Fable bug.
   (`fable-d3d12-breakthrough`)
+- **Avalonia (.NET) desktop GUIs** run their runtime but never get a window —
+  no win32 Vulkan surface (MoltenVK) and no WinUI compositor (winemac.drv). If an
+  app's GUI is only a shell over a background service or a downloadable payload,
+  drive that part directly. Revisit when Wine gains a Mac win32 Vulkan surface.
 
 ## Adding or changing a quirk
 
