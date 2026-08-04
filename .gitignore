@@ -41,3 +41,15 @@ Friend-Kit-*
 *.exe
 BsgLauncher*.exe
 NDP*.exe
+
+# Private (local only)
+BUSINESS_PLAN.md
+private-eft-kit/
+Temp/
+*.mcd
+
+# Permanently local scratch: loose files that land in the repo root (personal
+# docs, installers, media, licenses). Never committed, never published — drop
+# anything here rather than leaving it loose. Cleaned out of the root
+# 2026-08-04.
+_local/
