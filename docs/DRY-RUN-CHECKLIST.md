@@ -6,34 +6,40 @@ account** on this Mac. A fresh account shares `/Applications` but has its own
 simulates a friend's machine for everything except hardware and Gatekeeper
 quarantine (see step 0).
 
-Pre-audited (2026-07-12): no hardcoded dev paths in Sources; Wine downloads
-on first bottle (~190 MB, needs network); version catalog is bundled (offline-
-safe); update checker points at malagic99/fable; the dead `sikarugir.app` URL
-and the stale Sikarugir GitHub org were fixed — wizard and FRIEND-README now
-point at github.com/Sikarugir-App/Sikarugir and say to **open Sikarugir once**
-so it downloads its engine.
+Pre-audited (2026-07-12, still valid at v0.23.1): no hardcoded dev paths in
+Sources; Wine downloads on first bottle (~190 MB, needs network); version
+catalog is bundled (offline-safe); update checker points at malagic99/fable;
+the dead `sikarugir.app` URL and stale Sikarugir GitHub org were fixed — wizard
+and FRIEND-README point at github.com/Sikarugir-App/Sikarugir and say to **open
+Sikarugir once** so it downloads its engine. Website is live at
+https://malagic99.github.io/fable/.
 
-## 0. Setup (10 min)
+Testing **v0.23.1**, pulled from GitHub **exactly as a stranger would** — no
+local build, no faked quarantine. Safari applies the real Gatekeeper quarantine,
+so this is the most faithful version of the test.
 
-- [ ] System Settings → Users & Groups → add user `fabletest` (Standard).
-- [ ] Build the real artifact: `./scripts/make-app.sh`, then zip it exactly
-      like a release (`ditto -c -k --sequesterRsrc --keepParent Fable.app
-      Fable-test.zip`). **Test the zip, not your dev build.**
-- [ ] Copy the zip into `/Users/Shared/` (visible to the new account).
-- [ ] Re-quarantine so Gatekeeper behaves like a real download:
-      `xattr -w com.apple.quarantine "0083;00000000;Safari;" Fable-test.zip`
-      (a plain local copy has no quarantine → you'd skip the "damaged app"
-      hurdle a friend WILL hit).
-- [ ] Log into `fabletest` (fast user switching is fine).
+## 0. Setup (5 min) — get it the way a stranger does
 
-## 1. Gatekeeper ritual (FRIEND-README §1)
+Do everything **from the fresh account's own browser**. That's the whole point:
+the real download path + real quarantine, nothing simulated.
 
-- [ ] Unzip, drag Fable.app to Applications (expect a password prompt as
-      Standard user — note if this is confusing).
-- [ ] Double-click first: confirm macOS blocks it (this is what a friend sees).
-- [ ] Right-click → Open → Open: app launches.
-- [ ] If macOS still refuses: does the README's `xattr -dr` line work as
-      written? (Copy-paste it exactly.)
+- [ ] System Settings → Users & Groups → add a **Standard** user `fabletest`;
+      log into it (fast user switching is fine).
+- [ ] In `fabletest`, open **Safari** → **https://malagic99.github.io/fable/** →
+      the Download button (or straight to
+      **github.com/malagic99/fable/releases/latest** → `Fable-0.23.1.zip`).
+  - [ ] Does download → "now what?" feel obvious with zero prior context? Note
+        any moment you'd have to *tell a friend* what to do next.
+
+## 1. Gatekeeper ritual (FRIEND-README §1) — the #1 friend-stopper
+
+- [ ] Unzip (Safari may auto-unzip), drag `Fable.app` to `/Applications`
+      (expect an admin password prompt as a Standard user — note if confusing).
+- [ ] **Double-click it first** → macOS should block it ("damaged" / unidentified
+      developer). This is exactly what a friend hits — is it alarming?
+- [ ] Right-click → **Open** → **Open** → app launches.
+- [ ] If it still refuses, does the FRIEND-README's `xattr -dr com.apple.quarantine`
+      line work copy-pasted verbatim? (This is the real fallback now, not a sim.)
 
 ## 2. Onboarding wizard, step by step
 
@@ -80,6 +86,28 @@ so it downloads its engine.
       before deleting it.
 - [ ] Delete the `fabletest` account when done (or keep it for regression
       dry-runs per release).
+
+## Results log (fill this in as you go — don't trust memory)
+
+One row per friction point, **at the moment it happens**. "Clean" rows count
+too — they're the proof. Severity: **blocker** (stranger is stuck) /
+**confusing** (worked, but needed prior knowledge) / **cosmetic**.
+
+| # | Where | What tripped you (or "clean") | Severity | Fix / README line |
+|---|-------|-------------------------------|----------|-------------------|
+| 1 | Website → download | | | |
+| 2 | Gatekeeper ritual | | | |
+| 3 | Wizard: interface | | | |
+| 4 | Wizard: graphics / Sikarugir | | | |
+| 5 | Wizard: Wine download | | | |
+| 6 | Wizard: Steam install | | | |
+| 7 | First game session | | | |
+| 8 | (anything else) | | | |
+
+Reading the table afterwards: every **blocker** is a 1.0 gate — fix before
+tagging. Every **confusing** becomes a FRIEND-README line (that doc exists so
+you never have to be in the room). **Cosmetic** goes to the roadmap fill-in
+list, not the gate.
 
 ## Known gaps this dry-run does NOT cover
 

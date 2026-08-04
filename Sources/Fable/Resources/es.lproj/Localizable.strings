@@ -261,7 +261,7 @@
 "Fable" = "Fable";
 "Fable Doctor reads the log and explains what went wrong" = "Fable Doctor lee el log y explica qué salió mal";
 "Fable keeps a durable copy of D3DMetal's compiled shaders so they survive a reboot, and restores it automatically at startup." = "Fable guarda una copia duradera de los shaders compilados de D3DMetal para que sobrevivan un reinicio, y la restaura automáticamente al arrancar.";
-"Fable runs Windows games through Wine with DirectX-to-Metal translation. Wine runs under Rosetta 2 — Windows games are x86, and that's fine." = "Fable ejecuta juegos de Windows a través de Wine con traducción de DirectX a Metal. Wine corre bajo Rosetta 2 — los juegos de Windows son x86, y eso está bien.";
+"Fable runs Windows games through Wine with DirectX-to-Metal translation. Windows games are x86, and that's fine." = "Fable ejecuta juegos de Windows a través de Wine con traducción de DirectX a Metal. Los juegos de Windows son x86, y eso está bien.";
 "Fetch Cover Art Online" = "Descargar carátulas online";
 "Finish Stuck Steam Downloads" = "Terminar descargas de Steam atascadas";
 "For downloads stuck at “installing files”. Runs automatically when you open this bottle." = "Para descargas atascadas en “instalando archivos”. Se ejecuta automáticamente al abrir esta botella.";

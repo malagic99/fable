@@ -83,12 +83,22 @@ out-automate. **Target: ~12 recipes by month end.** Never fake a "Tested:".
 - **Clonefile bottle duplication** — the prefix is on APFS; `cp -c` clones a
   multi-GB bottle in seconds for ~0 bytes. Route bottle clone / donor export /
   try-on-a-copy through clonefile instead of a full byte copy.
+- ✅ **De-Rosetta the codebase (FEX Phase 0)** — *done 2026-08-04.* The
+  x86_64-under-Rosetta assumption was hardcoded as string literals in three
+  managers; it now lives in one `WineLayout` value (+ a `MachOInfo` host-binary
+  reader, the counterpart to `PEInfo`), and `ROSETTA_ADVERTISE_AVX` is set only
+  for a translated host. No behavior change — both installed backends detect as
+  x86_64. Prerequisite for adopting an ARM64-native Wine if one ships; plan and
+  triggers in [FEX-MIGRATION.md](FEX-MIGRATION.md).
 
 ## 🅿️ Parked (with reasons — don't chase)
 
 - **#82 newer Apple GPTK** (the EFT-launcher finish): blocked *externally* —
   Apple must ship modern-wine-with-32-on-64; the free build path is dead
-  (source has no 32-on-64). Watch, don't build.
+  (source has no 32-on-64). Watch, don't build. **Second unlock discovered
+  2026-08-04:** FEX translates 32-bit x86 and plugs into Wine's WoW64 as
+  `libwow64fex.dll`, so a FEX-era backend retires this without Apple shipping
+  anything — see [FEX-MIGRATION.md](FEX-MIGRATION.md) Phase 2.
 - **Notarization / auto-update** — 2.0, gated by a paid Developer ID, not
   effort. Bolts on without rework when the goal changes.
 - **Absolute Drift / Unity D3DMetal present bug**, **d9vk** — research-grade;

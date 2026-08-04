@@ -20,7 +20,7 @@ enum DXMTError: LocalizedError {
 ///  - PE DLLs (d3d11, dxgi, d3d10core, winemetal, nvapi64, nvngx) that go
 ///    into the prefix's system32 (64-bit) and syswow64 (32-bit),
 ///  - winemetal.so, the Metal bridge, which must sit in Wine's own
-///    x86_64-unix library directory,
+///    host-side library directory (``WineLayout/unixDirectory``),
 ///  - WINEDLLOVERRIDES at launch deciding whether games see DXMT's DLLs
 ///    (enabled → native, disabled → Wine's builtins). Toggling is just an
 ///    override change; files stay put.
@@ -50,8 +50,8 @@ final class DXMTManager: ObservableObject {
 
     // MARK: Payload discovery
 
-    /// Finds a payload directory (x86_64-windows, i386-windows,
-    /// x86_64-unix) inside the installed component, tolerating the
+    /// Finds a payload directory (the guest PE and host Unix directories named
+    /// by ``WineLayout``) inside the installed component, tolerating the
     /// tarball's nested v0.80/ folder.
     private func payloadDirectory(named name: String) -> URL? {
         guard let root = componentManager.installedDirectory(for: Self.componentID) else {
@@ -79,10 +79,13 @@ final class DXMTManager: ObservableObject {
     /// Copies DXMT's DLLs into the bottle and the Metal bridge into the
     /// Wine installation. Idempotent.
     func enable(in bottle: Bottle, bottleManager: BottleManager, wineManager: WineManager) throws {
-        guard let pe64 = payloadDirectory(named: "x86_64-windows") else {
+        let wineBinary = try wineManager.wineBinary()  // …/wine/bin/wine
+        let layout = WineLayout.detect(wineBinary: wineBinary)
+
+        guard let pe64 = payloadDirectory(named: layout.peDirectory) else {
             throw DXMTError.payloadNotFound("its 64-bit DLLs")
         }
-        guard let unixLib = payloadDirectory(named: "x86_64-unix") else {
+        guard let unixLib = payloadDirectory(named: layout.unixDirectory) else {
             throw DXMTError.payloadNotFound("winemetal.so")
         }
 
@@ -90,7 +93,7 @@ final class DXMTManager: ObservableObject {
         let windows = bottleManager.driveCDirectory(for: bottle).appending(path: "windows")
 
         try copyContents(of: pe64, to: windows.appending(path: "system32"))
-        if let pe32 = payloadDirectory(named: "i386-windows") {
+        if let pe32 = payloadDirectory(named: layout.pe32Directory) {
             let syswow64 = windows.appending(path: "syswow64")
             if fm.fileExists(atPath: syswow64.path) {
                 try copyContents(of: pe32, to: syswow64)
@@ -98,12 +101,12 @@ final class DXMTManager: ObservableObject {
         }
 
         // winemetal.so goes next to Wine's own unix libraries.
-        let wineUnixDir = try wineManager.wineBinary()  // …/wine/bin/wine
+        let wineUnixDir = wineBinary
             .deletingLastPathComponent()                // …/wine/bin
             .deletingLastPathComponent()                // …/wine
-            .appending(path: "lib/wine/x86_64-unix", directoryHint: .isDirectory)
+            .appending(path: "lib/wine/\(layout.unixDirectory)", directoryHint: .isDirectory)
         guard fm.fileExists(atPath: wineUnixDir.path) else {
-            throw DXMTError.payloadNotFound("Wine's x86_64-unix library directory")
+            throw DXMTError.payloadNotFound("Wine's \(layout.unixDirectory) library directory")
         }
         try copyContents(of: unixLib, to: wineUnixDir)
     }

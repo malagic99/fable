@@ -83,15 +83,24 @@ struct FeedbackReport: Equatable {
 
     /// The block the "include system info" toggle previews. No serials,
     /// no usernames, no paths — the same spec line the About tab shows.
+    ///
+    /// `wineLayout` records which world the report came from — x86_64 Wine
+    /// under Rosetta vs a native-arm64 build. Once both exist, "it works on
+    /// mine" is unreadable without it (docs/FEX-MIGRATION.md).
     static func currentDiagnostics(
         appVersion: String = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "dev",
-        hardware: HardwareProfile = .current
+        hardware: HardwareProfile = .current,
+        wineLayout: WineLayout? = nil
     ) -> String {
-        """
-        Fable \(appVersion)
-        macOS \(ProcessInfo.processInfo.operatingSystemVersionString)
-        \(hardware.summary)
-        """
+        var lines = [
+            "Fable \(appVersion)",
+            "macOS \(ProcessInfo.processInfo.operatingSystemVersionString)",
+            hardware.summary,
+        ]
+        if let wineLayout {
+            lines.append(wineLayout.diagnosticSummary)
+        }
+        return lines.joined(separator: "\n")
     }
 
     /// `.urlQueryAllowed` leaves `+`, `&`, and `=` alone, but inside a
