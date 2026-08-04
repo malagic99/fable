@@ -257,12 +257,16 @@ final class SikarugirManager: ObservableObject {
     }
 
     /// Copies the renderer's three payload groups into the engine lib:
-    /// wine/x86_64-windows/*.dll, wine/x86_64-unix/*.so, external/*.
-    nonisolated private static func overlay(renderer: URL, intoLib lib: URL) throws {
+    /// the guest PE DLLs, the host-side `.so`s, and `external/*`. The two
+    /// architecture-named directories come from ``WineLayout`` rather than
+    /// literals — see docs/FEX-MIGRATION.md.
+    nonisolated private static func overlay(
+        renderer: URL, intoLib lib: URL, layout: WineLayout = .rosetta
+    ) throws {
         let fm = FileManager.default
         let groups = [
-            ("wine/x86_64-windows", "wine/x86_64-windows"),
-            ("wine/x86_64-unix", "wine/x86_64-unix"),
+            ("wine/\(layout.peDirectory)", "wine/\(layout.peDirectory)"),
+            ("wine/\(layout.unixDirectory)", "wine/\(layout.unixDirectory)"),
             ("external", "external"),
         ]
         for (src, dst) in groups {

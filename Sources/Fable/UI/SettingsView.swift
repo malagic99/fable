@@ -483,7 +483,11 @@ private struct AboutTab: View {
             } header: {
                 Text("Built On")
             } footer: {
-                Text("Fable runs Windows games through Wine with DirectX-to-Metal translation. Wine runs under Rosetta 2 — Windows games are x86, and that's fine.")
+                // Deliberately doesn't name Rosetta: which translator runs the
+                // backend is a property of the backend, not of Fable, and the
+                // answer changes on a native-arm64 Wine. The live value goes in
+                // bug reports instead (FeedbackReport / WineLayout).
+                Text("Fable runs Windows games through Wine with DirectX-to-Metal translation. Windows games are x86, and that's fine.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

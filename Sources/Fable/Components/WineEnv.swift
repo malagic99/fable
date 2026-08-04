@@ -66,8 +66,9 @@ enum WineEnv {
     /// Makes Rosetta 2 advertise AVX/AVX2/FMA/BMI2 to the translated x86 game.
     /// Default Rosetta hides them, so a game whose CPU check requires AVX aborts
     /// with int3 before it ever renders — an invisible failure that looks like a
-    /// graphics bug. macOS 15+/26 supports this opt-in; no-op on native-arm64
-    /// Wine. Verified 2026-06-15 (unset → AVX=0; =1 → AVX/AVX2/FMA/BMI2=1).
+    /// graphics bug. macOS 15+/26 supports this opt-in. Verified 2026-06-15
+    /// (unset → AVX=0; =1 → AVX/AVX2/FMA/BMI2=1). Meaningless without Rosetta,
+    /// so ``base(prefix:layout:)`` only sets it for a translated host.
     /// See memory: `rosetta-avx-flag`.
     static let advertiseAVX = (key: "ROSETTA_ADVERTISE_AVX", value: "1")
 
@@ -84,13 +85,21 @@ enum WineEnv {
     /// path, silent debug, and the always-on Rosetta / controller / dialog-skip
     /// fixes. Launch and install paths then bump `debug` to ``debugDiagnostic``
     /// (via ``diagnosticDebug(in:)``) and merge backend + per-game vars on top.
-    static func base(prefix prefixURL: URL) -> [String: String] {
+    ///
+    /// `layout` decides whether the Rosetta-only vars are set at all. It
+    /// defaults to ``WineLayout/rosetta`` — every backend shipping today.
+    static func base(prefix prefixURL: URL, layout: WineLayout = .rosetta) -> [String: String] {
         var env = [
             Self.prefix: prefixURL.path,
             debug: debugSilent,
             dllOverrides: skipGeckoDialog,
-            advertiseAVX.key: advertiseAVX.value,
         ]
+        // Asking Rosetta to advertise AVX only means something when Rosetta is
+        // in the picture. On a native-arm64 Wine the var is inert noise, and
+        // leaving it set would make logs lie about how the game ran.
+        if layout.isTranslatedHost {
+            env[advertiseAVX.key] = advertiseAVX.value
+        }
         env.merge(playstationControllers) { _, new in new }
         env.merge(dotnetCoreOnWine) { _, new in new }
         return env
@@ -98,8 +107,8 @@ enum WineEnv {
 
     /// Prefix-creation environment: the base plus the Mono-dialog skip so
     /// `wineboot --init` never stalls on a modal. Launch never uses this.
-    static func provisioning(prefix prefixURL: URL) -> [String: String] {
-        var env = base(prefix: prefixURL)
+    static func provisioning(prefix prefixURL: URL, layout: WineLayout = .rosetta) -> [String: String] {
+        var env = base(prefix: prefixURL, layout: layout)
         env[dllOverrides] = skipMonoGeckoDialogs
         return env
     }

@@ -7,9 +7,16 @@ import SwiftUI
 struct FeedbackSheet: View {
     @Environment(\.dismiss) private var dismiss
 
+    @EnvironmentObject private var wineManager: WineManager
+
     @State private var report = FeedbackReport()
     @State private var includeSystemInfo = true
-    private let diagnostics = FeedbackReport.currentDiagnostics()
+
+    /// Computed, not stored: the Wine layout comes from the environment, which
+    /// isn't available at init time.
+    private var diagnostics: String {
+        FeedbackReport.currentDiagnostics(wineLayout: wineManager.layout)
+    }
 
     var body: some View {
         VStack(spacing: 0) {

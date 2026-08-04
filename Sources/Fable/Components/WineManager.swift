@@ -74,10 +74,18 @@ final class WineManager: ObservableObject {
         )
     }
 
+    /// The installed Wine's architecture shape, read once off its Mach-O
+    /// header. Not installed / unreadable → `.rosetta`, which is every build
+    /// shipping today. See docs/FEX-MIGRATION.md.
+    lazy var layout: WineLayout = {
+        guard let binary = try? wineBinary() else { return .rosetta }
+        return WineLayout.detect(wineBinary: binary)
+    }()
+
     /// The base Wine environment for a prefix — the prefix path plus Fable's
     /// always-on quirk fixes. Every fix is documented in one place: `WineEnv`.
     func environment(forPrefix prefix: URL) -> [String: String] {
-        WineEnv.base(prefix: prefix)
+        WineEnv.base(prefix: prefix, layout: layout)
     }
 
     /// Launches a Wine GUI tool (winecfg, regedit, taskmgr, …) in a
@@ -149,7 +157,7 @@ final class WineManager: ObservableObject {
         // Prefix init runs unattended — use the provisioning env, which also
         // suppresses the Mono dialog (launch deliberately does not, so .NET
         // Core apps keep working; see WineEnv.skipGeckoDialog).
-        let env = WineEnv.provisioning(prefix: prefix)
+        let env = WineEnv.provisioning(prefix: prefix, layout: layout)
         try FileManager.default.createDirectory(at: prefix, withIntermediateDirectories: true)
 
         let boot = try await ProcessRunner.run(wine, arguments: ["wineboot", "--init"], environment: env)
