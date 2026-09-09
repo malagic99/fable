@@ -30,6 +30,9 @@ final class GameInstaller: ObservableObject {
     /// Name of the compatibility runtime used for the current installer
     /// run, when one was (32-bit installers crash WoW64 Wine).
     @Published private(set) var compatibilityRuntimeName: String?
+    /// How the last run's installer was classified, so the sheet can explain
+    /// an MSI failure in Windows Installer's own terms.
+    @Published private(set) var installerKind: InstallerKind?
 
     /// How to bring an executable from outside the bottle into it.
     enum ImportMode {
@@ -44,8 +47,13 @@ final class GameInstaller: ObservableObject {
 
     // MARK: Running Windows installers
 
-    /// Runs an installer .exe under Wine and waits for it to finish.
+    /// Runs a Windows installer under Wine and waits for it to finish.
     /// The installer shows its own windows; we babysit the process.
+    ///
+    /// Two shapes are handled. A `.exe` is executed directly. An MSI package
+    /// is a Windows Installer database rather than a program, so it goes
+    /// through Wine's built-in `msiexec` — running it directly fails the way
+    /// executing a `.zip` would. See ``InstallerKind``.
     ///
     /// 32-bit installers are routed through a discovered CrossOver-based
     /// compatibility runtime when available — several InnoSetup-era
@@ -60,17 +68,21 @@ final class GameInstaller: ObservableObject {
         let prefix = bottleManager.prefixDirectory(for: bottle)
         let environment = WineEnv.withDiagnosticDebug(wineManager.environment(forPrefix: prefix))
 
+        let kind = InstallerKind.detect(installerExe)
+        // The 32-bit compat runtime only applies to PE installers; an MSI is a
+        // database, so PEInfo reports nothing for it either way.
         let compat: CompatibilityRuntime? =
-            PEInfo.architecture(of: installerExe) == .pe32
+            kind == .executable && PEInfo.architecture(of: installerExe) == .pe32
                 ? CompatibilityRuntime.discover()
                 : nil
         let wine = try compat?.wineBinary ?? wineManager.wineBinary()
         compatibilityRuntimeName = compat?.name
+        installerKind = kind
 
         let log = AppPaths.logs.appending(path: Self.logName("installer", bottle.name))
         let process = try ProcessRunner.start(
             wine,
-            arguments: [installerExe.path] + arguments,
+            arguments: Self.wineArguments(for: installerExe, kind: kind, extra: arguments),
             environment: environment,
             currentDirectory: installerExe.deletingLastPathComponent(),
             redirectingOutputTo: log
@@ -91,6 +103,25 @@ final class GameInstaller: ObservableObject {
             )
         }
         return exitCode
+    }
+
+    /// The Wine command line for an installer.
+    ///
+    /// MSI packages are passed to `msiexec` by **bare filename**, relying on
+    /// the working directory being set to the package's folder: that sidesteps
+    /// unix→Windows path translation entirely and keeps sibling `.cab` files
+    /// reachable, which many multi-file packages depend on.
+    nonisolated static func wineArguments(
+        for installer: URL,
+        kind: InstallerKind,
+        extra: [String] = []
+    ) -> [String] {
+        switch kind {
+        case .msiPackage:
+            ["msiexec", "/i", installer.lastPathComponent] + extra
+        case .executable:
+            [installer.path] + extra
+        }
     }
 
     func cancelInstaller() {

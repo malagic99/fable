@@ -37,12 +37,12 @@ struct GameInstallerView: View {
 
             case .finished(let exitCode):
                 SheetStatusView(
-                    systemImage: exitCode == 0 ? "checkmark.circle.fill" : "exclamationmark.triangle",
-                    tint: exitCode == 0 ? .green : .yellow,
-                    title: exitCode == 0 ? "Installer Finished" : "Installer Failed (exit code \(exitCode))",
-                    message: exitCode == 0
+                    systemImage: installSucceeded(exitCode: exitCode) ? "checkmark.circle.fill" : "exclamationmark.triangle",
+                    tint: installSucceeded(exitCode: exitCode) ? .green : .yellow,
+                    title: installSucceeded(exitCode: exitCode) ? "Installer Finished" : "Installer Failed (exit code \(exitCode))",
+                    message: installSucceeded(exitCode: exitCode)
                         ? "Pick the installed game's .exe (usually in C:\\Program Files) to add it to this bottle."
-                        : failureAdvice
+                        : failureAdvice(exitCode: exitCode)
                 )
                 if let registrationError {
                     Text(registrationError)
@@ -79,7 +79,7 @@ struct GameInstallerView: View {
                     Spacer()
                     Button("Close") { dismiss() }
                         .keyboardShortcut(.cancelAction)
-                    if exitCode == 0 {
+                    if installSucceeded(exitCode: exitCode) {
                         Button("Add Installed Game…") { addInstalledGame() }
                             .buttonStyle(.borderedProminent)
                             .keyboardShortcut(.defaultAction)
@@ -105,7 +105,22 @@ struct GameInstallerView: View {
         .task { await runInstaller() }
     }
 
-    private var failureAdvice: String {
+    /// Windows Installer reports "installed, but wants a reboot" as 3010. A
+    /// bottle has nothing to reboot, so that's a finished install — showing it
+    /// as a failure would send people hunting a problem they don't have.
+    private func installSucceeded(exitCode: Int32) -> Bool {
+        exitCode == 0 || (installer.installerKind == .msiPackage && exitCode == 3010)
+    }
+
+    private func failureAdvice(exitCode: Int32) -> String {
+        // msiexec reports why it failed through its exit status rather than
+        // the log, so for a package lead with what that code actually means.
+        if installer.installerKind == .msiPackage {
+            let meaning = InstallerKind.msiExitMeaning(exitCode)
+                ?? "Windows Installer stopped before finishing. Check the log for details."
+            return meaning + " If the package shipped alongside .cab files, they have to stay in the same folder as the .msi."
+        }
+
         var advice = "The installer crashed or was stopped before finishing. Check the log for details."
         if PEInfo.architecture(of: installerExe) == .pe32,
            CompatibilityRuntime.discover() == nil {
