@@ -804,11 +804,19 @@ struct BottleDetailView: View {
     // MARK: Game actions
 
     private func pickInstaller(for bottle: Bottle) {
-        guard let exe = FilePicker.chooseExecutable(title: "Choose a Windows installer (.exe)") else {
+        guard let exe = FilePicker.chooseExecutable(
+            title: "Choose a Windows installer (.exe or .msi)",
+            extensions: ["exe", "msi"]
+        ) else {
             return
         }
         // GOG/Inno Setup installers get the direct-extraction offer; old
         // ones crash Wine's WoW64. Detection needs innoextract installed.
+        // An MSI is never Inno-wrapped, so skip the probe entirely.
+        guard InstallerKind.detect(exe) == .executable else {
+            installerExe = PickedExecutable(url: exe)
+            return
+        }
         Task {
             if await InnoExtractor.isInnoSetup(exe) {
                 gogInstallerExe = PickedExecutable(url: exe)

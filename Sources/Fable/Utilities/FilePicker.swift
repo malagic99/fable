@@ -4,15 +4,23 @@ import UniformTypeIdentifiers
 /// Thin wrapper around NSOpenPanel for choosing Windows executables.
 @MainActor
 enum FilePicker {
-    static func chooseExecutable(title: String, startingAt directory: URL? = nil) -> URL? {
+    /// Pick one Windows binary. `extensions` defaults to just `.exe`; the
+    /// installer flows widen it to `.msi` as well, since a Windows Installer
+    /// package is a perfectly ordinary way to ship a game.
+    static func chooseExecutable(
+        title: String,
+        extensions: [String] = ["exe"],
+        startingAt directory: URL? = nil
+    ) -> URL? {
         let panel = NSOpenPanel()
         panel.title = title
         panel.message = title
         panel.canChooseFiles = true
         panel.canChooseDirectories = false
         panel.allowsMultipleSelection = false
-        if let exeType = UTType(filenameExtension: "exe") {
-            panel.allowedContentTypes = [exeType]
+        let types = extensions.compactMap { UTType(filenameExtension: $0) }
+        if !types.isEmpty {
+            panel.allowedContentTypes = types
         }
         if let directory {
             panel.directoryURL = directory
