@@ -60,6 +60,11 @@ enum GameRecipeCatalog {
             backend: .sikarugir, metalFX: true, frameRateCap: 120,
             note: "UE4, launched through Steam in the bottle. Validated ~4 h on an M4 Pro (24 GB) at a 120 fps cap with MetalFX. If a long session starts to slip, drop the cap to 60 — same fix as DEATHLOOP."
         ),
+        GameRecipe(
+            name: "S.T.A.L.K.E.R. 2", executables: ["stalker2.exe", "stalker2-win64-shipping.exe"],
+            backend: .sikarugir, metalFX: true, frameRateCap: 60,
+            note: "UE5 D3D12. Must use Sikarugir — the DXVK/Vulkan path silently crashes because vkd3d-proton has no production macOS support. Cap to 60 + MetalFX on unified-memory machines; drop textures a notch if pressure climbs."
+        ),
     ]
 
     // Adding an entry: only from a REAL tested setup — read the bottle's

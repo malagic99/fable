@@ -128,6 +128,19 @@ import Testing
     }
 
     @Test
+    func vulkanOnlyLogSuggestsSikarugir() {
+        let log = """
+        [mvk-info] MoltenVK version 1.4.1, supporting Vulkan version 1.4.334.
+        [mvk-info] GPU device:
+            model: Apple M4 Pro
+        [mvk-info] Created VkInstance for Vulkan version 1.0.334
+        """
+        let finding = GameDoctor.diagnose(log: log).first { $0.id == "doctor-vulkan-no-d3dmetal" }
+        #expect(finding?.severity == .caveat)
+        #expect(finding?.suggestion.contains("Sikarugir") == true)
+    }
+
+    @Test
     func rulesHaveUniqueIDsAndNonEmptyGuidance() {
         // The database is data — lock its invariants so a bulk edit can't
         // ship a duplicate id or an empty suggestion.

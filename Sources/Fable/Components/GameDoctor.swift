@@ -181,12 +181,18 @@ enum GameDoctor {
              title: "Engine couldn't initialize graphics",
              detail: "A Unity/engine title couldn't create its graphics device on this backend. Some engines white-screen on D3DMetal (audio and input work, nothing renders) or refuse to start on DXMT.",
              suggestion: "Try a different backend for this game — for Unity titles, DXMT or built-in Wine often render where D3DMetal white-screens, and vice-versa. If every backend white-screens, it's a D3DMetal present bug (stream it or use CrossOver)."),
-        Rule(id: "physx",
-             needles: ["physxloader", "physx3", "apex_"],
+        Rule(id: “physx”,
+             needles: [“physxloader”, “physx3”, “apex_”],
              severity: .caveat,
-             title: "NVIDIA PhysX runtime missing",
-             detail: "The game links PhysX and its redistributable was never installed (Steam usually runs it via _CommonRedist).",
-             suggestion: "Run “Install Dependencies” on the game, or the `physx` winetricks verb."),
+             title: “NVIDIA PhysX runtime missing”,
+             detail: “The game links PhysX and its redistributable was never installed (Steam usually runs it via _CommonRedist).”,
+             suggestion: “Run “Install Dependencies” on the game, or the `physx` winetricks verb.”),
+        Rule(id: “vulkan-no-d3dmetal”,
+             needles: [“[mvk-info]”, “moltenvk version”],
+             severity: .caveat,
+             title: “Running through Vulkan/MoltenVK — not D3DMetal”,
+             detail: “The log shows MoltenVK (Vulkan) initialization, meaning this game is on the DXVK path. DirectX 12 games can't render here — vkd3d-proton has no production macOS support. If the game exited without any visible output, this is almost certainly the wrong backend.”,
+             suggestion: “Switch to the Sikarugir backend (free D3D12 → Metal). DXVK covers D3D9–11 only; D3D12 titles need D3DMetal.”),
     ]
 
     // MARK: Cross-backend crash correlation (the First Light rule)

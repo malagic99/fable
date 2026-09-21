@@ -52,6 +52,17 @@ import Testing
     }
 
     @Test
+    func stalker2MatchesBothLauncherAndShippingExe() {
+        for exe in ["Stalker2.exe", #"Stalker2\Binaries\Win64\Stalker2-Win64-Shipping.exe"#] {
+            let r = GameRecipeCatalog.recipe(forExecutablePath: exe)
+            #expect(r?.name == "S.T.A.L.K.E.R. 2", "no match for \(exe)")
+            #expect(r?.backend == .sikarugir)
+            #expect(r?.performance.metalFXUpscaling == true)
+            #expect(r?.performance.frameRateCap == 60)
+        }
+    }
+
+    @Test
     func everyRecipeHasUniqueExecutablesAndANote() {
         var seen = Set<String>()
         for recipe in GameRecipeCatalog.all {
