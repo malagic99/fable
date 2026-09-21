@@ -83,6 +83,43 @@ final class RedistInstaller: ObservableObject {
         let environment = WineEnv.withDiagnosticDebug(wineManager.environment(forPrefix: prefix))
         let wine = try wineManager.wineBinary()
 
+        if kind == .vcRedist {
+            // The VC++ Burn bootstrapper crashes under Wine 10.x.
+            // Extract the embedded MSI payloads via /layout, then
+            // install each through msiexec — same pattern as DirectX.
+            let extractDir = "C:\\fable_vcredist"
+            let extractDirLocal = bottleManager.driveCDirectory(for: bottle)
+                .appending(path: "fable_vcredist")
+            let fm = FileManager.default
+            try? fm.createDirectory(at: extractDirLocal, withIntermediateDirectories: true)
+            defer {
+                try? fm.removeItem(at: extractDirLocal)
+            }
+            _ = try await ProcessRunner.run(
+                wine,
+                arguments: [redist.path, "/layout", extractDir, "/q"],
+                environment: environment
+            )
+            let contents = (try? fm.contentsOfDirectory(
+                at: extractDirLocal, includingPropertiesForKeys: nil
+            )) ?? []
+            let msis = contents.filter { $0.pathExtension.lowercased() == "msi" }
+            guard !msis.isEmpty else {
+                throw ComponentError.extractionFailed(
+                    "Could not extract MSI packages from \(redist.lastPathComponent)"
+                )
+            }
+            for msi in msis {
+                _ = try await ProcessRunner.run(
+                    wine,
+                    arguments: ["msiexec", "/i", msi.lastPathComponent, "/qn"],
+                    environment: environment,
+                    currentDirectory: extractDirLocal
+                )
+            }
+            return
+        }
+
         if kind == .directX {
             // Two stages: self-extract the package, then run DXSETUP.
             let extractDir = "C:\\fable_dxredist"
