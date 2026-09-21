@@ -13,6 +13,33 @@ struct GameRecipe: Codable, Hashable, Sendable {
     let metalFX: Bool
     let frameRateCap: Int?
     let note: String
+    /// Dependency ids from `DependencyCatalog` the game needs installed.
+    let dependencies: [String]
+
+    init(
+        name: String, executables: [String], backend: GraphicsBackend,
+        metalFX: Bool, frameRateCap: Int?, note: String,
+        dependencies: [String] = []
+    ) {
+        self.name = name
+        self.executables = executables
+        self.backend = backend
+        self.metalFX = metalFX
+        self.frameRateCap = frameRateCap
+        self.note = note
+        self.dependencies = dependencies
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        name = try container.decode(String.self, forKey: .name)
+        executables = try container.decode([String].self, forKey: .executables)
+        backend = try container.decode(GraphicsBackend.self, forKey: .backend)
+        metalFX = try container.decode(Bool.self, forKey: .metalFX)
+        frameRateCap = try container.decodeIfPresent(Int.self, forKey: .frameRateCap)
+        note = try container.decode(String.self, forKey: .note)
+        dependencies = try container.decodeIfPresent([String].self, forKey: .dependencies) ?? []
+    }
 
     /// The performance preset this recipe prescribes.
     var performance: PerformanceOptions {
@@ -24,7 +51,14 @@ struct GameRecipe: Codable, Hashable, Sendable {
         var parts = [backend.shortName]
         if let frameRateCap { parts.append("\(frameRateCap) fps cap") }
         if metalFX { parts.append("MetalFX") }
-        return "Tested: " + parts.joined(separator: " + ") + "."
+        var summary = "Tested: " + parts.joined(separator: " + ") + "."
+        let depNames = dependencies.compactMap { id in
+            DependencyCatalog.all.first { $0.id == id }?.name
+        }
+        if !depNames.isEmpty {
+            summary += " Needs: " + depNames.joined(separator: ", ") + "."
+        }
+        return summary
     }
 
     /// Surfaced through the existing compatibility banner as an info note.
@@ -63,7 +97,8 @@ enum GameRecipeCatalog {
         GameRecipe(
             name: "S.T.A.L.K.E.R. 2", executables: ["stalker2.exe", "stalker2-win64-shipping.exe"],
             backend: .sikarugir, metalFX: true, frameRateCap: 60,
-            note: "UE5 D3D12. Must use Sikarugir — the DXVK/Vulkan path silently crashes because vkd3d-proton has no production macOS support. Cap to 60 + MetalFX on unified-memory machines; drop textures a notch if pressure climbs."
+            note: "UE5 D3D12. Must use Sikarugir — the DXVK/Vulkan path silently crashes because vkd3d-proton has no production macOS support. Cap to 60 + MetalFX on unified-memory machines; drop textures a notch if pressure climbs.",
+            dependencies: ["vcredist-x64", "vcredist-x86"]
         ),
     ]
 

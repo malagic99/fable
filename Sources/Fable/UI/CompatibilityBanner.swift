@@ -171,8 +171,30 @@ struct CompatibilityBanner: View {
             if backend == .dxvk, winetricksManager.needsDXVK(in: bottle, bottleManager: bottleManager) {
                 installDXVK()
             }
+            if let recipe {
+                installMissingDependencies(recipe.dependencies)
+            }
         } catch {
             toastCenter.error(error.localizedDescription)
+        }
+    }
+
+    private func installMissingDependencies(_ depIDs: [String]) {
+        let installer = DependencyInstaller()
+        let missing = depIDs.compactMap { id in
+            DependencyCatalog.all.first { $0.id == id }
+        }.filter { !installer.isInstalled($0, bottle: bottle, bottleManager: bottleManager) }
+        guard !missing.isEmpty else { return }
+        toastCenter.success("Installing \(missing.map(\.name).joined(separator: ", "))…")
+        Task {
+            for dep in missing {
+                do {
+                    try await installer.install(dep, bottle: bottle, bottleManager: bottleManager, wineManager: wineManager)
+                } catch {
+                    toastCenter.error("\(dep.name) install failed: \(error.localizedDescription)")
+                }
+            }
+            toastCenter.success("Dependencies ready — launch \(game.name).")
         }
     }
 

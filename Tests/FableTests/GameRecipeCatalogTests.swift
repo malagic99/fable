@@ -59,7 +59,22 @@ import Testing
             #expect(r?.backend == .sikarugir)
             #expect(r?.performance.metalFXUpscaling == true)
             #expect(r?.performance.frameRateCap == 60)
+            #expect(r?.dependencies == ["vcredist-x64", "vcredist-x86"])
         }
+    }
+
+    @Test
+    func recipeDependenciesSurfaceInConfigSummary() {
+        let r = GameRecipeCatalog.recipe(forExecutablePath: "Stalker2.exe")
+        #expect(r?.configSummary.contains("Needs:") == true)
+        #expect(r?.configSummary.contains("Visual C++") == true)
+    }
+
+    @Test
+    func recipesWithoutDependenciesOmitNeedsLine() {
+        let r = GameRecipeCatalog.recipe(forExecutablePath: "Balatro.exe")
+        #expect(r?.dependencies.isEmpty == true)
+        #expect(r?.configSummary.contains("Needs:") == false)
     }
 
     @Test
