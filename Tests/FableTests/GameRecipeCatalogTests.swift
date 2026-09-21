@@ -52,6 +52,32 @@ import Testing
     }
 
     @Test
+    func stalker2MatchesBothLauncherAndShippingExe() {
+        for exe in ["Stalker2.exe", #"Stalker2\Binaries\Win64\Stalker2-Win64-Shipping.exe"#] {
+            let r = GameRecipeCatalog.recipe(forExecutablePath: exe)
+            #expect(r?.name == "S.T.A.L.K.E.R. 2", "no match for \(exe)")
+            #expect(r?.backend == .sikarugir)
+            #expect(r?.performance.metalFXUpscaling == true)
+            #expect(r?.performance.frameRateCap == 60)
+            #expect(r?.dependencies == ["vcredist-x64", "vcredist-x86"])
+        }
+    }
+
+    @Test
+    func recipeDependenciesSurfaceInConfigSummary() {
+        let r = GameRecipeCatalog.recipe(forExecutablePath: "Stalker2.exe")
+        #expect(r?.configSummary.contains("Needs:") == true)
+        #expect(r?.configSummary.contains("Visual C++") == true)
+    }
+
+    @Test
+    func recipesWithoutDependenciesOmitNeedsLine() {
+        let r = GameRecipeCatalog.recipe(forExecutablePath: "Balatro.exe")
+        #expect(r?.dependencies.isEmpty == true)
+        #expect(r?.configSummary.contains("Needs:") == false)
+    }
+
+    @Test
     func everyRecipeHasUniqueExecutablesAndANote() {
         var seen = Set<String>()
         for recipe in GameRecipeCatalog.all {
