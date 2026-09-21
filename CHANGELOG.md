@@ -1,5 +1,21 @@
 # Changelog
 
+## v0.23.2 — 2026-09-21
+
+**S.T.A.L.K.E.R. 2 support + VC++ installer crash fix.**
+
+- **S.T.A.L.K.E.R. 2 recipe**: Sikarugir backend, 60 fps cap + MetalFX,
+  VC++ runtime auto-installed. Matches both launcher and UE5 shipping exe.
+- **GameDoctor rule `vulkan-no-d3dmetal`**: detects MoltenVK-only logs
+  (the DXVK/Vulkan path) and suggests switching to Sikarugir for D3D12 games.
+- **Recipe dependencies**: recipes can now declare runtime dependencies
+  (e.g. `vcredist-x64`). Applying a recommendation auto-installs them.
+- **VC++ installer crash fix**: the Burn bootstrapper wrapping `vc_redist.x64.exe`
+  crashes under Wine 10.x. RedistInstaller now extracts the embedded MSI
+  payloads via `/layout` and installs each through `msiexec`, matching the
+  existing DirectX two-stage pattern.
+- 5 new tests.
+
 ## v0.23.1 — 2026-07-12
 
 **Memory Diet, part two — VRAM honesty on DXVK, and two GPTK knobs that were
