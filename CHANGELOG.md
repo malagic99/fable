@@ -1,5 +1,38 @@
 # Changelog
 
+## v0.23.4 — 2026-09-22
+
+**Fable would not launch on any Mac except the one that built it. It does now.**
+
+Every release to date crashed on startup with `SIGTRAP` on any machine other
+than the build host, before drawing a window:
+
+```
+Fable/resource_bundle_accessor.swift:12: Fatal error: could not load resource
+bundle: from /Applications/Fable.app/Fable_Fable.bundle or
+/Users/<developer>/FABLE/.build/arm64-apple-macosx/release/Fable_Fable.bundle
+```
+
+SwiftPM's generated `Bundle.module` checks two locations: beside the
+executable, and an **absolute path inside the build directory of whichever
+machine compiled the binary**. An app bundle keeps resources in
+`Contents/Resources`, so the first never matched — and the second exists only
+on the developer's Mac, where it quietly satisfied every launch and hid the
+fault completely. `versions.json` and every localized string load through that
+accessor during startup, so elsewhere it was fatal on contact.
+
+- Resources now resolve through `Bundle.fableResources`, which looks in
+  `Contents/Resources` first and keeps `Bundle.module` as a development
+  fallback. Verified by running the built app with the build directory moved
+  aside: v0.23.3 exits 133 with the trap above, this build launches.
+- **Guarded against reintroduction.** The unit tests run from a test runner
+  rather than an `.app`, so they passed throughout — a test asserting the app
+  merely *has* resources could never have caught this. A source-level check now
+  fails the suite if anything reaches for `Bundle.module` directly, and it was
+  confirmed to fire by reintroducing the old call.
+- `make-app.sh`'s comment claimed `Contents/Resources` was what
+  `Bundle.module` reads. It isn't, and that belief is what shipped the bug.
+
 ## Unreleased
 
 **Experimental: pair Sikarugir's Wine with Game Porting Toolkit 4's D3DMetal.**
