@@ -2,8 +2,20 @@
 
 ## v0.23.3 — 2026-09-22
 
-**Follow-up fixes to v0.23.2: the build, D3D12-on-Sikarugir, and a cold-start
+**S.T.A.L.K.E.R. 2 runs: D3D12 reaches D3DMetal on Sikarugir, plus a cold-start
 hole that let first-run setup skip itself.**
+
+Supersedes v0.23.2, which was tagged in the changelog but never released — its
+changes ship here, with the defects found while validating them fixed.
+
+**New**
+
+- **S.T.A.L.K.E.R. 2 recipe**: Sikarugir backend, 60 fps cap + MetalFX.
+  Matches both the UE5 bootstrap launcher and the shipping exe.
+- **Recipe dependencies**: recipes can now declare runtime dependencies
+  (e.g. `vcredist-x64`). Applying a recommendation auto-installs them.
+
+**Fixed**
 
 - **Fixes the build.** v0.23.2 shipped unicode curly quotes used as Swift
   string delimiters in `GameDoctor.swift`; the package did not compile.
@@ -30,23 +42,16 @@ hole that let first-run setup skip itself.**
 - **Doctor reads only the log tail** (4 MB cap) — a bottle left on a verbose
   WINEDEBUG channel can't make diagnosis read a huge file whole and lowercase
   a second copy of it.
-- 2 net new tests (451 total green).
+- 451 tests green.
 
-## v0.23.2 — 2026-09-21
+**Known issue**
 
-**S.T.A.L.K.E.R. 2 support + VC++ installer crash fix.**
-
-- **S.T.A.L.K.E.R. 2 recipe**: Sikarugir backend, 60 fps cap + MetalFX,
-  VC++ runtime auto-installed. Matches both launcher and UE5 shipping exe.
-- **GameDoctor rule `vulkan-no-d3dmetal`**: detects MoltenVK-only logs
-  (the DXVK/Vulkan path) and suggests switching to Sikarugir for D3D12 games.
-- **Recipe dependencies**: recipes can now declare runtime dependencies
-  (e.g. `vcredist-x64`). Applying a recommendation auto-installs them.
-- **VC++ installer crash fix**: the Burn bootstrapper wrapping `vc_redist.x64.exe`
-  crashes under Wine 10.x. RedistInstaller now extracts the embedded MSI
-  payloads via `/layout` and installs each through `msiexec`, matching the
-  existing DirectX two-stage pattern.
-- 5 new tests.
+- The VC++ redist path added in v0.23.2 extracts MSI payloads via `/layout`,
+  which does not actually produce them — the bootstrapper copies itself back,
+  so the path fails with "Could not extract MSI packages". Installing the
+  Visual C++ runtime through Dependencies does not work in this release. A
+  game that needs a newer runtime than the bottle has must have it installed
+  by hand for now. Being fixed separately.
 
 ## v0.23.1 — 2026-07-12
 

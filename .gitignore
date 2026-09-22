@@ -53,3 +53,9 @@ Temp/
 # anything here rather than leaving it loose. Cleaned out of the root
 # 2026-08-04.
 _local/
+
+# Local working copies that live in the repo root but are not part of it:
+# archive/ is a few hundred MB of historical artifacts, fable-main/ a checkout
+# of the published tree. Both are one stray `git add -A` from being committed.
+archive/
+fable-main/
