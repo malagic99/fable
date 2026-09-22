@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v0.23.6 — 2026-09-22
 
 **Fable installs Sikarugir for you, and the site stops needing a hand-edit.**
 
