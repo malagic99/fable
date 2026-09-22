@@ -1,5 +1,45 @@
 # Changelog
 
+## v1.0.0 — 2026-09-22
+
+**A friend is playing on it.**
+
+That was always the definition of 1.0 for this project — not a feature list, not
+a launch. On 2026-09-22 Fable installed and ran on a second Mac with no
+hand-holding: Sikarugir installed through Fable's own setup, a Steam-Ready
+bottle came up on the Sikarugir backend, and Steam's client rendered and
+updated. Nothing needed fixing afterwards.
+
+No new code ships in this version. It is v0.23.6 with an honest number on it.
+
+**How the last day went, because it is the useful part**
+
+Six releases, and the two worst bugs were both invisible from the machine that
+built them:
+
+- **Fable had never launched on any Mac but the build machine** — not in this
+  release or the one before, but in *every release ever made*. SwiftPM's
+  `Bundle.module` resolves through an absolute path into the compiling
+  machine's build directory, so the app found its resources here and died with
+  `SIGTRAP` before drawing a window anywhere else. Found by handing someone the
+  app. Fixed in v0.23.4.
+- **The Sikarugir setup step pointed at a page with nothing on it** — Sikarugir
+  publishes no releases and no downloadable app; it exists only as a Homebrew
+  cask. Fable now runs the install itself. Fixed in v0.23.6.
+
+Neither was reachable by testing on the development machine, and a full green
+test suite had nothing to say about either. The lesson is written into
+`docs/ROADMAP.md`: a second Mac is not a pre-release ritual, it is the only
+honest test.
+
+**Known, and deliberately not hidden**
+
+- Not notarized. A fresh download can be killed by Gatekeeper with no message
+  at all; `xattr -cr /Applications/Fable.app` clears it.
+- The Visual C++ redist path and dependency detection still have rough edges
+  documented in v0.23.4's entry.
+- The GPTK 4 D3DMetal pairing is experimental and off by default.
+
 ## v0.23.6 — 2026-09-22
 
 **Fable installs Sikarugir for you, and the site stops needing a hand-edit.**
