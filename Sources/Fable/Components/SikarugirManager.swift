@@ -157,6 +157,9 @@ final class SikarugirManager: ObservableObject {
         // Steam text, libgnutls = no QR/online) without a full reinstall.
         if isInstalled, installedVersion() == version {
             try? backfillSupportLibs()
+            let existingLib = componentManager.installedDirectory(for: Self.componentID)!
+                .appending(path: "wswine.bundle/lib", directoryHint: .isDirectory)
+            try? await Self.patchD3DMetalRpath(lib: existingLib)
             return
         }
         // Otherwise this is a fresh install OR an update to a newer Sikarugir —
@@ -183,6 +186,12 @@ final class SikarugirManager: ObservableObject {
         let bundle = installRoot.appending(path: "wswine.bundle", directoryHint: .isDirectory)
         let lib = bundle.appending(path: "lib", directoryHint: .isDirectory)
         try Self.overlay(renderer: renderer, intoLib: lib)
+
+        // 2a. Patch d3d12.so's rpath so it can dlopen D3DMetal.framework
+        //      from lib/external/ via @rpath. The overlay copies d3d12.so
+        //      with only @loader_path in its LC_RPATH, which resolves to
+        //      lib/wine/x86_64-unix/ — not where external/ lives.
+        try await Self.patchD3DMetalRpath(lib: lib, layout: .rosetta)
 
         // 2b. Copy Sikarugir's bundled support dylibs (libinotify,
         //     gnutls, freetype, etc.) from the Template app's
@@ -281,6 +290,32 @@ final class SikarugirManager: ObservableObject {
                 }
                 try fm.copyItem(at: item, to: target)
             }
+        }
+    }
+
+    /// Ensures the D3DMetal dispatch `.so` files carry an LC_RPATH entry
+    /// that lets `@rpath/D3DMetal.framework/D3DMetal` resolve to
+    /// `lib/external/D3DMetal.framework/…`. Sikarugir's d3d11.so and
+    /// dxgi.so ship with this rpath already; d3d12.so does not — without
+    /// it, D3D12 games fail at adapter creation ("D3D12RHI is not
+    /// supported"). Idempotent: skips .so files that already have it.
+    nonisolated private static func patchD3DMetalRpath(
+        lib: URL, layout: WineLayout = .rosetta
+    ) async throws {
+        let unixDir = lib.appending(path: "wine/\(layout.unixDirectory)", directoryHint: .isDirectory)
+        let neededRpath = "@loader_path/../../external"
+        for name in ["d3d12.so", "d3d11.so", "dxgi.so"] {
+            let so = unixDir.appending(path: name)
+            guard FileManager.default.fileExists(atPath: so.path) else { continue }
+            let probe = try await ProcessRunner.run(
+                URL(filePath: "/usr/bin/otool"), arguments: ["-l", so.path])
+            guard !probe.standardOutput.contains("../../external") else { continue }
+            _ = try? await ProcessRunner.run(
+                URL(filePath: "/usr/bin/install_name_tool"),
+                arguments: ["-add_rpath", neededRpath, so.path])
+            _ = try? await ProcessRunner.run(
+                URL(filePath: "/usr/bin/codesign"),
+                arguments: ["--force", "--sign", "-", so.path])
         }
     }
 

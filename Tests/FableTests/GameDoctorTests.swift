@@ -128,16 +128,38 @@ import Testing
     }
 
     @Test
-    func vulkanOnlyLogSuggestsSikarugir() {
+    func d3d12AdapterFailureIsDiagnosed() {
+        let log = """
+        LogRHI: Error: Dynamic RHI module `D3D12RHI` for chosen RHI / feature \
+        level `DirectX 12 (SM6)` is not supported, or failed to choose a valid \
+        graphics adapter
+        """
+        let finding = GameDoctor.diagnose(log: log).first { $0.id == "doctor-d3d12-rhi-unsupported" }
+        #expect(finding?.severity == .caveat)
+        #expect(finding?.suggestion.contains("Sikarugir") == true)
+    }
+
+    /// Wine probes the Vulkan ICD on every launch, so a MoltenVK banner is
+    /// present even when D3DMetal is working. A healthy log must stay silent —
+    /// the old banner-keyed rule told Sikarugir users to switch to Sikarugir.
+    @Test
+    func moltenVKBannerAloneIsNotADiagnosis() {
         let log = """
         [mvk-info] MoltenVK version 1.4.1, supporting Vulkan version 1.4.334.
         [mvk-info] GPU device:
             model: Apple M4 Pro
         [mvk-info] Created VkInstance for Vulkan version 1.0.334
+        LogInit: Display: Game Engine Initialized.
         """
-        let finding = GameDoctor.diagnose(log: log).first { $0.id == "doctor-vulkan-no-d3dmetal" }
-        #expect(finding?.severity == .caveat)
-        #expect(finding?.suggestion.contains("Sikarugir") == true)
+        #expect(GameDoctor.diagnose(log: log).isEmpty)
+    }
+
+    @Test
+    func vetoSuppressesARuleWhenContraryEvidenceIsPresent() {
+        let rule = GameDoctor.Rule(
+            id: "t", needles: ["boom"], vetoes: ["actually fine"],
+            severity: .caveat, title: "t", detail: "d", suggestion: "s")
+        #expect(rule.vetoes == ["actually fine"])
     }
 
     @Test

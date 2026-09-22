@@ -1,5 +1,37 @@
 # Changelog
 
+## v0.23.3 — 2026-09-22
+
+**Follow-up fixes to v0.23.2: the build, D3D12-on-Sikarugir, and a cold-start
+hole that let first-run setup skip itself.**
+
+- **Fixes the build.** v0.23.2 shipped unicode curly quotes used as Swift
+  string delimiters in `GameDoctor.swift`; the package did not compile.
+- **D3D12 renders on Sikarugir.** Sikarugir's `d3d12.so` carries only
+  `@loader_path` in its LC_RPATH, so its `@rpath/D3DMetal.framework/D3DMetal`
+  dlopen never resolved — the framework sits in `lib/external`, two levels up.
+  D3D12 titles died at adapter creation ("D3D12RHI is not supported"), while
+  D3D11 games were fine because `d3d11.so` and `dxgi.so` already ship the
+  correct rpath. The renderer install now adds the missing entry and re-signs,
+  on fresh installs and on the existing-version self-heal path.
+- **First-run setup survives a data wipe.** Onboarding completion was recorded
+  only in UserDefaults, which outlives deleting both Fable.app and Application
+  Support — so a clean install read back "already onboarded" and silently
+  skipped first-time setup. Completion is now a marker beside the app's own
+  data; prior installs are migrated rather than re-prompted.
+- **Replaces the `vulkan-no-d3dmetal` Doctor rule.** It keyed on the MoltenVK
+  banner, but Wine probes the Vulkan ICD on every launch, so it matched healthy
+  D3DMetal runs — it fired on a log from a working Sikarugir bottle and told
+  those users to switch to the backend they were already on. The replacement
+  (`d3d12-rhi-unsupported`) matches the engine's own "failed to choose a valid
+  graphics adapter" verdict.
+- **Doctor rules can declare veto needles**, so contrary evidence in the same
+  log suppresses a bogus finding.
+- **Doctor reads only the log tail** (4 MB cap) — a bottle left on a verbose
+  WINEDEBUG channel can't make diagnosis read a huge file whole and lowercase
+  a second copy of it.
+- 2 net new tests (451 total green).
+
 ## v0.23.2 — 2026-09-21
 
 **S.T.A.L.K.E.R. 2 support + VC++ installer crash fix.**
