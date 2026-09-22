@@ -61,9 +61,19 @@ memory crash. Two Fable-shaped pieces:
 2. ~~**Real donor export**~~ — **parked.** Deliberately skipped rather than
    pretended: the 56 GB streaming/strip path stays unit-tested only. Revisit if
    a friend actually needs a donor bottle.
-3. **Hand a friend the kit → fix what they hit → tag 1.0.** *The remaining
-   gate* — and by this project's own definition ("1.0 = a friend is playing on
-   it"), the only one that can close it.
+3. ~~**Hand a friend the kit → fix what they hit → tag 1.0.**~~ — **done
+   (2026-09-22).** Fable installed and ran on a second Mac with no hand-holding:
+   Sikarugir installed through Fable's own setup, a Steam-Ready bottle came up
+   on the Sikarugir backend, and Steam's client rendered and updated. Nothing
+   needed fixing afterwards, which is the first time that's been true.
+
+   Getting there took six releases in a day, and the two worst bugs were both
+   invisible from the build machine: the app had **never** launched on any other
+   Mac (SwiftPM's `Bundle.module` was resolving through the developer's build
+   directory), and the Sikarugir setup step pointed at a Releases tab for a
+   project that publishes no releases. Neither was findable by testing here —
+   both surfaced the moment the app left this machine. **Keep a second Mac in
+   the loop; it is not a pre-release ritual, it is the only honest test.**
 
 ## 🌱 Ongoing — Grow the moat (recipes)
 
@@ -93,6 +103,22 @@ out-automate. **Target: ~12 recipes by month end.** Never fake a "Tested:".
   (some winetricks verbs set it) makes the VC++ 2022 installer a no-op, with no
   error surfaced anywhere. Either pin the version before installing a redist or
   have the Doctor notice the mismatch.
+- **Let backend selection see the hardware.** `SmartBackendSelector` already
+  auto-picks from a validated recipe, then from directory markers — but it never
+  consults `HardwareProfile`, which already knows the chip and unified memory
+  and is currently used only for performance presets. The gap isn't building
+  auto-selection, it's letting the thing that picks a backend see the machine
+  it's picking for. Caveat worth keeping: a confident wrong pick is worse for a
+  confused user than a visible choice, because it reads as Fable being broken
+  rather than a setting to change. Auto-pick where it's *sure* (recipe, or a
+  decisive marker); otherwise leave a sane default rather than guessing from
+  specs alone.
+- **Shrink the backend picker to what this Mac can use.** Six entries with names
+  like `DXVK + vkd3d` and `Apple GPTK (legacy, Wine 7.7)` are a wall the moment
+  a non-technical user opens the menu — and even perfect auto-selection leaves
+  that list sitting there. Hiding backends whose components aren't installed,
+  or that this hardware can't benefit from, removes more confusion than smarter
+  picking does. Pairs with the item above; do them together.
 - **Feasibility precheck (Smart Bottle)** — the recurring expensive lesson: verify
   a title is even *possible* (framework/runtime it needs, anti-cheat present,
   known-working version) before the user sinks an afternoon. Surface it up front,
