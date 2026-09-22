@@ -60,6 +60,17 @@ publish)
     NOTES=$(changelog_section)
     [ -n "$NOTES" ] || { echo "error: empty CHANGELOG section for v$VERSION" >&2; exit 1; }
 
+    # The release body is built from ONE version's section, so anything still
+    # filed under "Unreleased" ships in the binary and silently misses the
+    # notes. That has happened twice (v0.23.3's own entry, then v0.23.4's VC++
+    # and GPTK 4 work). Fold it into this version's section before releasing.
+    if grep -q '^## Unreleased' CHANGELOG.md; then
+        echo "error: CHANGELOG still has an '## Unreleased' section." >&2
+        echo "       Its contents would ship in the binary but not the notes —" >&2
+        echo "       merge them into '## v$VERSION' first." >&2
+        exit 1
+    fi
+
     git tag -a "v$VERSION" -m "Fable v$VERSION — $TITLE"
     git push -q origin "v$VERSION"
 
