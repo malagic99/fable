@@ -17,7 +17,7 @@ struct VersionCatalog: Codable, Equatable, Sendable {
     var dxmt: Component? { components["dxmt"] }
 
     static func loadBundled() throws -> VersionCatalog {
-        guard let url = Bundle.module.url(forResource: "versions", withExtension: "json") else {
+        guard let url = Bundle.fableResources.url(forResource: "versions", withExtension: "json") else {
             throw CocoaError(.fileNoSuchFile)
         }
         return try load(from: Data(contentsOf: url))

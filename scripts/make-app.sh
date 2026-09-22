@@ -17,8 +17,13 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/Fable"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
 cp Resources/Fable.icns "$APP/Contents/Resources/Fable.icns"
-# SwiftPM resource bundle (versions.json etc.) — Bundle.module finds it
-# via Bundle.main.resourceURL when placed in Contents/Resources.
+# SwiftPM resource bundle (versions.json, .lproj). Contents/Resources is the
+# right place for an .app, but SwiftPM's generated Bundle.module does NOT look
+# here — it checks beside the executable, then an absolute path inside the
+# build directory of whichever machine compiled it. That second path exists
+# only on the build machine, so a mislocated bundle still launches here and
+# SIGTRAPs everywhere else (v0.23.3 shipped exactly that). The app reads
+# resources through Bundle.fableResources, which looks here first.
 cp -R "$RESOURCE_BUNDLE" "$APP/Contents/Resources/"
 
 # Mirror .lproj directories from the SwiftPM bundle into the app's main
