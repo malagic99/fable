@@ -138,6 +138,7 @@
 "winetricks.installed_count"  = "%@ installed";
 "components.last_checked"      = "Last checked %@";
 "components.d3dmetal.as_shipped" = "as shipped with the environment";
+"components.d3dmetal.stranded_overlay" = "This renderer is newer than GPTK's Wine can use, so modern games gain nothing from it here. Turn on the Sikarugir pairing in Settings → Advanced to actually use it.";
 "recipes.imported_count"      = "%@ imported";
 "game.action.stop_named"      = "Stop %@";
 "game.action.launch_named"    = "Launch %@";
@@ -159,3 +160,8 @@
 "memdiet.footer"              = "Caps the game's texture-streaming pool at %@ MB so it can't grow into a crash — unified memory is shared with the GPU. Tuned for your %@ GB. Reversible; edits the game's Engine.ini.";
 "memdiet.error.not_unreal"    = "Couldn't find this game's Unreal Engine config — Memory Diet only applies to Unreal games that have run at least once.";
 "nudge.memory_pressure"       = "Memory is running tight — the game shares one pool with the GPU. Close other apps, or lower texture quality, before it crashes. Enable Memory Diet on the game to cap it next launch.";
+
+/* D3DMetal / Sikarugir first-run setup */
+"onboarding.d3dmetal.step1"        = "Download Sikarugir and drag it to your Applications folder.";
+"onboarding.d3dmetal.step2"        = "Open Sikarugir once and let it finish downloading its engine.";
+"onboarding.d3dmetal.step3"        = "Come back here — Fable continues on its own.";

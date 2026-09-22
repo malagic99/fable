@@ -437,6 +437,7 @@
 "winetricks.installed_count"  = "%@ instalados";
 "components.last_checked"      = "Comprobado por última vez %@";
 "components.d3dmetal.as_shipped" = "tal como viene con el entorno";
+"components.d3dmetal.stranded_overlay" = "Este renderizador es más nuevo de lo que el Wine de GPTK puede aprovechar, así que los juegos modernos no ganan nada aquí. Activa el emparejamiento con Sikarugir en Ajustes → Avanzado para usarlo de verdad.";
 "recipes.imported_count"      = "%@ importadas";
 "game.action.stop_named"      = "Detener %@";
 "game.action.launch_named"    = "Lanzar %@";
@@ -478,3 +479,10 @@
 /* Experimental: GPTK 4 D3DMetal paired with Sikarugir's Wine */
 "Experimental"                 = "Experimental";
 "Use GPTK 4's D3DMetal with Sikarugir" = "Usar el D3DMetal de GPTK 4 con Sikarugir";
+
+/* D3DMetal / Sikarugir first-run setup */
+"onboarding.d3dmetal.step1"        = "Descarga Sikarugir y arrástralo a tu carpeta Aplicaciones.";
+"onboarding.d3dmetal.step2"        = "Abre Sikarugir una vez y deja que termine de descargar su motor.";
+"onboarding.d3dmetal.step3"        = "Vuelve aquí — Fable continúa solo.";
+"Download Sikarugir"               = "Descargar Sikarugir";
+"Open Sikarugir"                   = "Abrir Sikarugir";

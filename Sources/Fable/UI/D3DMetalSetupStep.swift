@@ -26,12 +26,40 @@ struct D3DMetalSetupStep: View {
                     .font(.callout).foregroundStyle(.secondary)
                     .multilineTextAlignment(.center).padding(.horizontal, 44)
             }
+            if case .missing = status {
+                VStack(alignment: .leading, spacing: 10) {
+                    ForEach(Array(setupSteps.enumerated()), id: \.offset) { index, step in
+                        HStack(alignment: .firstTextBaseline, spacing: 10) {
+                            Text(verbatim: "\(index + 1)")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.white)
+                                .frame(width: 20, height: 20)
+                                .background(Circle().fill(Color.accentColor))
+                            Text(step).font(.callout)
+                        }
+                    }
+                }
+                .padding(.horizontal, 44)
+                .padding(.top, 4)
+            }
             if isWorking { ProgressView().controlSize(.small).padding(.top, 4) }
             if let errorText { Text(errorText).font(.caption).foregroundStyle(.red).padding(.horizontal, 40) }
             Spacer()
             footer.padding(24)
         }
-        .task { refresh() }
+        // Setup happens in another app, so the moment it finishes is invisible
+        // from here. Poll while this step is on screen: the user comes back
+        // from Sikarugir to a step that has already moved on, instead of
+        // staring at a stale message hunting for a re-check button.
+        .task {
+            refresh()
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(2))
+                guard !Task.isCancelled else { break }
+                if case .ready = status { break }
+                refresh()
+            }
+        }
     }
 
     // MARK: State-driven presentation
@@ -41,7 +69,8 @@ struct D3DMetalSetupStep: View {
         case .ready: "checkmark.seal.fill"
         case .updateAvailable: "arrow.up.circle.fill"
         case .notInstalled: "arrow.down.circle"
-        case .missing: "exclamationmark.triangle.fill"
+        case .incomplete: "hourglass"
+        case .missing: "arrow.down.circle.fill"
         }
     }
     private var tint: Color {
@@ -49,7 +78,8 @@ struct D3DMetalSetupStep: View {
         case .ready: .green
         case .updateAvailable: .blue
         case .notInstalled: .accentColor
-        case .missing: .orange
+        case .incomplete: .orange
+        case .missing: .accentColor
         }
     }
     private var headline: String {
@@ -60,9 +90,19 @@ struct D3DMetalSetupStep: View {
             "D3DMetal \(SikarugirManager.displayVersion(installed)) is set up — a newer \(SikarugirManager.displayVersion(available)) is available."
         case .notInstalled(let available):
             "Sikarugir \(SikarugirManager.displayVersion(available)) found. Set it up so Fable can render Steam and D3D12 games."
+        case .incomplete:
+            "Sikarugir is installed but hasn't downloaded its graphics engine yet — it does that the first time you open it. Open Sikarugir, wait for it to finish, and this step will continue on its own."
         case .missing:
-            "Fable uses Apple's D3DMetal (via the free Sikarugir) to render Steam and modern games. Install Sikarugir and open it once so it downloads its engine, then Re-check — or continue with just the built-in backends for older games."
+            "To run Steam and modern games, Fable needs a graphics engine that comes from Sikarugir — a separate free app. It's three steps, and Fable picks up the rest automatically. Older DirectX 9 games work without it."
         }
+    }
+
+    /// Spelled out for `.missing`, because the alternative is a repo page and a
+    /// stranger guessing which file to download. Keyed rather than inline:
+    /// `Text` doesn't localize a `String` variable, and instructions are the
+    /// last thing that should be English-only for the people who need them.
+    private var setupSteps: [String] {
+        (1...3).map { L10n.string("onboarding.d3dmetal.step\($0)") }
     }
 
     @ViewBuilder
@@ -82,11 +122,25 @@ struct D3DMetalSetupStep: View {
                 Button("Update") { setUp() }.disabled(isWorking)
                 Button("Continue") { onboardingState.advance() }
                     .buttonStyle(.borderedProminent).keyboardShortcut(.defaultAction)
-            case .missing:
-                Button("Re-check") { refresh() }
+            case .incomplete:
                 Button("Continue without it") { onboardingState.advance() }
-                Button("Get Sikarugir") { NSWorkspace.shared.open(URL(string: "https://github.com/Sikarugir-App/Sikarugir")!) }
-                    .buttonStyle(.borderedProminent).keyboardShortcut(.defaultAction)
+                if let app = SikarugirManager.appLocation {
+                    Button("Open Sikarugir") { NSWorkspace.shared.open(app) }
+                        .buttonStyle(.borderedProminent).keyboardShortcut(.defaultAction)
+                } else {
+                    Button("Re-check") { refresh() }
+                        .buttonStyle(.borderedProminent).keyboardShortcut(.defaultAction)
+                }
+            case .missing:
+                Button("Continue without it") { onboardingState.advance() }
+                // Straight to the latest release, where the download actually
+                // is — the repo's front page leaves a non-technical user
+                // guessing which of a dozen files they need.
+                Button("Download Sikarugir") {
+                    NSWorkspace.shared.open(
+                        URL(string: "https://github.com/Sikarugir-App/Sikarugir/releases/latest")!)
+                }
+                .buttonStyle(.borderedProminent).keyboardShortcut(.defaultAction)
             }
         }
     }

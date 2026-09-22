@@ -74,3 +74,85 @@ private extension URL {
         return dir
     }
 }
+
+@Suite("D3DMetal identity")
+struct D3DMetalIdentityTests {
+
+    private func write(_ contents: String) -> URL {
+        let url = FileManager.default.temporaryDirectory
+            .appending(path: "d3dmetal-\(UUID().uuidString)")
+        try? Data(contents.utf8).write(to: url)
+        return url
+    }
+
+    /// The version label on the enclosing directory says nothing about the
+    /// framework inside — Fable can overlay a newer renderer onto an installed
+    /// toolkit, so generation has to come from the binary itself.
+    @Test
+    func generationComesFromExportsNotTheLabel() {
+        let modern = write("...__ZN15GFXTOSInterface13IUnknownIfaceE...")
+        let older = write("...__ZN15GFXTOSInterface7AdapterE...")
+        defer {
+            try? FileManager.default.removeItem(at: modern)
+            try? FileManager.default.removeItem(at: older)
+        }
+        #expect(D3DMetalIdentity.generation(of: modern) == .gptk4OrNewer)
+        #expect(D3DMetalIdentity.generation(of: older) == .legacy)
+    }
+
+    /// Absent is distinct from legacy: a caller deciding whether to offer a
+    /// pairing must not treat "no framework" as "an old framework".
+    @Test
+    func missingBinaryReportsNoGeneration() {
+        #expect(D3DMetalIdentity.generation(of: URL(filePath: "/nope/D3DMetal")) == nil)
+    }
+}
+
+@Suite("Sikarugir setup status")
+struct SikarugirSetupStatusTests {
+
+    /// The state that used to be invisible: Sikarugir on the Mac but its
+    /// engine not downloaded yet, because it fetches that on first launch.
+    /// This previously read as `.missing`, sending someone off to re-download
+    /// an app they already had instead of telling them to open it.
+    @Test
+    func installedButNeverOpenedIsItsOwnState() {
+        let status = SikarugirManager.status(
+            discovered: false, available: nil, installed: nil, sikarugirPresent: true)
+        #expect(status == .incomplete)
+    }
+
+    @Test
+    func nothingOnTheMacIsStillMissing() {
+        let status = SikarugirManager.status(
+            discovered: false, available: nil, installed: nil, sikarugirPresent: false)
+        #expect(status == .missing)
+    }
+
+    @Test
+    func discoveredButNotSetUpOffersSetup() {
+        let status = SikarugirManager.status(
+            discovered: true, available: "WS12WineSikarugir10.0_4", installed: nil,
+            sikarugirPresent: true)
+        #expect(status == .notInstalled(available: "WS12WineSikarugir10.0_4"))
+    }
+
+    @Test
+    func matchingVersionsAreReady() {
+        let v = "WS12WineSikarugir10.0_4"
+        #expect(SikarugirManager.status(
+            discovered: true, available: v, installed: v, sikarugirPresent: true)
+            == .ready(version: v))
+    }
+
+    /// Every setup instruction must exist in all three languages — these are
+    /// the strings a non-technical user depends on most.
+    @Test
+    func setupInstructionsAreLocalized() {
+        for step in 1...3 {
+            let text = L10n.string("onboarding.d3dmetal.step\(step)")
+            #expect(text != "onboarding.d3dmetal.step\(step)", "step \(step) has no string")
+            #expect(!text.isEmpty)
+        }
+    }
+}
