@@ -319,9 +319,55 @@ private struct AdvancedSettingsTab: View {
     @EnvironmentObject private var shaderCacheStore: ShaderCacheStore
     @EnvironmentObject private var onboardingState: OnboardingState
     @EnvironmentObject private var toastCenter: ToastCenter
+    @EnvironmentObject private var settingsManager: SettingsManager
+    @EnvironmentObject private var sikarugirManager: SikarugirManager
+
+    @State private var isSwappingD3DMetal = false
+
+    /// Only offer the pairing when a GPTK 4 framework is actually on the Mac —
+    /// GPTK 3's is too old, and the toggle would just throw.
+    private var gptk4Available: Bool { sikarugirManager.gptk4Framework() != nil }
+
+    private func applyD3DMetalSource(_ useGPTK4: Bool) {
+        let source: SikarugirManager.D3DMetalSource = useGPTK4 ? .gptk4 : .sikarugir
+        sikarugirManager.preferredD3DMetalSource = source
+        isSwappingD3DMetal = true
+        Task {
+            defer { isSwappingD3DMetal = false }
+            do {
+                try await sikarugirManager.setD3DMetalSource(source)
+                toastCenter.success(useGPTK4
+                    ? "Sikarugir now uses GPTK 4's D3DMetal. Relaunch any running game."
+                    : "Sikarugir restored to its own D3DMetal.")
+            } catch {
+                // Put the switch back where it was — the swap didn't happen.
+                settingsManager.settings.sikarugirUsesGPTK4D3DMetal = !useGPTK4
+                sikarugirManager.preferredD3DMetalSource = useGPTK4 ? .sikarugir : .gptk4
+                toastCenter.error(error.localizedDescription)
+            }
+        }
+    }
 
     var body: some View {
         Form {
+            Section {
+                Toggle("Use GPTK 4's D3DMetal with Sikarugir",
+                       isOn: Binding(
+                        get: { settingsManager.settings.sikarugirUsesGPTK4D3DMetal },
+                        set: { newValue in
+                            settingsManager.settings.sikarugirUsesGPTK4D3DMetal = newValue
+                            applyD3DMetalSource(newValue)
+                        }))
+                .disabled(!gptk4Available || isSwappingD3DMetal)
+            } header: {
+                Text("Experimental")
+            } footer: {
+                Text(gptk4Available
+                     ? "Apple's Game Porting Toolkit 4 ships a much newer D3DMetal than Sikarugir does, but ties it to a Wine too old for modern games. This pairs GPTK 4's renderer with Sikarugir's modern Wine — a combination neither project ships, and one that isn't tested the way the stock pairing is. If a game starts misbehaving, turn this off: Sikarugir's own renderer is kept and restored."
+                     : "Needs Game Porting Toolkit 4 installed. GPTK 3's renderer is too old to pair with Sikarugir's Wine, so this stays off.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
             Section {
                 LabeledContent("Saved Shaders",
                                value: shaderCacheStore.localBytes > 0 ? BottleDiskUsage.formatted(shaderCacheStore.localBytes) : "—")

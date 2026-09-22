@@ -68,6 +68,11 @@ struct FableApp: App {
         WindowGroup {
             MainWindow()
                 .onAppear {
+                    // Carry the experimental D3DMetal choice into the manager
+                    // so a Sikarugir update re-applies it instead of silently
+                    // reverting to the stock framework.
+                    sikarugirManager.preferredD3DMetalSource =
+                        settingsManager.settings.sikarugirUsesGPTK4D3DMetal ? .gptk4 : .sikarugir
                     // Wire the launcher's collaborators once — every Play
                     // control then runs the same launchSmart/stopSmart flow.
                     gameLauncher.configure(.init(
