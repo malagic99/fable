@@ -2,6 +2,31 @@
 
 ## Unreleased
 
+**Experimental: pair Sikarugir's Wine with Game Porting Toolkit 4's D3DMetal.**
+
+- **Settings → Advanced → Experimental: "Use GPTK 4's D3DMetal with
+  Sikarugir".** Apple's GPTK 4 ships a far newer D3DMetal (Jul 2026, 7.6 MB)
+  than Sikarugir's bundled one (Nov 2025, 5.3 MB), but binds it to wine-7.7,
+  whose SEH can't unwind modern MSVC C++ exceptions — so GPTK can't use its own
+  renderer for modern titles. Sikarugir has the opposite halves: modern Wine,
+  older renderer. This pairs the good halves, a combination neither project
+  ships. Verified on S.T.A.L.K.E.R. 2: D3D12 comes up and the game reaches
+  level load with no `LogRHI` errors.
+- **Off by default, and honestly experimental.** The exported `GFXT` ABI is a
+  superset so the dispatch links, but matching symbol *names* is not matching
+  struct layouts — a mismatch there would surface as corruption or a late
+  crash, not a clean failure. Only lightly exercised so far.
+- **Reversible, and it survives updates.** Sikarugir's own framework is stashed
+  before the first swap and restored when the toggle goes off. The choice is
+  re-applied after a Sikarugir update, which would otherwise overwrite the swap
+  and silently change behaviour.
+- **The active renderer is now recorded on disk** (`.d3dmetal-source`). This
+  drift was already real and invisible: the installed GPTK component is a
+  directory labelled `3.0-3` that has carried GPTK 4's D3DMetal on wine-7.7
+  since a hand-injection in June, while Fable reported it as 3.0-3. Detection
+  keys on a symbol GPTK 4 adds rather than on the directory name, because that
+  name describes the Wine build and can't be trusted.
+
 **The Visual C++ runtime can actually install now — it never could.**
 
 - **Fixed: Fable never installed the Visual C++ runtime, on any bottle.**

@@ -5,6 +5,7 @@ enum SikarugirError: LocalizedError {
     case engineTarballMissing(String)
     case rendererMissing(String)
     case binaryNotFound(String)
+    case gptk4Unavailable
 
     var errorDescription: String? {
         switch self {
@@ -16,6 +17,8 @@ enum SikarugirError: LocalizedError {
             "Sikarugir's D3DMetal renderer wasn't found under \(path)."
         case .binaryNotFound(let searched):
             "Sikarugir engine extracted but no wine binary was found under \(searched)."
+        case .gptk4Unavailable:
+            "No Game Porting Toolkit 4 D3DMetal found. Install GPTK 4 (Apple's dmg) through Components first — GPTK 3's framework is too old to pair with Sikarugir's Wine."
         }
     }
 }
@@ -48,6 +51,11 @@ final class SikarugirManager: ObservableObject {
     }
 
     @Published private(set) var isDiscovered = false
+
+    /// What the user asked for, mirrored from settings so an update can
+    /// re-apply the pairing without the manager reaching into the settings
+    /// store. Defaults to the tested pairing.
+    var preferredD3DMetalSource: D3DMetalSource = .sikarugir
 
     init(componentManager: ComponentManager) {
         self.componentManager = componentManager
@@ -214,6 +222,11 @@ final class SikarugirManager: ObservableObject {
             .write(to: installRoot.appending(path: ".d3dmetal-version"))
 
         refresh()
+        // A fresh extract lays down Sikarugir's own framework, so an opted-in
+        // GPTK 4 pairing would be silently reverted by an update. Re-apply it.
+        if preferredD3DMetalSource == .gptk4, gptk4Framework() != nil {
+            try? await setD3DMetalSource(.gptk4)
+        }
     }
 
     /// Re-stages Sikarugir's support dylibs into an already-installed
@@ -317,6 +330,120 @@ final class SikarugirManager: ObservableObject {
                 URL(filePath: "/usr/bin/codesign"),
                 arguments: ["--force", "--sign", "-", so.path])
         }
+    }
+
+    // MARK: D3DMetal source (experimental GPTK 4 pairing)
+
+    /// Which D3DMetal framework the installed engine is currently running.
+    enum D3DMetalSource: String, Sendable {
+        /// The framework Sikarugir ships — the tested pairing.
+        case sikarugir
+        /// Apple's newer framework, lifted from an installed GPTK 4.
+        case gptk4
+    }
+
+    /// Records the active source beside the engine, so the choice survives
+    /// relaunch and a swapped engine can't silently masquerade as stock.
+    nonisolated static let sourceMarkerName = ".d3dmetal-source"
+
+    /// GPTK 4's framework inside an installed GPTK component, if present.
+    ///
+    /// GPTK 3.x and 4.x install to the same component layout, so presence
+    /// alone proves nothing — only a framework that exports GPTK 4's
+    /// additional `IUnknownIface` symbol is new enough to pair with modern
+    /// Wine. Checked by symbol rather than by version string because the
+    /// component directory is named for the Wine build, not the framework, and
+    /// on this machine a directory labelled `3.0-3` already held GPTK 4's
+    /// framework after a hand-injection.
+    func gptk4Framework() -> URL? {
+        guard let root = componentManager.installedDirectory(for: GPTKManager.componentID) else {
+            return nil
+        }
+        let candidates = [
+            "Game Porting Toolkit.app/Contents/Resources/wine/lib/external/D3DMetal.framework",
+            "lib/external/D3DMetal.framework",
+        ]
+        for relative in candidates {
+            let framework = root.appending(path: relative, directoryHint: .isDirectory)
+            let binary = framework.appending(path: "Versions/A/D3DMetal")
+            guard FileManager.default.fileExists(atPath: binary.path) else { continue }
+            if Self.exportsGPTK4Marker(binary) { return framework }
+        }
+        return nil
+    }
+
+    /// True when the framework exports `GFXTOSInterface::IUnknownIface`, which
+    /// GPTK 4 adds and Sikarugir's bundled framework does not have.
+    ///
+    /// Searches the Mach-O's bytes for the mangled name rather than shelling
+    /// out to `nm`: exported symbol names live in the string table, so the
+    /// substring is present exactly when the symbol is, and this stays
+    /// synchronous and dependency-free. Memory-mapped — the framework binary
+    /// is ~7 MB.
+    nonisolated static func exportsGPTK4Marker(_ binary: URL) -> Bool {
+        guard let data = try? Data(contentsOf: binary, options: .mappedIfSafe) else { return false }
+        return data.range(of: Data("IUnknownIface".utf8)) != nil
+    }
+
+    /// The source the installed engine is running.
+    func activeD3DMetalSource() -> D3DMetalSource {
+        guard let root = componentManager.installedDirectory(for: Self.componentID) else {
+            return .sikarugir
+        }
+        let marker = root.appending(path: Self.sourceMarkerName)
+        let raw = (try? String(contentsOf: marker, encoding: .utf8))?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return raw.flatMap(D3DMetalSource.init(rawValue:)) ?? .sikarugir
+    }
+
+    /// Points the installed engine at `source`, swapping the framework if the
+    /// engine isn't already on it. Idempotent, and safe to call on every
+    /// launch — that's how the choice survives a Sikarugir update, which would
+    /// otherwise overwrite the swap with the stock framework and silently
+    /// change behaviour.
+    func setD3DMetalSource(_ source: D3DMetalSource) async throws {
+        guard let root = componentManager.installedDirectory(for: Self.componentID) else {
+            throw SikarugirError.notInstalled
+        }
+        let external = root.appending(
+            path: "wswine.bundle/lib/external", directoryHint: .isDirectory)
+        let installed = external.appending(path: "D3DMetal.framework", directoryHint: .isDirectory)
+        // Stock framework, stashed before the first swap so .sikarugir can be
+        // restored without reinstalling the whole component.
+        let backup = root.appending(path: ".d3dmetal-stock", directoryHint: .isDirectory)
+        let fm = FileManager.default
+
+        let replacement: URL
+        switch source {
+        case .gptk4:
+            guard let framework = gptk4Framework() else { throw SikarugirError.gptk4Unavailable }
+            if !fm.fileExists(atPath: backup.path) {
+                try fm.createDirectory(at: backup, withIntermediateDirectories: true)
+                try fm.copyItem(
+                    at: installed, to: backup.appending(path: "D3DMetal.framework"))
+            }
+            replacement = framework
+        case .sikarugir:
+            let stashed = backup.appending(path: "D3DMetal.framework", directoryHint: .isDirectory)
+            // Nothing stashed means the engine was never swapped — already stock.
+            guard fm.fileExists(atPath: stashed.path) else {
+                try? Data(source.rawValue.utf8).write(to: root.appending(path: Self.sourceMarkerName))
+                return
+            }
+            replacement = stashed
+        }
+
+        if fm.fileExists(atPath: installed.path) { try fm.removeItem(at: installed) }
+        try fm.copyItem(at: replacement, to: installed)
+        // Rosetta refuses to dlopen a quarantined dylib, and it does it by
+        // killing the process rather than returning an error.
+        _ = try? await ProcessRunner.run(
+            URL(filePath: "/usr/bin/xattr"),
+            arguments: ["-dr", "com.apple.quarantine", installed.path])
+        _ = try? await ProcessRunner.run(
+            URL(filePath: "/usr/bin/codesign"),
+            arguments: ["--force", "--sign", "-", installed.path])
+        try? Data(source.rawValue.utf8).write(to: root.appending(path: Self.sourceMarkerName))
     }
 
     // MARK: Binaries

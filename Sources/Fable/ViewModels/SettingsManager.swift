@@ -75,6 +75,24 @@ struct AppSettings: Codable, Equatable, Sendable {
     /// launch via AppleLanguages).
     var language: AppLanguage = .system
 
+    /// EXPERIMENTAL: run the Sikarugir backend against the D3DMetal framework
+    /// from an installed Game Porting Toolkit 4 instead of the one Sikarugir
+    /// ships.
+    ///
+    /// Apple's GPTK 4 carries a much newer D3DMetal than Sikarugir's bundled
+    /// copy, but binds it to wine-7.7, whose SEH can't unwind modern MSVC C++
+    /// exceptions — so GPTK can't use its own framework for modern titles.
+    /// Sikarugir has the opposite halves: modern Wine, older framework. Pairing
+    /// Sikarugir's Wine with GPTK 4's framework is the matched set neither
+    /// ships, and the exported `GFXT` ABI is a superset, so the dispatch links.
+    ///
+    /// Off by default and honestly experimental: matching symbol *names* is not
+    /// matching struct layouts, and a mismatch there would surface as
+    /// corruption or a late crash rather than a clean failure. Reversible —
+    /// turning it off restores Sikarugir's own framework from a backup taken
+    /// before the first swap.
+    var sikarugirUsesGPTK4D3DMetal: Bool = false
+
     init() {}
 
     init(from decoder: Decoder) throws {
@@ -101,6 +119,10 @@ struct AppSettings: Codable, Equatable, Sendable {
         customBackgroundPath = try container.decodeIfPresent(String.self, forKey: .customBackgroundPath)
         libraryGrouping = try container.decodeIfPresent(LibraryGrouping.self, forKey: .libraryGrouping) ?? .none
         language = try container.decodeIfPresent(AppLanguage.self, forKey: .language) ?? .system
+        // Absent in configs written before the pairing existed — decode to the
+        // tested pairing rather than silently enabling an experiment.
+        sikarugirUsesGPTK4D3DMetal = try container
+            .decodeIfPresent(Bool.self, forKey: .sikarugirUsesGPTK4D3DMetal) ?? false
     }
 }
 
