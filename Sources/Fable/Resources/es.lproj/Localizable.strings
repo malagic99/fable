@@ -481,8 +481,10 @@
 "Use GPTK 4's D3DMetal with Sikarugir" = "Usar el D3DMetal de GPTK 4 con Sikarugir";
 
 /* D3DMetal / Sikarugir first-run setup */
-"onboarding.d3dmetal.step1"        = "Descarga Sikarugir y arrástralo a tu carpeta Aplicaciones.";
-"onboarding.d3dmetal.step2"        = "Abre Sikarugir una vez y deja que termine de descargar su motor.";
-"onboarding.d3dmetal.step3"        = "Vuelve aquí — Fable continúa solo.";
 "Download Sikarugir"               = "Descargar Sikarugir";
 "Open Sikarugir"                   = "Abrir Sikarugir";
+
+/* Sikarugir install (Homebrew cask) */
+"Install Sikarugir"            = "Instalar Sikarugir";
+"Get Homebrew"                 = "Obtener Homebrew";
+"Fable will run:"              = "Fable ejecutará:";

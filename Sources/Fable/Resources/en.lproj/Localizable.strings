@@ -162,6 +162,3 @@
 "nudge.memory_pressure"       = "Memory is running tight — the game shares one pool with the GPU. Close other apps, or lower texture quality, before it crashes. Enable Memory Diet on the game to cap it next launch.";
 
 /* D3DMetal / Sikarugir first-run setup */
-"onboarding.d3dmetal.step1"        = "Download Sikarugir and drag it to your Applications folder.";
-"onboarding.d3dmetal.step2"        = "Open Sikarugir once and let it finish downloading its engine.";
-"onboarding.d3dmetal.step3"        = "Come back here — Fable continues on its own.";

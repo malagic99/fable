@@ -1,5 +1,29 @@
 # Changelog
 
+## Unreleased
+
+**Fable installs Sikarugir for you, and the site stops needing a hand-edit.**
+
+- **The Sikarugir setup step pointed at a page with nothing on it.** v0.23.5
+  sent people to the project's Releases tab — Sikarugir publishes no releases
+  and no downloadable app. It exists only as a Homebrew cask behind a
+  `brew trust` for its tap, so the real instructions were three terminal
+  commands, which is a wall for exactly the person that step is for.
+- **Fable now runs the install.** One button, with the commands shown on screen
+  first and each one reported as it runs — this installs third-party software
+  system-wide, and an opaque spinner isn't a fair way to do that. When the cask
+  finishes, Fable opens Sikarugir itself, since fetching the engine on first
+  launch is part of installing it rather than a separate chore.
+- **Without Homebrew there's nothing to install from**, so the step says so and
+  links to brew.sh instead of offering an action that cannot work.
+- **Fixed: the installed app is named "Sikarugir Creator.app".** The check added
+  in v0.23.5 looked only for `Sikarugir.app`, so it found nothing on a Mac that
+  had Sikarugir installed — including the one it was written on.
+- **The site's version no longer has to be remembered.** It reads the latest
+  release at load time, but the version baked into the markup is what shows
+  before that answers and when it never does. `release.sh prepare` now sets it,
+  after it went stale twice.
+
 ## v0.23.5 — 2026-09-22
 
 **Make the D3DMetal story legible: a guided Sikarugir setup, and a warning when

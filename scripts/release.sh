@@ -45,6 +45,12 @@ prepare)
     /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $((BUILD + 1))" "$PLIST"
     plutil -lint "$PLIST" >/dev/null
     echo "bumped $CURRENT (build $BUILD) -> $VERSION (build $((BUILD + 1)))"
+    # The site asks GitHub for the latest release at load time, but the version
+    # is also baked into the markup for before that answers — and for when it
+    # never does (offline, or past GitHub's unauthenticated rate limit). That
+    # fallback is only worth having if it isn't stale, and it went stale twice
+    # by being left to memory.
+    python3 scripts/set-website-version.py "$VERSION"
     swift test 2>&1 | tail -1
     ;;
 publish)
