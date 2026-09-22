@@ -95,6 +95,15 @@ private struct GPTKOverlayRow: View {
                 Text(gptkManager.d3dMetalVersionNote ?? L10n.string("components.d3dmetal.as_shipped"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                // The overlaid renderer and the Wine carrying it were already
+                // both on screen; this is the consequence of the two together.
+                if gptkManager.hasStrandedModernOverlay {
+                    Label(L10n.string("components.d3dmetal.stranded_overlay"),
+                          systemImage: "exclamationmark.triangle")
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                        .padding(.top, 2)
+                }
             }
             Spacer()
             if isImporting {

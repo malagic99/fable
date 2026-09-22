@@ -56,6 +56,30 @@ final class GPTKManager: ObservableObject {
             .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
+    /// True when the overlaid D3DMetal is newer than this backend's Wine can
+    /// make use of.
+    ///
+    /// GPTK's Wine is 7.7 regardless of which toolkit version the component is
+    /// named for, and wine-7.7's SEH can't unwind the C++ exceptions modern
+    /// MSVC emits — so overlaying GPTK 4's renderer here buys nothing for the
+    /// modern titles it was meant to help, and the stranded renderer is easy to
+    /// mistake for an upgrade. Both facts were already on screen separately;
+    /// this is the pairing between them.
+    ///
+    /// That renderer is not wasted: the Sikarugir backend can borrow it, which
+    /// is the one combination where a modern D3DMetal meets a modern Wine.
+    var hasStrandedModernOverlay: Bool {
+        guard let root = componentManager.installedDirectory(for: Self.componentID),
+              let lib = try? libDirectory()
+        else { return false }
+        // Only an explicit overlay can outpace the Wine; a stock install is by
+        // definition the pairing Apple shipped.
+        let marker = root.appending(path: ".d3dmetal-version")
+        guard FileManager.default.fileExists(atPath: marker.path) else { return false }
+        let framework = lib.appending(path: "external/D3DMetal.framework", directoryHint: .isDirectory)
+        return D3DMetalIdentity.generation(ofFramework: framework) == .gptk4OrNewer
+    }
+
     func ensureInstalled() async throws {
         guard let gptk = catalog.components[Self.componentID] else { throw GPTKError.notInCatalog }
         try await componentManager.install(id: Self.componentID, component: gptk)

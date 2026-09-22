@@ -10,7 +10,7 @@ enum SikarugirError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .notInstalled:
-            "Sikarugir isn't installed. Get it from github.com/Sikarugir-App/Sikarugir, then this backend works without further setup."
+            "This backend needs Sikarugir, a separate free app. Install it, open it once so it downloads its graphics engine, and Fable takes it from there — Settings → About → rerun the setup wizard walks you through it."
         case .engineTarballMissing(let path):
             "Sikarugir is installed but its Wine engine tarball wasn't found under \(path)."
         case .rendererMissing(let path):
@@ -73,9 +73,34 @@ final class SikarugirManager: ObservableObject {
     /// D3DMetal setup state, for the onboarding step.
     enum D3DMetalStatus: Equatable {
         case missing                                  // no Sikarugir on the Mac
+        /// Sikarugir is installed but hasn't downloaded its engine yet — it
+        /// fetches that on first launch, so this is the state of someone who
+        /// dragged the app across and never opened it. Worth naming: it used
+        /// to read as `.missing`, which sent people back to re-download an app
+        /// they already had.
+        case incomplete
         case notInstalled(available: String)          // found, not yet extracted into Fable
         case ready(version: String)                   // installed and current
         case updateAvailable(installed: String, available: String)
+    }
+
+    /// Where the Sikarugir app itself lives, when it's somewhere we can find
+    /// it. Only used to offer to open it — the support directory, not the app,
+    /// is what Fable actually reads, and the two don't have to sit together.
+    nonisolated static var appLocation: URL? {
+        let candidates = [
+            URL(filePath: "/Applications/Sikarugir.app"),
+            FileManager.default.homeDirectoryForCurrentUser
+                .appending(path: "Applications/Sikarugir.app"),
+        ]
+        return candidates.first { FileManager.default.fileExists(atPath: $0.path) }
+    }
+
+    /// True when Sikarugir has left anything behind — the app, or the support
+    /// directory it creates on first launch.
+    nonisolated static var isPresentOnMac: Bool {
+        appLocation != nil
+            || FileManager.default.fileExists(atPath: supportDirectory.path)
     }
 
     /// The D3DMetal version Sikarugir has on disk (from its engine tarball name).
@@ -92,8 +117,16 @@ final class SikarugirManager: ObservableObject {
 
     /// Resolves onboarding status from what's discovered vs. installed. Pure, so
     /// the decision is unit-tested independently of the filesystem.
-    static func status(discovered: Bool, available: String?, installed: String?) -> D3DMetalStatus {
-        guard discovered, let available else { return .missing }
+    nonisolated static func status(
+        discovered: Bool, available: String?, installed: String?,
+        sikarugirPresent: Bool = false
+    ) -> D3DMetalStatus {
+        guard discovered, let available else {
+            // Sikarugir on disk but nothing to extract means it was installed
+            // and never opened — a different problem, and a much smaller one,
+            // than not having it at all.
+            return sikarugirPresent ? .incomplete : .missing
+        }
         guard let installed else { return .notInstalled(available: available) }
         return installed == available
             ? .ready(version: installed)
@@ -101,7 +134,11 @@ final class SikarugirManager: ObservableObject {
     }
 
     func d3dMetalStatus() -> D3DMetalStatus {
-        Self.status(discovered: isDiscovered, available: availableVersion(), installed: installedVersion())
+        Self.status(
+            discovered: isDiscovered,
+            available: availableVersion(),
+            installed: installedVersion(),
+            sikarugirPresent: Self.isPresentOnMac)
     }
 
     /// Human-friendly version label, e.g. "WS12WineSikarugir10.0_4" → "10.0_4".
@@ -372,17 +409,10 @@ final class SikarugirManager: ObservableObject {
         return nil
     }
 
-    /// True when the framework exports `GFXTOSInterface::IUnknownIface`, which
-    /// GPTK 4 adds and Sikarugir's bundled framework does not have.
-    ///
-    /// Searches the Mach-O's bytes for the mangled name rather than shelling
-    /// out to `nm`: exported symbol names live in the string table, so the
-    /// substring is present exactly when the symbol is, and this stays
-    /// synchronous and dependency-free. Memory-mapped — the framework binary
-    /// is ~7 MB.
+    /// True when the framework is GPTK 4 or newer — the only generation whose
+    /// dispatch surface modern Wine can link against. See ``D3DMetalIdentity``.
     nonisolated static func exportsGPTK4Marker(_ binary: URL) -> Bool {
-        guard let data = try? Data(contentsOf: binary, options: .mappedIfSafe) else { return false }
-        return data.range(of: Data("IUnknownIface".utf8)) != nil
+        D3DMetalIdentity.generation(of: binary) == .gptk4OrNewer
     }
 
     /// The source the installed engine is running.
