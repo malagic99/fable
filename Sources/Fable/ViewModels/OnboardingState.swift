@@ -57,9 +57,55 @@ final class OnboardingState: ObservableObject {
 
     @Published var currentStep: Step = .welcome
 
+    /// Marker written beside the app's own data once the wizard finishes.
+    ///
+    /// The authority for "has this install been set up" — NOT the
+    /// UserDefaults flag. Preferences live in ~/Library/Preferences and
+    /// survive deleting both Fable.app and Application Support, so a
+    /// wiped-and-reinstalled Mac would read `hasCompleted = true` and
+    /// silently skip first-run setup. Keeping the marker with the data it
+    /// describes makes "delete Application Support" a real reset, which is
+    /// what a cold-start test (and a confused user) expects.
+    nonisolated static var completionMarker: URL {
+        AppPaths.applicationSupport.appending(path: ".onboarded", directoryHint: .notDirectory)
+    }
+
+    /// Mirrors the marker so SwiftUI observes completion changes; the file
+    /// stays the durable source of truth across launches.
+    @Published private var completed = false
+
+    init() {
+        migrateCompletionFlagIfNeeded()
+        completed = FileManager.default.fileExists(atPath: Self.completionMarker.path)
+    }
+
+    /// Pre-marker installs recorded completion only in UserDefaults. If that
+    /// flag is set and the app clearly has prior state, adopt it instead of
+    /// re-running the wizard on an existing setup.
+    private func migrateCompletionFlagIfNeeded() {
+        let fm = FileManager.default
+        guard !fm.fileExists(atPath: Self.completionMarker.path) else { return }
+        guard hasCompletedStorage, fm.fileExists(atPath: AppPaths.bottles.path) else { return }
+        Self.writeCompletionMarker()
+    }
+
+    nonisolated static func writeCompletionMarker() {
+        try? FileManager.default.createDirectory(
+            at: AppPaths.applicationSupport, withIntermediateDirectories: true)
+        try? Data("Fable onboarding completed".utf8).write(to: completionMarker)
+    }
+
     var hasCompleted: Bool {
-        get { hasCompletedStorage }
-        set { hasCompletedStorage = newValue }
+        get { completed }
+        set {
+            completed = newValue
+            hasCompletedStorage = newValue
+            if newValue {
+                Self.writeCompletionMarker()
+            } else {
+                try? FileManager.default.removeItem(at: Self.completionMarker)
+            }
+        }
     }
 
     /// Nil when the user hasn't picked yet.

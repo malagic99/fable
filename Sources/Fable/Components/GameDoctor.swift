@@ -14,6 +14,10 @@ enum GameDoctor {
         let id: String
         /// Lowercased substrings — any one present in the log triggers the rule.
         let needles: [String]
+        /// Lowercased substrings that VETO the rule even when a needle hit.
+        /// Evidence the diagnosis is wrong — e.g. a Vulkan banner means
+        /// nothing if the log also shows D3DMetal came up fine.
+        var vetoes: [String] = []
         let severity: CompatibilityFinding.Severity
         let title: String
         let detail: String
@@ -181,18 +185,22 @@ enum GameDoctor {
              title: "Engine couldn't initialize graphics",
              detail: "A Unity/engine title couldn't create its graphics device on this backend. Some engines white-screen on D3DMetal (audio and input work, nothing renders) or refuse to start on DXMT.",
              suggestion: "Try a different backend for this game — for Unity titles, DXMT or built-in Wine often render where D3DMetal white-screens, and vice-versa. If every backend white-screens, it's a D3DMetal present bug (stream it or use CrossOver)."),
-        Rule(id: “physx”,
-             needles: [“physxloader”, “physx3”, “apex_”],
+        Rule(id: "physx",
+             needles: ["physxloader", "physx3", "apex_"],
              severity: .caveat,
-             title: “NVIDIA PhysX runtime missing”,
-             detail: “The game links PhysX and its redistributable was never installed (Steam usually runs it via _CommonRedist).”,
-             suggestion: “Run “Install Dependencies” on the game, or the `physx` winetricks verb.”),
-        Rule(id: “vulkan-no-d3dmetal”,
-             needles: [“[mvk-info]”, “moltenvk version”],
+             title: "NVIDIA PhysX runtime missing",
+             detail: "The game links PhysX and its redistributable was never installed (Steam usually runs it via _CommonRedist).",
+             suggestion: "Run “Install Dependencies” on the game, or the `physx` winetricks verb."),
+        // Matches the engine's own verdict, NOT the presence of a MoltenVK
+        // banner: Wine probes the Vulkan ICD on every launch, so `[mvk-info]`
+        // appears even on a healthy Sikarugir/D3DMetal run. Keying on the
+        // banner told D3DMetal users to switch to D3DMetal.
+        Rule(id: "d3d12-rhi-unsupported",
+             needles: ["dynamic rhi module `d3d12rhi`", "failed to choose a valid graphics adapter"],
              severity: .caveat,
-             title: “Running through Vulkan/MoltenVK — not D3DMetal”,
-             detail: “The log shows MoltenVK (Vulkan) initialization, meaning this game is on the DXVK path. DirectX 12 games can't render here — vkd3d-proton has no production macOS support. If the game exited without any visible output, this is almost certainly the wrong backend.”,
-             suggestion: “Switch to the Sikarugir backend (free D3D12 → Metal). DXVK covers D3D9–11 only; D3D12 titles need D3DMetal.”),
+             title: "D3D12 renderer found no graphics adapter",
+             detail: "The engine initialized but couldn't bring up a DirectX 12 device, so it exits before drawing a frame. On the Vulkan/DXVK path that's expected — vkd3d-proton has no production macOS support. On Sikarugir it usually means the D3DMetal dispatch couldn't load its framework.",
+             suggestion: "If this bottle isn't on Sikarugir, switch to it — DXVK covers D3D9–11 only. If it already is, reinstall the Sikarugir component so the renderer's dispatch libraries are re-staged."),
     ]
 
     // MARK: Cross-backend crash correlation (the First Light rule)
@@ -244,7 +252,10 @@ enum GameDoctor {
     static func diagnose(log: String) -> [CompatibilityFinding] {
         let haystack = log.lowercased()
         return rules
-            .filter { rule in rule.needles.contains { haystack.contains($0) } }
+            .filter { rule in
+                rule.needles.contains { haystack.contains($0) }
+                    && !rule.vetoes.contains { haystack.contains($0) }
+            }
             .map { rule in
                 var detail = rule.detail
                 // Name the culprit instead of telling the user to go read
@@ -262,9 +273,23 @@ enum GameDoctor {
             }
     }
 
-    /// Reads a log file (best-effort) and diagnoses it.
+    /// Most Fable logs are tens of KB, but a bottle left on a verbose
+    /// WINEDEBUG channel can produce hundreds of MB. Diagnosing only the tail
+    /// keeps a runaway log from being read whole and lowercased into a second
+    /// copy of itself, and the tells we match on are the failures at the end.
+    static let maxDiagnosableBytes = 4 * 1024 * 1024
+
+    /// Reads a log file (best-effort, tail-limited) and diagnoses it.
     static func diagnose(logFile url: URL) -> [CompatibilityFinding] {
-        guard let text = try? String(contentsOf: url, encoding: .utf8) else { return [] }
-        return diagnose(log: text)
+        guard let handle = try? FileHandle(forReadingFrom: url) else { return [] }
+        defer { try? handle.close() }
+        let size = (try? handle.seekToEnd()).map(Int.init) ?? 0
+        if size > maxDiagnosableBytes {
+            try? handle.seek(toOffset: UInt64(size - maxDiagnosableBytes))
+        } else {
+            try? handle.seek(toOffset: 0)
+        }
+        guard let data = try? handle.readToEnd() else { return [] }
+        return diagnose(log: String(decoding: data, as: UTF8.self))
     }
 }
