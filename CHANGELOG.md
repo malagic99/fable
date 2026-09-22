@@ -1,8 +1,44 @@
 # Changelog
 
+## v0.23.5 — 2026-09-22
+
+**Make the D3DMetal story legible: a guided Sikarugir setup, and a warning when
+a renderer is stranded on Wine that can't use it.**
+
+- **First-run Sikarugir setup no longer hands you a GitHub repo.** The old step
+  offered a "Get Sikarugir" button pointing at the project's front page,
+  leaving a non-technical user to work out which release, which file, and what
+  to do with it. It now shows three numbered steps, links straight to the
+  **latest release** where the download actually is, and re-checks itself every
+  couple of seconds — so coming back from Sikarugir lands on a step that has
+  already moved on, instead of a stale screen with a "Re-check" button to find.
+- **New state: installed but never opened.** Sikarugir downloads its engine on
+  first launch, so an app that's been dragged across but not opened has nothing
+  for Fable to read. That looked identical to "not installed at all" and sent
+  people off to re-download an app they already had. It's now its own state,
+  says so, and offers to open Sikarugir for you.
+- **Setup instructions are translated.** They were about to ship as English-only
+  — `Text` doesn't localize a `String` variable — which would have hit exactly
+  the users who need the instructions most.
+- **Components now warns when GPTK's D3DMetal is stranded.** Overlaying GPTK 4's
+  renderer onto the GPTK backend gains modern games nothing, because that
+  backend's Wine is 7.7 and can't unwind modern MSVC C++ exceptions. Both facts
+  were already on screen separately and never connected; the warning joins them
+  and points at the Sikarugir pairing, where that renderer does work.
+- Framework generation is read from the binary's exported symbols rather than
+  from a version label, since a component directory named for its Wine build
+  routinely holds a much newer renderer.
+
 ## v0.23.4 — 2026-09-22
 
 **Fable would not launch on any Mac except the one that built it. It does now.**
+
+> The Visual C++ and GPTK 4 entries at the end of this section shipped in the
+> v0.23.4 binary but were missing from its published notes: they were still
+> filed under "Unreleased" when the release was cut, and `release.sh` builds
+> the release body from one version's section only. Moved here, where they
+> actually shipped. `release.sh publish` now refuses to run with anything left
+> under "Unreleased" so this stops happening.
 
 Every release to date crashed on startup with `SIGTRAP` on any machine other
 than the build host, before drawing a window:
@@ -32,35 +68,6 @@ accessor during startup, so elsewhere it was fatal on contact.
   confirmed to fire by reintroducing the old call.
 - `make-app.sh`'s comment claimed `Contents/Resources` was what
   `Bundle.module` reads. It isn't, and that belief is what shipped the bug.
-
-## Unreleased
-
-**Make the D3DMetal story legible: a guided Sikarugir setup, and a warning when
-a renderer is stranded on Wine that can't use it.**
-
-- **First-run Sikarugir setup no longer hands you a GitHub repo.** The old step
-  offered a "Get Sikarugir" button pointing at the project's front page,
-  leaving a non-technical user to work out which release, which file, and what
-  to do with it. It now shows three numbered steps, links straight to the
-  **latest release** where the download actually is, and re-checks itself every
-  couple of seconds — so coming back from Sikarugir lands on a step that has
-  already moved on, instead of a stale screen with a "Re-check" button to find.
-- **New state: installed but never opened.** Sikarugir downloads its engine on
-  first launch, so an app that's been dragged across but not opened has nothing
-  for Fable to read. That looked identical to "not installed at all" and sent
-  people off to re-download an app they already had. It's now its own state,
-  says so, and offers to open Sikarugir for you.
-- **Setup instructions are translated.** They were about to ship as English-only
-  — `Text` doesn't localize a `String` variable — which would have hit exactly
-  the users who need the instructions most.
-- **Components now warns when GPTK's D3DMetal is stranded.** Overlaying GPTK 4's
-  renderer onto the GPTK backend gains modern games nothing, because that
-  backend's Wine is 7.7 and can't unwind modern MSVC C++ exceptions. Both facts
-  were already on screen separately and never connected; the warning joins them
-  and points at the Sikarugir pairing, where that renderer does work.
-- Framework generation is read from the binary's exported symbols rather than
-  from a version label, since a component directory named for its Wine build
-  routinely holds a much newer renderer.
 
 **Experimental: pair Sikarugir's Wine with Game Porting Toolkit 4's D3DMetal.**
 
