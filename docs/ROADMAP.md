@@ -1,8 +1,8 @@
-# Fable — Roadmap (month of 2026-07)
+# Fable — Roadmap
 
-> **Status: living document, last updated 2026-07-10 (v0.22.3).**
-> A themed one-month plan, not a burndown. Real-game debugging *will*
-> interrupt it — that's fine, it has found every important bug so far.
+> **Status: living document, last updated 2026-09-22 (v0.23.3).**
+> A themed plan, not a burndown. Real-game debugging *will* interrupt it —
+> that's fine, it has found every important bug so far.
 > Supersedes the post-Friend-Kit menu (history in git).
 
 ## The governing goal (unchanged)
@@ -12,7 +12,7 @@ product.** No launch, no growth target. **"Done" = boringly reliable in real
 use.** **1.0 = a friend is playing on it.** Everything below serves that or is
 honestly parked.
 
-## Where we are (v0.22.3, 408 tests, CI green on every PR)
+## Where we are (v0.23.3, 457 tests, CI green on every PR)
 
 - **Six backends**, flagship Sikarugir (modern Wine + matched D3DMetal): free
   Steam CEF renders, installs self-heal, AAA D3D12 plays. Why:
@@ -20,9 +20,11 @@ honestly parked.
 - **One library** (Wine + native Mac), themes, DualSense raw-HID triggers,
   playtime/notes/health, hardware-aware perf, en/es/pt with a build-breaking
   coverage gate.
-- **Fable Doctor**: ~24 log signatures incl. the cross-backend "it's the game,
+- **Fable Doctor**: 28 log signatures incl. the cross-backend "it's the game,
   stream it" verdict, named missing DLLs, and the .NET-Framework / WPF /
-  wineserver-collision rules from real debugging.
+  wineserver-collision rules from real debugging. Rules can veto themselves on
+  contrary evidence, after one keyed on a Vulkan banner that Wine prints on
+  every launch and told healthy D3DMetal bottles to switch backends.
 - **Sharing**: `.fablerecipe`, `.fableskin`, `.fbottle` (donor export strips
   games + login, streams with progress + disk preflight), `friend-kit.sh`,
   Send Feedback + Share This Setup (zero-backend GitHub pipes).
@@ -32,33 +34,36 @@ honestly parked.
 
 ---
 
-## 🪨 Rock 1 (leads the month) — Memory Diet
+## 🪨 Rock 1 — Memory Diet — **shipped (v0.23.0–v0.23.1)**
 
 The STALKER 2 / TLOU2 unified-memory bleed: AAA ports budget against separate
 RAM+VRAM pools, but on a 24 GB Mac that's one pool D3DMetal double-counts, so
 streaming caches grow toward a budget that doesn't physically exist → wired-
 memory crash. Two Fable-shaped pieces:
 
-1. **Engine.ini streaming-pool cap writer.** Detect UE4/UE5 via the existing
-   `CompatibilityScanner`, size the cap from `HardwareProfile` (already knows
-   24 GB), write `[SystemSettings] r.Streaming.PoolSize=…` into the game's
-   config as a **reversible per-game toggle**. A config-file ritual becomes a
-   checkbox. Pure writer + tests; UI in the bottle's Performance section.
-2. **Memory-pressure nudge.** The `ThermalMonitor` pattern for memory — a
-   toast *before* the OOM crash, not the Doctor's `E_OUTOFMEMORY` verdict
-   after. Only while a game runs (rubber-mat policy).
-3. Verify on STALKER 2 + TLOU2 → **mint both as recipes** (feeds Rock 3).
+1. ~~**Engine.ini streaming-pool cap writer**~~ — shipped v0.23.0 as a
+   reversible per-game toggle.
+2. ~~**Memory-pressure nudge**~~ — shipped v0.23.0 (`MemoryPressureMonitor`),
+   plus DXVK VRAM honesty in v0.23.1.
+3. **Recipes from it** — S.T.A.L.K.E.R. 2 minted (v0.23.2); TLOU2 still
+   unverified. Getting S.T.A.L.K.E.R. 2 rendering took a separate fix: only
+   Sikarugir's `d3d12.so` was missing the rpath that lets it reach
+   D3DMetal.framework, so D3D12 titles died at adapter creation while D3D11
+   ones were fine (v0.23.3).
 
 ## 🪨 Rock 2 — Ship 1.0 (stop deferring the finish line)
 
-It's been "one dry-run away" for weeks. Pair it with a hands-on-at-the-machine
-session.
-
-1. **Cold-start dry-run** — reset onboarding on a fresh account, walk the
-   wizard, fix every dev-machine assumption. *The last real gate.*
-2. **Real donor export** — first live run of the 56 GB streaming/strip path on
-   the actual Steam bottle (only unit-tested so far) → `friend-kit.sh`.
-3. **Hand a friend the kit → fix what they hit → tag 1.0.**
+1. ~~**Cold-start dry-run**~~ — **done (2026-09-22).** It found a real one:
+   onboarding recorded completion in UserDefaults, which outlives deleting both
+   Fable.app and Application Support, so a clean install read back "already
+   onboarded" and skipped first-run setup entirely. Completion now lives beside
+   the app's own data. Fixed in v0.23.3.
+2. ~~**Real donor export**~~ — **parked.** Deliberately skipped rather than
+   pretended: the 56 GB streaming/strip path stays unit-tested only. Revisit if
+   a friend actually needs a donor bottle.
+3. **Hand a friend the kit → fix what they hit → tag 1.0.** *The remaining
+   gate* — and by this project's own definition ("1.0 = a friend is playing on
+   it"), the only one that can close it.
 
 ## 🌱 Ongoing — Grow the moat (recipes)
 
@@ -71,10 +76,23 @@ out-automate. **Target: ~12 recipes by month end.** Never fake a "Tested:".
 
 - **Last toolbar wedge** — bottle-page pencil/trash still float into the Gamer
   titlebar (same class fixed for Settings in v0.18.0). Finish the cleanup.
-- **Website** — version badge stale (`v0.9`), Sikarugir-sourcing line is
-  factually wrong, 2.7 MB JS bundle. Wire version to the releases API, fix the
-  copy, host on GitHub Pages.
+- ~~**Website version badge**~~ — **done (2026-09-22).** Both version sites now
+  carry `data-fable-version` and are refreshed from the GitHub releases API, so
+  a release no longer needs a hand-edit. Still open on the same page: the
+  Sikarugir-sourcing line is factually wrong, and it's a 2.7 MB single-file
+  bundle whose unpacker already errors in console (pre-existing; the page
+  renders anyway).
 - **Doctor prose es/pt** — the one deliberate localization gap.
+- **Dependency detection is presence-only for everything except VC++.** The
+  Visual C++ entries now check the registry key a real install writes, because
+  Wine ships its *own* builtin `msvcp140.dll` — so the old file check was true
+  on every prefix from creation and Fable never installed the runtime at all.
+  The other catalog entries still detect by file and may have the same blind
+  spot wherever Wine provides a builtin of the same name. Worth an audit.
+- **Windows version can silently block a redist.** A bottle left on Windows 7
+  (some winetricks verbs set it) makes the VC++ 2022 installer a no-op, with no
+  error surfaced anywhere. Either pin the version before installing a redist or
+  have the Doctor notice the mismatch.
 - **Feasibility precheck (Smart Bottle)** — the recurring expensive lesson: verify
   a title is even *possible* (framework/runtime it needs, anti-cheat present,
   known-working version) before the user sinks an afternoon. Surface it up front,

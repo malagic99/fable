@@ -10,6 +10,16 @@ struct Dependency: Identifiable, Sendable {
     let isZipped: Bool
     /// File whose presence (relative to drive_c) means it's installed.
     let detectionPath: String
+    /// Registry key under HKLM whose `Installed` value means it's present,
+    /// checked instead of ``detectionPath`` when set.
+    ///
+    /// Needed wherever Wine ships a builtin of the same name: every prefix has
+    /// `system32/msvcp140.dll` from creation, so a file check reports the
+    /// Visual C++ runtime as installed on a bottle that has never seen it, and
+    /// Fable then skips the install that games are actually asking for. This
+    /// key is written only by a real MSI install — and is the same one the
+    /// game launchers themselves check.
+    var detectionRegistryKey: String?
 }
 
 enum DependencyCatalog {
@@ -20,7 +30,8 @@ enum DependencyCatalog {
             url: URL(string: "https://aka.ms/vs/17/release/vc_redist.x64.exe")!,
             kind: .vcRedist,
             isZipped: false,
-            detectionPath: "windows/system32/msvcp140.dll"
+            detectionPath: "windows/system32/msvcp140.dll",
+            detectionRegistryKey: #"Software\\Microsoft\\VisualStudio\\14.0\\VC\\Runtimes\\x64"#
         ),
         Dependency(
             id: "vcredist-x86",
@@ -28,7 +39,8 @@ enum DependencyCatalog {
             url: URL(string: "https://aka.ms/vs/17/release/vc_redist.x86.exe")!,
             kind: .vcRedist,
             isZipped: false,
-            detectionPath: "windows/syswow64/msvcp140.dll"
+            detectionPath: "windows/syswow64/msvcp140.dll",
+            detectionRegistryKey: #"Software\\Microsoft\\VisualStudio\\14.0\\VC\\Runtimes\\x86"#
         ),
         Dependency(
             id: "openal",
@@ -56,10 +68,45 @@ final class DependencyInstaller: ObservableObject {
     @Published private(set) var installing: Set<String> = []
 
     func isInstalled(_ dependency: Dependency, bottle: Bottle, bottleManager: BottleManager) -> Bool {
-        FileManager.default.fileExists(
+        if let key = dependency.detectionRegistryKey {
+            let registry = bottleManager.prefixDirectory(for: bottle)
+                .appending(path: "system.reg")
+            let text = (try? String(contentsOf: registry, encoding: .utf8)) ?? ""
+            return Self.registryReportsInstalled(key, in: text)
+        }
+        return FileManager.default.fileExists(
             atPath: bottleManager.driveCDirectory(for: bottle)
                 .appending(path: dependency.detectionPath).path
         )
+    }
+
+    /// True when `key`'s section in a Wine `system.reg` carries
+    /// `"Installed"=dword:00000001`. Pure, so the parsing is tested without a
+    /// prefix on disk.
+    ///
+    /// A section runs from its `[key]` line to the next `[`, and the value may
+    /// sit anywhere inside it — so a naive "key appears in the file" check
+    /// would also match the neighbouring `Installer\UserData` breadcrumbs that
+    /// reference the same path as a string.
+    nonisolated static func registryReportsInstalled(_ key: String, in registry: String) -> Bool {
+        // Windows registry keys are case-insensitive and Wine preserves
+        // whatever case wrote them: Microsoft's MSI creates `…\Runtimes\X64`
+        // while winetricks' verbs create `…\x64`. Matching exactly would call
+        // a real install missing on half the bottles in the wild.
+        let wanted = "[\(key)]".lowercased()
+        var insideSection = false
+        for line in registry.split(separator: "\n", omittingEmptySubsequences: false) {
+            if line.hasPrefix("[") {
+                insideSection = line.lowercased().hasPrefix(wanted)
+                continue
+            }
+            guard insideSection else { continue }
+            let normalized = line.replacingOccurrences(of: " ", with: "")
+            if normalized.hasPrefix("\"Installed\"=dword:") {
+                return normalized.hasSuffix("1") && !normalized.hasSuffix("0000000")
+            }
+        }
+        return false
     }
 
     func install(
