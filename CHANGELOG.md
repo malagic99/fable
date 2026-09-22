@@ -1,5 +1,39 @@
 # Changelog
 
+## Unreleased
+
+**The Visual C++ runtime can actually install now — it never could.**
+
+- **Fixed: Fable never installed the Visual C++ runtime, on any bottle.**
+  Detection checked for `windows/system32/msvcp140.dll`, but Wine ships its
+  *own* builtin of that name, so the check was true on a prefix created seconds
+  earlier. Fable concluded the runtime was present and skipped the install
+  every time — the DLL sitting there was Wine's stub, not Microsoft's. The
+  Visual C++ entries now check the registry key a real install writes, matched
+  case-insensitively because Microsoft's installer writes `…\Runtimes\X64`
+  while winetricks writes `…\x64`, and both occur in the wild.
+- **Removed the `/layout` MSI-extraction path** added in v0.23.2. It could not
+  work: these bundles carry their payloads *attached*, so `/layout` copies the
+  bootstrapper back and the step always failed with "Could not extract MSI
+  packages". The plain bootstrapper it replaced installs correctly under
+  Wine 10 — verified end to end on a clean prefix, registry key and all. This
+  closes the known issue recorded in v0.23.3.
+- **Website version is wired to the GitHub releases API.** Both version sites
+  were hardcoded and already wrong (`v0.23.1` two releases later); they now
+  refresh from the latest release, with the current version as fallback.
+- **ROADMAP.md brought back in sync** — it still described v0.22.3 and 408
+  tests. Records the cold-start dry-run as done, donor export as deliberately
+  parked, and Memory Diet as shipped.
+
+**Known gaps recorded while fixing the above**
+
+- Dependency detection is still presence-only for every non-VC++ entry, and may
+  share the same blind spot wherever Wine ships a builtin of the same name.
+- A bottle left on Windows 7 (some winetricks verbs set it) makes the VC++ 2022
+  installer a silent no-op, with no error surfaced. That, plus the detection
+  bug above, is why S.T.A.L.K.E.R. 2 kept demanding a runtime that looked
+  installed.
+
 ## v0.23.3 — 2026-09-22
 
 **S.T.A.L.K.E.R. 2 runs: D3D12 reaches D3DMetal on Sikarugir, plus a cold-start
