@@ -145,14 +145,25 @@ struct SikarugirSetupStatusTests {
             == .ready(version: v))
     }
 
-    /// Every setup instruction must exist in all three languages — these are
-    /// the strings a non-technical user depends on most.
+    /// Sikarugir publishes no releases and no downloadable app — it exists
+    /// only as a Homebrew cask behind a `brew trust` for its tap. Pointing a
+    /// non-technical user at its GitHub page lands them on an empty Releases
+    /// tab, which is what shipped in v0.23.5.
     @Test
-    func setupInstructionsAreLocalized() {
-        for step in 1...3 {
-            let text = L10n.string("onboarding.d3dmetal.step\(step)")
-            #expect(text != "onboarding.d3dmetal.step\(step)", "step \(step) has no string")
-            #expect(!text.isEmpty)
-        }
+    func installUsesTheHomebrewCaskSikarugirActuallyShips() {
+        let commands = SikarugirInstaller.commands
+        #expect(commands.count == 2)
+        // The tap has to be trusted before its cask will install.
+        #expect(commands[0].contains("trust"))
+        #expect(commands[1].contains("--cask"))
+        #expect(commands.allSatisfy { $0.hasPrefix("brew ") })
+        #expect(commands.contains { $0.contains("Sikarugir-App/sikarugir") })
+    }
+
+    /// Without Homebrew there is nothing to install from, so the flow has to
+    /// say so rather than offering an action that cannot work.
+    @Test
+    func homebrewDetectionDrivesWhatIsOffered() {
+        #expect(SikarugirInstaller.isHomebrewInstalled == (SikarugirInstaller.homebrew != nil))
     }
 }

@@ -87,13 +87,23 @@ final class SikarugirManager: ObservableObject {
     /// Where the Sikarugir app itself lives, when it's somewhere we can find
     /// it. Only used to offer to open it — the support directory, not the app,
     /// is what Fable actually reads, and the two don't have to sit together.
+    /// The Homebrew cask installs it as "Sikarugir Creator.app", not
+    /// "Sikarugir.app" — matching only the latter found nothing on a Mac that
+    /// had it installed. Both names are searched, newest naming first, in the
+    /// two places casks and hand-installs land.
     nonisolated static var appLocation: URL? {
-        let candidates = [
-            URL(filePath: "/Applications/Sikarugir.app"),
-            FileManager.default.homeDirectoryForCurrentUser
-                .appending(path: "Applications/Sikarugir.app"),
+        let roots = [
+            URL(filePath: "/Applications"),
+            FileManager.default.homeDirectoryForCurrentUser.appending(path: "Applications"),
         ]
-        return candidates.first { FileManager.default.fileExists(atPath: $0.path) }
+        let names = ["Sikarugir Creator.app", "Sikarugir.app"]
+        for root in roots {
+            for name in names {
+                let candidate = root.appending(path: name)
+                if FileManager.default.fileExists(atPath: candidate.path) { return candidate }
+            }
+        }
+        return nil
     }
 
     /// True when Sikarugir has left anything behind — the app, or the support
