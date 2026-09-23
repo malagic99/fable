@@ -89,18 +89,30 @@ struct GameWallView: View {
         }
     }
 
+    /// Widths for the selected-game panel. The ideal is the designed size;
+    /// the minimum is what it may shrink to before the window's own minimum
+    /// width takes over (see MainWindow).
+    static let inspectorIdealWidth: CGFloat = 264
+    static let inspectorMinimumWidth: CGFloat = 216
+
     var body: some View {
         HStack(spacing: 0) {
             VStack(alignment: .leading, spacing: 14) {
                 HStack(spacing: 14) {
-                    Text("Your games").font(.title.weight(.semibold))
+                    // Truncate rather than wrap: the row's other items have
+                    // fixed widths, so without this the title is the thing
+                    // that gives — and it gives mid-word ("Your game / s").
+                    Text("Your games")
+                        .font(.title.weight(.semibold))
+                        .lineLimit(1)
                     Spacer()
                     TileSizeControl(scale: $settingsManager.settings.tileScale)
                     HStack(spacing: 6) {
                         Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
                         TextField("Search", text: $searchText)
                             .textFieldStyle(.plain)
-                            .frame(width: 130)
+                            // Allowed to give before the title does.
+                            .frame(minWidth: 80, idealWidth: 130, maxWidth: 130)
                     }
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
@@ -208,13 +220,19 @@ struct GameWallView: View {
             }
             .padding(.horizontal, 20)
 
+            // Compresses instead of clipping. A fixed width here is what
+            // pushed the pane past the window's own minimum, so values like
+            // "Last played" rendered as "19 ho". Hiding it outright isn't an
+            // option: Tune is only reachable from this panel.
             if let selectedNative {
                 NativeInspector(game: selectedNative, isRunning: nativeGames.isRunning(selectedNative))
-                    .frame(width: 264)
+                    .frame(minWidth: Self.inspectorMinimumWidth, idealWidth: Self.inspectorIdealWidth,
+                           maxWidth: Self.inspectorIdealWidth)
                     .padding([.trailing, .vertical], 14)
             } else if let selectedWine {
                 GameInspector(entry: selectedWine, isRunning: isRunning(selectedWine))
-                    .frame(width: 264)
+                    .frame(minWidth: Self.inspectorMinimumWidth, idealWidth: Self.inspectorIdealWidth,
+                           maxWidth: Self.inspectorIdealWidth)
                     .padding([.trailing, .vertical], 14)
             }
         }

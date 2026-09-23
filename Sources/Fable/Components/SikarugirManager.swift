@@ -389,8 +389,13 @@ final class SikarugirManager: ObservableObject {
         case gptk4
     }
 
-    /// Records the active source beside the engine, so the choice survives
-    /// relaunch and a swapped engine can't silently masquerade as stock.
+    /// Records the active source beside the engine.
+    ///
+    /// Written, never read back: the toggle's own state lives in settings and
+    /// is re-applied on update, so this is a breadcrumb for whoever is looking
+    /// at the component on disk — which is how the equivalent drift in the
+    /// GPTK component was actually found. If Fable should ever *report* the
+    /// installed renderer, this is what it reads, but nothing does today.
     nonisolated static let sourceMarkerName = ".d3dmetal-source"
 
     /// GPTK 4's framework inside an installed GPTK component, if present.
@@ -423,17 +428,6 @@ final class SikarugirManager: ObservableObject {
     /// dispatch surface modern Wine can link against. See ``D3DMetalIdentity``.
     nonisolated static func exportsGPTK4Marker(_ binary: URL) -> Bool {
         D3DMetalIdentity.generation(of: binary) == .gptk4OrNewer
-    }
-
-    /// The source the installed engine is running.
-    func activeD3DMetalSource() -> D3DMetalSource {
-        guard let root = componentManager.installedDirectory(for: Self.componentID) else {
-            return .sikarugir
-        }
-        let marker = root.appending(path: Self.sourceMarkerName)
-        let raw = (try? String(contentsOf: marker, encoding: .utf8))?
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-        return raw.flatMap(D3DMetalSource.init(rawValue:)) ?? .sikarugir
     }
 
     /// Points the installed engine at `source`, swapping the framework if the
