@@ -1,5 +1,22 @@
 # Changelog
 
+## Unreleased
+
+- **Corrected the Steam Controller guidance shipped in v1.0.1.** It told users
+  to open Steam and use Steam Input, "which switches it into gamepad mode".
+  Steam does not see this controller over Bluetooth either, so that advice sent
+  people in a circle. What the hardware actually reports, read off a paired
+  2026 controller: a single BLE interface declaring usage 2 (Mouse) with 239
+  keyboard elements and no gamepad collection at all — plus a vendor-defined
+  `0xFF00` collection and report IDs `0x80`–`0x89`, which is Valve’s own
+  control channel. Only software speaking that protocol can switch the pad to
+  gamepad mode; Linux’s `hid-steam` driver does exactly that for this model
+  (it knows it as IBEX) and then registers a virtual input device to carry the
+  decoded reports. On macOS that second half needs a DriverKit system
+  extension, which needs a Developer ID and notarization Fable does not have —
+  so Fable cannot do it, and says so rather than suggesting a remedy that
+  doesn’t work.
+
 ## v1.0.1 — 2026-10-07
 
 **Two things that looked like Fable being broken, and weren't quite.**
