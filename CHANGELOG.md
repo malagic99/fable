@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## v1.0.1 — 2026-10-07
+
+**Two things that looked like Fable being broken, and weren't quite.**
 
 - **The 2026 Steam Controller now shows up, with the reason it doesn't work.**
   Fable reported "No controller detected" beside a pad that was plainly paired,
@@ -17,8 +19,6 @@
   from whenever the page opened, refreshed only by the Refresh button, so
   plugging a pad in changed nothing. It now observes connect/disconnect, which
   the DualSense trigger controller already did.
-
-**The window had a minimum size it couldn't render.**
 
 - **Fixed: the Games screen broke at the app's own minimum width.** The window
   declared `minWidth: 800`, but that screen is sidebar + grid + selected-game
