@@ -393,6 +393,7 @@
 "game.backend_override"       = "Backend forçado: %@";
 "game.last_exit_code"         = "A última execução terminou com o código %@";
 "controller.none"             = "Nenhum controle detectado";
+"controller.not_routed"        = "“%@” está conectado mas se identifica como mouse, não como controle — então o macOS e os jogos de Windows o ignoram. Abra o Steam e use o Steam Input, que o coloca em modo controle.";
 "controller.guidance.steam"   = "Os controles passam aos jogos automaticamente. Para um DualSense / DualShock 4, ative Steam → Ajustes → Controle (Steam Input) para suporte completo de botões, touchpad e hápticos.";
 "controller.guidance.generic" = "Os controles passam aos jogos como gamepad. Para o melhor suporte a controles PlayStation em jogos DirectX, adicione o jogo à Steam e abra-o pelo Steam Input.";
 
