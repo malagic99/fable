@@ -94,6 +94,7 @@
 "game.backend_override"       = "Backend override: %@";
 "game.last_exit_code"         = "Last run exited with code %@";
 "controller.none"             = "No controller detected";
+"controller.not_routed"        = "“%@” is connected but reports itself as a mouse, not a gamepad — so macOS and Windows games both ignore it. Open Steam and use Steam Input, which switches it into gamepad mode.";
 "controller.guidance.steam"   = "Controllers pass through to games automatically. For a DualSense / DualShock 4, turn on Steam → Settings → Controller (Steam Input) for full button, touchpad, and haptics support.";
 "controller.guidance.generic" = "Controllers pass through to games as a gamepad. For the best PlayStation-pad support in DirectX games, add the game to Steam and launch it through Steam Input.";
 

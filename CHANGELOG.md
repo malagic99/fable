@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+- **The 2026 Steam Controller now shows up, with the reason it doesn't work.**
+  Fable reported "No controller detected" beside a pad that was plainly paired,
+  because detection went only through `GCController.controllers()` — and macOS
+  never puts this controller there. Over Bluetooth it reports HID usage **2
+  (Mouse)**, not 4/5 (Joystick/Gamepad), so macOS doesn't classify it as a game
+  controller. Wine filters on the same property, which is the already-logged
+  `Ignoring HID device … not a joystick or gamepad`: the pad is invisible to
+  games, not just to Fable. Fable now scans HID directly, lists it, and says
+  plainly that it's in mouse mode and Steam Input is what switches it over.
+  Fable cannot flip that mode itself — only software speaking Valve's protocol
+  can.
+- **Fixed: the controller list never updated on connect.** It was a snapshot
+  from whenever the page opened, refreshed only by the Refresh button, so
+  plugging a pad in changed nothing. It now observes connect/disconnect, which
+  the DualSense trigger controller already did.
+
 **The window had a minimum size it couldn't render.**
 
 - **Fixed: the Games screen broke at the app's own minimum width.** The window
