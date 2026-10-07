@@ -248,7 +248,14 @@ struct MainWindow: View {
                      skin.windowTint != nil || settingsManager.settings.customBackgroundPath != nil)
         .preferredColorScheme(settingsManager.settings.appearance.colorScheme)
         .toastOverlay()
-        .frame(minWidth: 800, minHeight: 520)
+        // Sized to what the widest screen actually needs, rather than a round
+        // number. The Games wall is sidebar + grid + selected-game panel, and
+        // its header row alone (title, tile slider, search, two buttons)
+        // demands ~525pt; with the panel that's ~790 for the detail pane, so
+        // 800 total left the sidebar and the panel both clipped — labels cut to
+        // "ponents", "Last played" rendering as "19 ho". A minimum the app
+        // can't render is worse than a larger one.
+        .frame(minWidth: 980, minHeight: 560)
         .navigationTitle(isGamer ? "" : appState.selectedSection.title)
         .sheet(isPresented: Binding(
             get: { onboardingState.isShowingWizard },

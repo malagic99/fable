@@ -1,5 +1,29 @@
 # Changelog
 
+## Unreleased
+
+**The window had a minimum size it couldn't render.**
+
+- **Fixed: the Games screen broke at the app's own minimum width.** The window
+  declared `minWidth: 800`, but that screen is sidebar + grid + selected-game
+  panel, and its header row alone (title, tile slider, search field, two
+  buttons) demands ~525pt — with the fixed 264pt panel that's ~790 for the
+  detail pane, so at 800 total the sidebar labels clipped to "ponents" and
+  "Last played" rendered as "19 ho". The minimum is now 980, the panel
+  compresses instead of clipping, the search field yields before the title
+  does, and the title truncates rather than breaking mid-word into
+  "Your game / s".
+- **Removed dead code.** `DXVKManager` was an `ObservableObject` class that was
+  never instantiated — no view observed it, no root injected it, and only its
+  statics were ever called; it's a namespace now, minus an install check and
+  canary constant nothing used. `SikarugirManager.activeD3DMetalSource()` had
+  no call sites at all.
+- **Corrected two comments that contradicted the code.** `AppPaths` claimed
+  everything Fable persists lives under Application Support, which the
+  first-run marker work disproved. The `.d3dmetal-source` marker's doc claimed
+  it stopped a swapped engine masquerading as stock; it is written and never
+  read, and now says so.
+
 ## v1.0.0 — 2026-09-22
 
 **A friend is playing on it.**

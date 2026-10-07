@@ -1,7 +1,12 @@
 import Foundation
 
-/// Filesystem locations used by Fable. Everything lives under
+/// Filesystem locations used by Fable, all under
 /// ~/Library/Application Support/Fable/.
+///
+/// Not *everything* Fable persists lives here: the first-run completion marker
+/// deliberately does (see OnboardingState), but the settings backing it sit in
+/// UserDefaults, which survives deleting this directory. That difference is
+/// why a wiped Mac once read back as "already onboarded".
 enum AppPaths {
     static var applicationSupport: URL {
         FileManager.default
