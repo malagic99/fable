@@ -66,6 +66,13 @@ struct CoverCard<Fallback: View, Menu: View>: View {
             RoundedRectangle(cornerRadius: FableTheme.cardRadius)
                 .strokeBorder(isSelected ? Color.accentColor : .clear, lineWidth: 2)
         )
+        // The whole tile takes the click, including the padding ring and the
+        // empty space to the right of a short name. Callers attach the tap
+        // gestures and the context menu out here, and an unselected card
+        // fills with .clear, which isn't hit-testable — so without this the
+        // live area was the cover art plus the glyphs, and clicking a tile
+        // near its edge did nothing.
+        .contentShape(RoundedRectangle(cornerRadius: FableTheme.cardRadius))
         .scaleEffect(isHovering ? 1.02 : 1)
         .animation(.spring(duration: 0.25, bounce: 0.25), value: isHovering)
         .onHover { isHovering = $0 }
