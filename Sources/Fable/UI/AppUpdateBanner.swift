@@ -16,25 +16,55 @@ struct AppUpdateBanner: View {
                 VStack(alignment: .leading, spacing: 1) {
                     Text(L10n.string("update.available", release.version))
                         .font(.callout.weight(.semibold))
-                    Text(L10n.string("update.current", AppUpdateChecker.currentVersion))
+                    // While installing, the subtitle carries the stage rather
+                    // than adding another row that shifts the layout.
+                    Text(checker.installStage ?? L10n.string("update.current", AppUpdateChecker.currentVersion))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
 
                 Spacer()
 
-                Button("Open Release Page") { checker.openInBrowser() }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.small)
-
-                Menu {
-                    Button("Skip This Version") { checker.skipThisVersion() }
-                    Button("Dismiss") { checker.dismissBanner() }
-                } label: {
-                    Image(systemName: "ellipsis.circle")
+                if let progress = checker.installProgress {
+                    ProgressView(value: progress)
+                        .progressViewStyle(.linear)
+                        .frame(width: 120)
+                } else if let error = checker.lastError {
+                    // Install failed: say so here rather than silently
+                    // reverting to a button that looks like nothing happened.
+                    Text(error)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                        .lineLimit(2)
+                        .frame(maxWidth: 280, alignment: .trailing)
                 }
-                .menuStyle(.borderlessButton)
-                .frame(width: 28)
+
+                if checker.installProgress == nil {
+                    // Installing in place needs somewhere writable to install
+                    // to; a dev build or a read-only location gets the browser.
+                    if release.assetURL != nil, checker.canInstallInPlace {
+                        Button("Update and Restart") {
+                            Task { await checker.downloadAndInstall() }
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.small)
+                    } else {
+                        Button("Open Release Page") { checker.openInBrowser() }
+                            .buttonStyle(.borderedProminent)
+                            .controlSize(.small)
+                    }
+
+                    Menu {
+                        Button("Open Release Page") { checker.openInBrowser() }
+                        Divider()
+                        Button("Skip This Version") { checker.skipThisVersion() }
+                        Button("Dismiss") { checker.dismissBanner() }
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
+                    }
+                    .menuStyle(.borderlessButton)
+                    .frame(width: 28)
+                }
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 10)

@@ -489,3 +489,9 @@
 "Install Sikarugir"            = "Instalar o Sikarugir";
 "Get Homebrew"                 = "Obter o Homebrew";
 "Fable will run:"              = "O Fable vai executar:";
+
+/* In-app update */
+"update.stage.downloading"       = "Baixando…";
+"update.stage.verifying"         = "Verificando o download…";
+"update.stage.installing"        = "Instalando — o Fable vai reiniciar…";
+"Update and Restart"             = "Atualizar e reiniciar";
