@@ -1,17 +1,20 @@
 import SwiftUI
 
 /// THE cover tile — one implementation for both worlds (Wine and native).
-/// Cover art or a caller-supplied fallback, an optional health dot, the
-/// "Playing" chip, selection ring, hover spring, and a caller-supplied
-/// context menu. The wine/native wrappers in GameWallView only decide what
-/// to feed it.
+/// Cover art or a caller-supplied fallback, a health badge, the "Playing"
+/// chip, selection ring, hover spring, and a caller-supplied context menu.
+/// The wine/native wrappers in GameWallView only decide what to feed it.
+///
+/// Health reads as glyph + label under the cover rather than as a coloured
+/// dot on it. The dot put the whole verdict in hue — on a green/amber/red
+/// scale, which is the combination red-green colour deficiency collapses —
+/// and carried nothing for VoiceOver but a tooltip.
 struct CoverCard<Fallback: View, Menu: View>: View {
     let artwork: NSImage?
     let name: String
-    /// Health verdict dot (tint + tooltip); nil = no dot (native games).
-    let healthDot: (tint: Color, label: String)?
-    /// Shows the  glyph next to the name (native games).
-    let isNative: Bool
+    /// What the badge under the cover reports. `.native` carries its own
+    /// glyph, so native games no longer need a separate marker.
+    let health: Health
     let isSelected: Bool
     let isRunning: Bool
     @ViewBuilder let fallback: Fallback
@@ -34,18 +37,7 @@ struct CoverCard<Fallback: View, Menu: View>: View {
                 }
                 .clipShape(RoundedRectangle(cornerRadius: FableTheme.innerRadius))
                 .aspectRatio(3 / 4, contentMode: .fit)
-                .overlay(alignment: .topTrailing) {
-                    if let healthDot {
-                        Circle()
-                            .fill(healthDot.tint)
-                            .frame(width: 10, height: 10)
-                            .padding(4)
-                            .background(.black.opacity(0.45), in: Circle())
-                            .padding(6)
-                            .help(healthDot.label)
-                    }
-                }
-                .overlay(alignment: .bottomLeading) {
+                .overlay(alignment: .topLeading) {
                     if isRunning {
                         Label("Playing", systemImage: "play.fill")
                             .font(.caption2.weight(.medium))
@@ -57,18 +49,13 @@ struct CoverCard<Fallback: View, Menu: View>: View {
                     }
                 }
 
-            HStack(spacing: 4) {
-                if isNative {
-                    Image(systemName: "applelogo")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .help("Native macOS — no Wine involved")
-                }
+            VStack(alignment: .leading, spacing: 3) {
                 Text(name)
                     .font(.callout.weight(.medium))
                     .lineLimit(1)
+                HealthBadge(health: health)
             }
-            .padding(.horizontal, 2)
+            .padding(.horizontal, 3)
         }
         .padding(5)
         .background(
@@ -82,7 +69,6 @@ struct CoverCard<Fallback: View, Menu: View>: View {
         .scaleEffect(isHovering ? 1.02 : 1)
         .animation(.spring(duration: 0.25, bounce: 0.25), value: isHovering)
         .onHover { isHovering = $0 }
-        .help("Click to inspect · double-click to play")
         .contextMenu { menu }
     }
 }

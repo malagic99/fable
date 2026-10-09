@@ -26,17 +26,28 @@ cp Resources/Fable.icns "$APP/Contents/Resources/Fable.icns"
 # resources through Bundle.fableResources, which looks here first.
 cp -R "$RESOURCE_BUNDLE" "$APP/Contents/Resources/"
 
-# Mirror .lproj directories from the SwiftPM bundle into the app's main
-# Resources so SwiftUI's automatic LocalizedStringKey lookup (Bundle.main,
-# not Bundle.module) actually finds them. Without this, Text("foo.bar")
-# in SwiftUI renders the raw key while L10n.string() works fine.
-for lproj in "$RESOURCE_BUNDLE"/*.lproj; do
+# Where the .lproj directories live inside the SwiftPM bundle. Swift 6.2 and
+# earlier put them at the bundle root; 6.4 emits a versioned bundle and puts
+# them under Contents/Resources. Find them rather than assuming, because
+# guessing wrong is silent: the app still launches, and every localized string
+# renders as its raw key ("sidebar.bottles").
+if [ -d "$RESOURCE_BUNDLE/Contents/Resources" ]; then
+    LPROJ_ROOT="$RESOURCE_BUNDLE/Contents/Resources"
+else
+    LPROJ_ROOT="$RESOURCE_BUNDLE"
+fi
+
+# Mirror .lproj directories into the app's main Resources so SwiftUI's
+# automatic LocalizedStringKey lookup (Bundle.main, not Bundle.module) finds
+# them. Without this, Text("foo.bar") renders the raw key.
+for lproj in "$LPROJ_ROOT"/*.lproj; do
     [ -d "$lproj" ] && cp -R "$lproj" "$APP/Contents/Resources/"
 done
 
 # Tell macOS which locales we ship so it picks the right one at launch.
 # Without CFBundleLocalizations the app falls back to development region only.
-LANGS=$(ls "$RESOURCE_BUNDLE" | grep '\.lproj$' | sed 's/\.lproj$//' | paste -sd ',' - | sed 's/\([^,]*\)/"\1"/g')
+LANGS=$(ls "$LPROJ_ROOT" | grep '\.lproj$' | sed 's/\.lproj$//' | paste -sd ',' - | sed 's/\([^,]*\)/"\1"/g')
+[ -n "$LANGS" ] || { echo "error: no .lproj found under $LPROJ_ROOT — the app would ship with raw keys" >&2; exit 1; }
 plutil -replace CFBundleLocalizations -json "[${LANGS}]" "$APP/Contents/Info.plist"
 
 # Embed innoextract for GOG installer extraction (no-op if not installed).

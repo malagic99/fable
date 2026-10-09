@@ -163,3 +163,12 @@
 "nudge.memory_pressure"       = "Memory is running tight — the game shares one pool with the GPU. Close other apps, or lower texture quality, before it crashes. Enable Memory Diet on the game to cap it next launch.";
 
 /* D3DMetal / Sikarugir first-run setup */
+
+/* Health badge (glyph + label + colour; never colour alone) */
+"health.verified"               = "Verified";
+"health.tweaks"                 = "Works with tweaks";
+"health.blocked"                = "Won’t run";
+"health.played"                 = "Played on this Mac";
+"health.untested"               = "Untested";
+"health.crashed"                = "Crashed last run";
+"health.native"                 = "Native Mac";
