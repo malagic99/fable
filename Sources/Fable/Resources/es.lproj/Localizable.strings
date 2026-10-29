@@ -489,3 +489,12 @@
 "Install Sikarugir"            = "Instalar Sikarugir";
 "Get Homebrew"                 = "Obtener Homebrew";
 "Fable will run:"              = "Fable ejecutará:";
+
+/* Health badge (glyph + label + colour; never colour alone) */
+"health.verified"               = "Verificado";
+"health.tweaks"                 = "Funciona con ajustes";
+"health.blocked"                = "No funciona";
+"health.played"                 = "Jugado en este Mac";
+"health.untested"               = "Sin probar";
+"health.crashed"                = "Falló la última vez";
+"health.native"                 = "Nativo de Mac";

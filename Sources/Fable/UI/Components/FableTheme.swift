@@ -21,22 +21,31 @@ enum FableTheme {
     // MARK: Surface scale — three semantic tones instead of ad-hoc
     // `.quaternary.opacity(…)` values scattered per view.
     /// A resting panel (inspector, sidebar-ish blocks).
-    static let surface = AnyShapeStyle(.quaternary.opacity(0.4))
+    static let surface = AnyShapeStyle(.quaternary.opacity(0.55))
     /// A raised element on a surface (cover placeholder, chips, search field).
-    static let surfaceRaised = AnyShapeStyle(.quaternary.opacity(0.6))
+    static let surfaceRaised = AnyShapeStyle(.quaternary.opacity(0.8))
     /// The selected/active state of a raised element.
-    static let surfaceSelected = AnyShapeStyle(.quaternary.opacity(0.75))
+    static let surfaceSelected = AnyShapeStyle(.quaternary)
+    /// Hairline on a surface edge.
+    static let hairline = AnyShapeStyle(.quaternary.opacity(0.9))
+    /// Divider between rows *inside* a grouped surface.
+    static let rowDivider = AnyShapeStyle(.quaternary.opacity(0.6))
 
     /// One tint per backend — quiet, informative colors (never alarm-red;
     /// red is reserved for actual problems).
+    ///
+    /// Fewer hues than before. The flagship takes the accent; the legacy
+    /// backends fall back to secondary rather than each claiming a colour,
+    /// because a palette where everything is distinct makes nothing
+    /// meaningful. GPTK in particular was purple, which read as a sibling of
+    /// the brand gradient rather than as the legacy fallback it is.
     static func tint(for backend: GraphicsBackend) -> Color {
         switch backend {
+        case .sikarugir: .accentColor
         case .dxmt: .blue
-        case .gptk: .purple
         case .dxvk: .teal
         case .crossover: .green
-        case .sikarugir: .indigo
-        case .off: .secondary
+        case .gptk, .off: .secondary
         }
     }
 

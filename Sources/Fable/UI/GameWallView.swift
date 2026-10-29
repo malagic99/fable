@@ -30,7 +30,6 @@ struct GameWallView: View {
     @State private var selection: Selection?
     @State private var isShowingSteamImport = false
     @State private var isShowingHeroicImport = false
-    @State private var isShowingLegend = false
 
     private var entries: [LibraryEntry] {
         LibraryIndex.entries(from: bottleManager.bottles, query: searchText)
@@ -102,9 +101,14 @@ struct GameWallView: View {
                     // Truncate rather than wrap: the row's other items have
                     // fixed widths, so without this the title is the thing
                     // that gives — and it gives mid-word ("Your game / s").
+                    // Priority as well as lineLimit: without it the title is
+                    // what gives when the row is tight, because everything
+                    // beside it has a fixed width — so the page title
+                    // truncated to "Your gam…" while a slider kept full size.
                     Text("Your games")
                         .font(.title.weight(.semibold))
                         .lineLimit(1)
+                        .layoutPriority(1)
                     Spacer()
                     TileSizeControl(scale: $settingsManager.settings.tileScale)
                     HStack(spacing: 6) {
@@ -117,32 +121,6 @@ struct GameWallView: View {
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
                     .background(FableTheme.surfaceRaised, in: Capsule())
-                    // Learn-once info lives behind "?", not in a permanent row.
-                    Button {
-                        isShowingLegend = true
-                    } label: {
-                        Image(systemName: "questionmark.circle")
-                            .foregroundStyle(.secondary)
-                    }
-                    .buttonStyle(.plain)
-                    .help("What the dots mean")
-                    .popover(isPresented: $isShowingLegend, arrowEdge: .bottom) {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Health dots").font(.caption.weight(.semibold))
-                            legendDot(.green, "verified — a tested recipe exists")
-                            legendDot(.orange, "works with tweaks")
-                            legendDot(.red, "won't run")
-                            legendDot(.blue, "played — real sessions on this Mac, no crashes")
-                            legendDot(Color.secondary.opacity(0.6), "untested")
-                            Divider()
-                            HStack(spacing: 5) {
-                                Image(systemName: "applelogo").font(.caption2).foregroundStyle(.secondary)
-                                Text("native Mac game — no Wine, it just runs")
-                                    .font(.caption2).foregroundStyle(.secondary)
-                            }
-                        }
-                        .padding(12)
-                    }
                     // Wall-wide actions: how it's sectioned, and cover upkeep.
                     Menu {
                         Picker("Group By", selection: $settingsManager.settings.libraryGrouping) {
@@ -253,13 +231,6 @@ struct GameWallView: View {
     private func pickApp() {
         for url in FilePicker.chooseApplications() { nativeGames.addApp(at: url) }
     }
-
-    private func legendDot(_ color: Color, _ text: LocalizedStringKey) -> some View {
-        HStack(spacing: 5) {
-            Circle().fill(color).frame(width: 7, height: 7)
-            Text(text).font(.caption2).foregroundStyle(.secondary)
-        }
-    }
 }
 
 // MARK: - Cover card
@@ -278,13 +249,16 @@ private struct GameCoverCard: View {
     @EnvironmentObject private var gameStats: GameStatsStore
 
     var body: some View {
+        let stats = gameStats.stats[entry.game.id]
         let confidence = GameConfidence.assess(entry.game, recipes: userRecipeStore, quirks: quirkService,
-                                               stats: gameStats.stats[entry.game.id])
+                                               stats: stats)
+        let health = Health.resolve(
+            confidence: confidence,
+            crashedLastRun: !(stats?.crashSignatures ?? [:]).isEmpty)
         CoverCard(
             artwork: artworkStore.image(for: entry.game),
             name: entry.game.name,
-            healthDot: (confidence.tint, confidence.label),
-            isNative: false,
+            health: health,
             isSelected: isSelected,
             isRunning: isRunning
         ) {
@@ -467,8 +441,7 @@ private struct NativeCoverCard: View {
         CoverCard(
             artwork: artworkStore.image(named: game.name),
             name: game.name,
-            healthDot: nil,
-            isNative: true,
+            health: .native,
             isSelected: isSelected,
             isRunning: isRunning
         ) {
