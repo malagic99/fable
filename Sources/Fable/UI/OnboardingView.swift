@@ -175,6 +175,13 @@ private struct SourceCard: View {
                     .strokeBorder(isSelected ? Color.accentColor : Color.secondary.opacity(0.3),
                                   lineWidth: isSelected ? 1.5 : 1)
             )
+            // The whole card is the target. Without this only the drawn parts
+            // are: an unselected card fills with Color.clear, which isn't
+            // hit-testable, so clicks landed on the icon, the text and the 1pt
+            // outline while the space between them did nothing. Selecting one
+            // then made it work, which reads as the click being unreliable
+            // rather than the gaps being dead.
+            .contentShape(RoundedRectangle(cornerRadius: 10))
         }
         .buttonStyle(.plain)
     }

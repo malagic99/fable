@@ -43,12 +43,20 @@ struct ComponentsView: View {
                     Button {
                         Task { await updateManager.checkForUpdates() }
                     } label: {
-                        if updateManager.isChecking {
-                            ProgressView().controlSize(.small)
-                        } else {
-                            Label("Check for Updates", systemImage: "arrow.triangle.2.circlepath")
-                                .labelStyle(.iconOnly)
+                        Group {
+                            if updateManager.isChecking {
+                                ProgressView().controlSize(.small)
+                            } else {
+                                Label("Check for Updates", systemImage: "arrow.triangle.2.circlepath")
+                                    .labelStyle(.iconOnly)
+                            }
                         }
+                        // Icon-only and unpadded, the target was the glyph
+                        // itself — about 14pt to aim at. The padding is inside
+                        // the label so it grows the hit area rather than just
+                        // spacing the button out from the header.
+                        .padding(5)
+                        .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                     .foregroundStyle(.secondary)
