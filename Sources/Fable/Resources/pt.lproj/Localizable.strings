@@ -393,7 +393,7 @@
 "game.backend_override"       = "Backend forçado: %@";
 "game.last_exit_code"         = "A última execução terminou com o código %@";
 "controller.none"             = "Nenhum controle detectado";
-"controller.not_routed"        = "“%@” está conectado mas se identifica como mouse, não como controle — então o macOS e os jogos de Windows o ignoram. Abra o Steam e use o Steam Input, que o coloca em modo controle.";
+"controller.not_routed"        = "“%@” está conectado por Bluetooth mas se identifica como mouse, então o macOS e os jogos de Windows o ignoram. Só um software que fale o protocolo da própria Valve pode colocá-lo em modo controle — num Mac isso significa o Steam, e ele precisa de uma versão nova o bastante para conhecer este modelo. O cabo USB ou o adaptador sem fio é o caminho mais confiável.";
 "controller.guidance.steam"   = "Os controles passam aos jogos automaticamente. Para um DualSense / DualShock 4, ative Steam → Ajustes → Controle (Steam Input) para suporte completo de botões, touchpad e hápticos.";
 "controller.guidance.generic" = "Os controles passam aos jogos como gamepad. Para o melhor suporte a controles PlayStation em jogos DirectX, adicione o jogo à Steam e abra-o pelo Steam Input.";
 
