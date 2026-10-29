@@ -151,6 +151,55 @@ final class WineManager: ObservableObject {
         try? await setRetinaMode(enabled, at: prefix)
     }
 
+    /// Routes PlayStation pads through Wine's SDL controller path instead of
+    /// raw HID pass-through, so XInput-only games see them.
+    ///
+    /// winebus finds a DualSense twice — once via SDL, once as a raw HID
+    /// device — and for Sony pads it keeps the raw one, so games that speak
+    /// Sony's protocol get the full pad. An XInput-only game then has to
+    /// read Sony's native reports, and on a Mac the Bluetooth pad is already
+    /// in extended report mode (0x31) before any game runs, which plain HID
+    /// parsing can't decode: the game launches and ignores the pad.
+    /// `DisableHidraw=1` makes winebus keep the SDL device instead, which
+    /// decodes the pad and presents it as a standard gamepad with an XInput
+    /// interface. Found live on Ace Combat 3 Remix (2026-10-29). Takes effect
+    /// when the prefix's processes next cold-start. Idempotent.
+    func setPlayStationPadsAsXInput(_ enabled: Bool, at prefix: URL) async throws {
+        _ = try await ProcessRunner.run(
+            try wineBinary(),
+            arguments: ["reg", "add", #"HKLM\System\CurrentControlSet\Services\winebus"#,
+                        "/v", "DisableHidraw", "/t", "REG_DWORD", "/d", enabled ? "1" : "0", "/f"],
+            environment: environment(forPrefix: prefix)
+        )
+    }
+
+    /// The prefix's current winebus `DisableHidraw` setting, read straight
+    /// from system.reg. nil when the value isn't present. Exposed for testing.
+    nonisolated static func currentPlayStationPadsAsXInput(at prefix: URL) -> Bool? {
+        guard let reg = try? String(contentsOf: prefix.appending(path: "system.reg"), encoding: .utf8)
+        else { return nil }
+        // Only the winebus key's own lines — the value name is generic.
+        var inWinebus = false
+        for line in reg.split(separator: "\n") {
+            if line.hasPrefix("[") {
+                inWinebus = line.contains(#"\\Services\\winebus]"#)
+                continue
+            }
+            if inWinebus, line.hasPrefix(#""DisableHidraw"=dword:"#) {
+                return !line.hasSuffix("00000000")
+            }
+        }
+        return nil
+    }
+
+    /// Makes the prefix's winebus setting match `enabled`, writing only when
+    /// it has drifted. A missing value already means "off" (Wine's default),
+    /// so nothing is written for an untouched bottle.
+    func reconcilePlayStationPadsAsXInput(_ enabled: Bool, at prefix: URL) async {
+        guard (Self.currentPlayStationPadsAsXInput(at: prefix) ?? false) != enabled else { return }
+        try? await setPlayStationPadsAsXInput(enabled, at: prefix)
+    }
+
     /// Initializes a fresh Wine prefix and pins its Windows version.
     func createPrefix(at prefix: URL, windowsVersion: WindowsVersion) async throws {
         let wine = try wineBinary()

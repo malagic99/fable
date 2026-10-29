@@ -389,6 +389,14 @@ final class BottleManager: ObservableObject {
         try save(bottles[index])
     }
 
+    func setPlayStationPadsAsXInput(_ enabled: Bool, for id: Bottle.ID) throws {
+        guard let index = bottles.firstIndex(where: { $0.id == id }) else {
+            throw BottleError.notFound
+        }
+        bottles[index].playStationPadsAsXInput = enabled
+        try save(bottles[index])
+    }
+
     func setPerformance(_ options: PerformanceOptions, for id: Bottle.ID) throws {
         guard let index = bottles.firstIndex(where: { $0.id == id }) else {
             throw BottleError.notFound

@@ -489,3 +489,5 @@
 "Install Sikarugir"            = "Instalar o Sikarugir";
 "Get Homebrew"                 = "Obter o Homebrew";
 "Fable will run:"              = "O Fable vai executar:";
+"PlayStation Pads as Xbox (XInput)" = "Controles PlayStation como Xbox (XInput)";
+"Turn on if a game ignores your DualSense or DualShock but supports Xbox controllers. Leave off for games with built-in PlayStation support." = "Ative se um jogo ignorar seu DualSense ou DualShock mas suportar controles de Xbox. Deixe desligado para jogos com suporte nativo a PlayStation.";
