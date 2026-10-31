@@ -7,7 +7,8 @@ struct VersionCatalog: Codable, Equatable, Sendable {
         let name: String
         let version: String
         let url: URL
-        /// SHA-256 of the download. Empty until pinned (Day 3).
+        /// SHA-256 of the download (64 hex digits). Installs refuse a
+        /// component without one.
         let sha256: String
     }
 

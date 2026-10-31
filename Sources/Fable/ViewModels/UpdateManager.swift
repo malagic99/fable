@@ -132,10 +132,16 @@ final class UpdateManager: ObservableObject {
                 $0.name.hasPrefix(assetPrefix) && $0.name.hasSuffix(assetSuffix)
             }) else { continue }
 
+            // No SHA-256 digest from GitHub = nothing to verify the download
+            // against, so it isn't offered (older assets predate digests).
+            guard let digest = asset.digest, digest.hasPrefix("sha256:"),
+                  case let sha256 = String(digest.dropFirst("sha256:".count)),
+                  ChecksumVerifier.isPinned(sha256)
+            else { continue }
+
             let version = release.tag_name.hasPrefix("v")
                 ? String(release.tag_name.dropFirst())
                 : release.tag_name
-            let sha256 = asset.digest?.replacingOccurrences(of: "sha256:", with: "") ?? ""
             return VersionCatalog.Component(
                 name: displayName,
                 version: version,

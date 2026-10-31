@@ -17,6 +17,15 @@ import Testing
     }
 
     @Test
+    func everyBundledComponentCarriesARealSHA256() throws {
+        // Installs refuse anything else, so a bad pin here would break a
+        // first-run download rather than skip its check.
+        for (id, component) in try VersionCatalog.loadBundled().components {
+            #expect(ChecksumVerifier.isPinned(component.sha256), Comment(rawValue: id))
+        }
+    }
+
+    @Test
     func decodingFromData() throws {
         let json = """
         {
