@@ -64,6 +64,24 @@ import Testing
     }
 
     @Test
+    func aceCombat7IsKnownToRunOnSikarugir() {
+        let r = GameRecipeCatalog.recipe(forExecutablePath: "Ace7Game.exe")
+        #expect(r?.name == "ACE COMBAT 7: SKIES UNKNOWN")
+        #expect(r?.backend == .sikarugir)
+        // Only the backend is recorded so far — the summary must not claim
+        // a cap or MetalFX nobody has measured.
+        #expect(r?.configSummary == "Tested: \(GraphicsBackend.sikarugir.shortName).")
+    }
+
+    @Test
+    func aceCombat3RemixIsKnownToRunOnSikarugir() {
+        let r = GameRecipeCatalog.recipe(forExecutablePath: "Program Files/ac3r-3d98f42/ac3r.exe")
+        #expect(r?.name == "Ace Combat 3 Remix")
+        #expect(r?.backend == .sikarugir)
+        #expect(r?.configSummary == "Tested: \(GraphicsBackend.sikarugir.shortName).")
+    }
+
+    @Test
     func recipeDependenciesSurfaceInConfigSummary() {
         let r = GameRecipeCatalog.recipe(forExecutablePath: "Stalker2.exe")
         #expect(r?.configSummary.contains("Needs:") == true)

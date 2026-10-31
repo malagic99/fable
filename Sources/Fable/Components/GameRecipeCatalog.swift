@@ -100,10 +100,21 @@ enum GameRecipeCatalog {
             note: "UE5 D3D12. Must use Sikarugir — the DXVK/Vulkan path silently crashes because vkd3d-proton has no production macOS support. Cap to 60 + MetalFX on unified-memory machines; drop textures a notch if pressure climbs.",
             dependencies: ["vcredist-x64", "vcredist-x86"]
         ),
+        // Placeholder entry, on the developer's word that it runs well: only
+        // the backend is stated (the Steam bottle it ran in is Sikarugir).
+        // Cap, MetalFX and playtime get added once they're recorded.
+        GameRecipe(
+            name: "ACE COMBAT 7: SKIES UNKNOWN", executables: ["ace7game.exe"],
+            backend: .sikarugir, metalFX: false, frameRateCap: nil,
+            note: "UE4, launched through Steam in a Sikarugir bottle. Reported running well on Apple Silicon (Oct 2026); recommended frame cap and MetalFX not recorded yet."
+        ),
+        // ~3 h tracked in game-stats.json (Oct 2026), no per-game override.
+        // Only the backend is stated, same as Ace Combat 7, until the cap and
+        // MetalFX are confirmed.
         GameRecipe(
             name: "Ace Combat 3 Remix", executables: ["ac3r.exe"],
-            backend: .sikarugir, metalFX: true, frameRateCap: 60,
-            note: "D3D12 PC port (development build). Validated ~3 h on an M4 Pro (24 GB). In settings.exe turn OFF ray tracing and DLSS — DLSS isn't available on a Mac GPU, and with them on the game crashes 1–3 minutes into a mission. It reads controllers through XInput only: for a DualSense, turn on the bottle's \"PlayStation Pads as Xbox (XInput)\"."
+            backend: .sikarugir, metalFX: false, frameRateCap: nil,
+            note: "Fan PC port of Ace Combat 3: Electrosphere (github.com/i5han/ac3-remix); needs your own disc images next to ac3r.exe. ~3 h played on a Sikarugir bottle on Apple Silicon (Oct 2026); recommended frame cap and MetalFX not recorded yet."
         ),
     ]
 

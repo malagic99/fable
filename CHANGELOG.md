@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- **Two more known setups: Ace Combat 7 and Ace Combat 3 Remix.** Both run on
+  Sikarugir. These entries record the backend only for now; the frame cap and
+  MetalFX settings get added once they're confirmed, so the "Tested:" line
+  doesn't claim settings nobody measured.
+
 ## v1.0.2 — 2026-10-31
 
 **A security pass over everything Fable accepts from someone else.** Shared
