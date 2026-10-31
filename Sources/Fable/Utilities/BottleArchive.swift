@@ -88,6 +88,13 @@ enum BottleArchive {
             "\(steam)/appcache",
             "\(steam)/depotcache",
             "\(steam)/ssfn*",       // sentry files (machine auth)
+            // The client keeps more login state OUTSIDE its own folder, in the
+            // Windows user's local AppData: local.vdf's ConnectCache (the
+            // saved "remember me" token) and htmlcache, whose Cookies hold
+            // steamLoginSecure web sessions for store, checkout and community.
+            // Both regenerate on first launch. The `*` stands for the donor's
+            // Wine user name (their Mac user name).
+            "\(prefixEntryName)/drive_c/users/*/AppData/Local/Steam",
         ]
     }
 

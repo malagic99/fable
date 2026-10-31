@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **"Donor for a Friend" exports now really leave your Steam login behind.**
+  The export skipped Steam's own `config` folder and sentry files, but the
+  Steam client also keeps login state in the Windows user's local AppData:
+  `local.vdf` (its saved "remember me" token) and `htmlcache`, whose cookies
+  hold live `steamLoginSecure` sessions for the Steam store, checkout and
+  community. A donor bottle carried both. They're now excluded too; Steam
+  recreates them when your friend signs in. **If you've ever sent someone a
+  donor bottle, open Steam → Settings → Security → Manage Steam Guard →
+  Deauthorize all other devices** — that signs out every saved session,
+  including any that travelled in the bottle.
 - **Corrected the Steam Controller guidance shipped in v1.0.1.** It told users
   to open Steam and use Steam Input, "which switches it into gamepad mode".
   Steam does not see this controller over Bluetooth either, so that advice sent
