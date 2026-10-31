@@ -12,6 +12,16 @@
   donor bottle, open Steam → Settings → Security → Manage Steam Guard →
   Deauthorize all other devices** — that signs out every saved session,
   including any that travelled in the bottle.
+- **Importing a shared theme can no longer touch files outside Fable's themes
+  folder.** A `.fableskin` file's `id` was used directly as a file name, so a
+  crafted theme with an id like `../../something` wrote its JSON and its
+  background image wherever that path led in your home folder. And a theme
+  could name *any* file as its background; re-exporting that theme would then
+  embed the file — say, a private key — in a file you'd share with friends.
+  Imports now get a fresh id when theirs isn't a plain name, only keep a
+  background image the file actually carries, and the store refuses to read
+  any image name that isn't a plain file name, which also covers themes
+  imported by earlier builds.
 - **Corrected the Steam Controller guidance shipped in v1.0.1.** It told users
   to open Steam and use Steam Input, "which switches it into gamepad mode".
   Steam does not see this controller over Bluetooth either, so that advice sent
