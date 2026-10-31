@@ -75,12 +75,14 @@ memory crash. Two Fable-shaped pieces:
    both surfaced the moment the app left this machine. **Keep a second Mac in
    the loop; it is not a pre-release ritual, it is the only honest test.**
 
-## 🪨 Rock 3 — Native Steam Bridge (proposed, Nov–Dec 2026)
+## 🪨 Rock 3 — Native Steam Bridge (proposed, Nov 2026 – Jan 2027)
 
 Windows games in a Sikarugir bottle talking to the native Mac Steam client —
-no Steam inside Wine. Adapts NotProton's principle on the free stack. Starts
-with a one-week go/no-go spike. Plan, timeline and task list:
-[NATIVE-STEAM-BRIDGE.md](NATIVE-STEAM-BRIDGE.md).
+no Steam inside Wine — and, as a second layer, installing and launching from
+the Mac Steam app's own Play button. A full NotProton equivalent on the free
+stack, built to break safely when Steam updates. Starts with a one-week
+go/no-go spike; competes with the November sprint plan for the same weeks.
+Plan, timeline and task list: [NATIVE-STEAM-BRIDGE.md](NATIVE-STEAM-BRIDGE.md).
 
 ## 🌱 Ongoing — Grow the moat (recipes)
 
