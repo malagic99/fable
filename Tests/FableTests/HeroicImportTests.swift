@@ -61,4 +61,33 @@ import Testing
         #expect(try manager.importHeroicGames([game], into: bottle.id).isEmpty)
         #expect(manager.bottle(with: bottle.id)?.games.count == 1)
     }
+
+    @Test
+    func namesThatLeaveTheHeroicFolderAreSkipped() async throws {
+        let (manager, root) = makeManager()
+        defer { try? fm.removeItem(at: root) }
+
+        let bottle = try manager.createBottle(name: "Library")
+        try manager.setStatus(.ready, for: bottle.id)
+        let driveC = manager.driveCDirectory(for: bottle)
+        let base = try makeInstall(in: root, folder: "Real", exe: "real.exe")
+        func variant(folder: String?, exe: String) -> HeroicGame {
+            HeroicGame(appName: "x", title: "\(folder ?? "nil")|\(exe)", runner: "legendary",
+                       installPath: base.installPath, executable: exe,
+                       platform: "Windows", folderName: folder)
+        }
+
+        let imported = try manager.importHeroicGames([
+            variant(folder: "../escape", exe: "real.exe"),           // link outside Heroic/
+            variant(folder: "..", exe: "real.exe"),
+            variant(folder: "Fine", exe: "../../../outside.exe"),      // exe outside the install
+            variant(folder: "Fine2", exe: "/abs/real.exe"),
+            variant(folder: "Nested", exe: "bin/x64/real.exe"),       // subfolders are normal
+        ], into: bottle.id)
+
+        #expect(imported == ["Nested|bin/x64/real.exe"])
+        #expect((try? fm.destinationOfSymbolicLink(atPath: driveC.appending(path: "escape").path)) == nil)
+        #expect(manager.bottle(with: bottle.id)?.games.map(\.executablePath)
+                == ["Heroic/Nested/bin/x64/real.exe"])
+    }
 }

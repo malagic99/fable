@@ -2,6 +2,7 @@ import Foundation
 
 enum GameLaunchError: LocalizedError {
     case executableMissing(String)
+    case executableOutsideBottle(String)
     case runtimeConflict(String)
     case notConfigured
 
@@ -9,6 +10,8 @@ enum GameLaunchError: LocalizedError {
         switch self {
         case .executableMissing(let path):
             "The game's executable is missing from the bottle (C:\\\(path.replacingOccurrences(of: "/", with: "\\")))."
+        case .executableOutsideBottle(let path):
+            "The game's executable path (\(path)) points outside the bottle, so Fable won't launch it. Remove the game and add it again from inside the bottle."
         case .runtimeConflict(let bottle):
             "Another game in “\(bottle)” is running on a different Wine runtime. Stop it first — one bottle can't run two Wine versions at once."
         case .notConfigured:
@@ -158,6 +161,12 @@ final class GameLauncher: ObservableObject {
         runtime: any RuntimeResolving
     ) throws -> LaunchPlan {
         let executable = driveC.appending(path: game.executablePath)
+        // Adding a game already refuses paths outside drive_c, but a
+        // bottle.json from an imported .fbottle never went through that.
+        // Same rule (lexical, so Heroic's symlinks under drive_c still count).
+        guard GameInstaller.pathInDriveC(of: executable, driveC: driveC) != nil else {
+            throw GameLaunchError.executableOutsideBottle(game.executablePath)
+        }
         guard FileManager.default.fileExists(atPath: executable.path) else {
             throw GameLaunchError.executableMissing(game.executablePath)
         }
