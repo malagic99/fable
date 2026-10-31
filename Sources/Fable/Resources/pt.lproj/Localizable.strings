@@ -500,3 +500,21 @@
 "health.untested"               = "Sem teste";
 "health.crashed"                = "Travou na última vez";
 "health.native"                 = "Nativo do Mac";
+
+/* Native Steam bridge */
+"From Steam (Native Bridge)…" = "Da Steam (ponte nativa)…";
+"Add a Steam game (native bridge)" = "Adicionar um jogo da Steam (ponte nativa)";
+"Plays the game's Windows build through your Mac Steam app — no Steam inside Wine." = "Roda a versão de Windows do jogo pelo seu app Steam do Mac, sem Steam dentro do Wine.";
+"Bridge ready" = "Ponte pronta";
+"The bridge isn't built on this Mac yet" = "A ponte ainda não foi compilada neste Mac";
+"It's built from Valve's source on your Mac — a few minutes, once. You need Homebrew's mingw-w64, bison and autoconf." = "Ela é compilada a partir do código da Valve no seu Mac: alguns minutos, uma vez só. Você precisa de mingw-w64, bison e autoconf do Homebrew.";
+"Build in Terminal…" = "Compilar no Terminal…";
+"Check Again" = "Verificar de novo";
+"Steam app ID or store link" = "ID do app na Steam ou link da loja";
+"Look Up" = "Buscar";
+"Asking Steam… the first time also sets up steamcmd." = "Consultando a Steam… na primeira vez também instala o steamcmd.";
+"Waiting for Terminal…" = "Aguardando o Terminal…";
+"Add to Bottle" = "Adicionar à garrafa";
+"Download in Terminal…" = "Baixar no Terminal…";
+"steambridge.added"             = "“%@” adicionado. Aperte Jogar com o app Steam do Mac aberto.";
+"steambridge.download_failed"   = "O steamcmd não concluiu o download. Confira a janela do Terminal e tente de novo.";

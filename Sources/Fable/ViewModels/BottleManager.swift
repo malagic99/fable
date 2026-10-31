@@ -313,6 +313,38 @@ final class BottleManager: ObservableObject {
         try save(bottles[index])
     }
 
+    /// Registers a game downloaded for the native Steam bridge into
+    /// `drive_c/SteamBridge/<appID>`. The game always runs on Sikarugir (the
+    /// bridge needs it), whatever the bottle's default. Adding the same app
+    /// again updates its entry instead of duplicating it.
+    @discardableResult
+    func addSteamBridgeGame(_ info: SteamAppInfo, to id: Bottle.ID) throws -> Game {
+        guard let index = bottles.firstIndex(where: { $0.id == id }) else {
+            throw BottleError.notFound
+        }
+        guard let exe = info.windowsExecutable else { throw SteamCmdError.noWindowsBuild(info.name) }
+        let path = "\(SteamCmd.installFolder(appID: info.appID))/\(exe)"
+        guard FileManager.default.fileExists(
+            atPath: driveCDirectory(for: bottles[index]).appending(path: path).path
+        ) else {
+            throw SteamCmdError.notDownloaded(info.name)
+        }
+
+        var game = bottles[index].games.first { $0.steamAppID == info.appID }
+            ?? Game(name: info.name, executablePath: path)
+        game.executablePath = path
+        game.arguments = info.windowsArguments
+        game.graphicsBackend = .sikarugir
+        game.steamAppID = info.appID
+        if let existing = bottles[index].games.firstIndex(where: { $0.id == game.id }) {
+            bottles[index].games[existing] = game
+        } else {
+            bottles[index].games.append(game)
+        }
+        try save(bottles[index])
+        return game
+    }
+
     /// Imports installed Heroic games into a bottle by symlinking each game's
     /// install directory under `drive_c/Heroic/<folder>` (no copy — even a
     /// multi-GB game is instant) and registering its exe. Idempotent: skips a

@@ -4,7 +4,11 @@ import Foundation
 /// `appmanifest_*.acf` files use. Either a leaf string or an ordered list
 /// of child key/value pairs (order preserved so re-serializing stays close
 /// to Steam's own layout).
-indirect enum VDFValue: Equatable {
+///
+/// `Sendable` is declared, not left to inference: Swift 6.1 (CI's toolchain)
+/// loops inferring it for this recursive enum ("circular reference") once a
+/// value is used where sendability is checked.
+indirect enum VDFValue: Equatable, Sendable {
     case string(String)
     case object([(key: String, value: VDFValue)])
 

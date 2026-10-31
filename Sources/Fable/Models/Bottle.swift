@@ -32,6 +32,10 @@ struct Game: Codable, Identifiable, Hashable, Sendable {
     var graphicsBackend: GraphicsBackend?
     /// Per-game DualSense trigger override. nil = inherit the bottle's profile.
     var triggerProfile: TriggerProfile?
+    /// Set for a game launched through the native Steam bridge: its Steam app
+    /// id, which steam_api reports to the Mac Steam client. nil = an ordinary
+    /// launch. See `SteamBridge`.
+    var steamAppID: Int?
 
     init(
         id: UUID = UUID(),
@@ -40,7 +44,8 @@ struct Game: Codable, Identifiable, Hashable, Sendable {
         arguments: String = "",
         environment: [String: String] = [:],
         graphicsBackend: GraphicsBackend? = nil,
-        triggerProfile: TriggerProfile? = nil
+        triggerProfile: TriggerProfile? = nil,
+        steamAppID: Int? = nil
     ) {
         self.id = id
         self.name = name
@@ -49,6 +54,7 @@ struct Game: Codable, Identifiable, Hashable, Sendable {
         self.environment = environment
         self.graphicsBackend = graphicsBackend
         self.triggerProfile = triggerProfile
+        self.steamAppID = steamAppID
     }
 
     init(from decoder: Decoder) throws {
@@ -60,6 +66,7 @@ struct Game: Codable, Identifiable, Hashable, Sendable {
         environment = try container.decodeIfPresent([String: String].self, forKey: .environment) ?? [:]
         graphicsBackend = try container.decodeIfPresent(GraphicsBackend.self, forKey: .graphicsBackend)
         triggerProfile = try container.decodeIfPresent(TriggerProfile.self, forKey: .triggerProfile)
+        steamAppID = try container.decodeIfPresent(Int.self, forKey: .steamAppID)
     }
 
     /// The trigger profile actually in effect: the game's override, else the
