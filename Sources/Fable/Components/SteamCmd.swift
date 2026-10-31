@@ -24,9 +24,6 @@ struct SteamAppInfo: Equatable, Sendable {
     /// `"<appID>" { … }` KeyValues block.
     static func parse(appID: Int, steamcmdOutput output: String) -> SteamAppInfo? {
         guard let start = output.range(of: "\"\(appID)\"") else { return nil }
-        // Bind the parsed pair whole, as SteamInstallCommitter does: Swift 6.2
-        // (CI) reports a circular reference when this optional tuple of the
-        // recursive VDFValue is destructured in a `guard let`.
         guard let parsed = SteamKeyValues.parse(String(output[start.lowerBound...])),
               parsed.key == String(appID),
               let name = parsed.value["common"]?.string("name")
