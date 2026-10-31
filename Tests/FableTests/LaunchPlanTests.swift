@@ -101,6 +101,28 @@ import Testing
         }
     }
 
+    @Test
+    func executablePathCannotLeaveDriveC() throws {
+        let (prefix, driveC) = try makePrefix()
+        defer { try? fm.removeItem(at: prefix) }
+        // A real file just outside drive_c, reached by a bottle.json path
+        // that never went through the add-game check.
+        try Data("#!/bin/sh".utf8).write(to: prefix.appending(path: "outside.sh"))
+        let escapee = Game(name: "E", executablePath: "Games/../../outside.sh")
+        do {
+            _ = try plan(game: escapee, bottle: Bottle(name: "B"), prefix: prefix, driveC: driveC)
+            Issue.record("planned a launch outside drive_c")
+        } catch GameLaunchError.executableOutsideBottle {
+        } catch {
+            Issue.record("expected .executableOutsideBottle, got \(error)")
+        }
+        // `..` that stays inside drive_c is still fine.
+        let inside = Game(name: "I", executablePath: "Games/Demo/../Demo/demo.exe")
+        #expect(throws: Never.self) {
+            try plan(game: inside, bottle: Bottle(name: "B"), prefix: prefix, driveC: driveC)
+        }
+    }
+
     // MARK: Environment composition
 
     @Test

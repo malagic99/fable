@@ -39,6 +39,12 @@
   write a variable whose *name* isn't a plain identifier: the name went into
   the launch script unquoted, so a crafted one ran as a shell command when the
   shortcut opened.
+- **A game's executable has to live inside its bottle.** Adding a game already
+  insisted on that, but a game entry arriving in an imported `.fbottle` was
+  launched from wherever its path pointed, `../..` included. Launch now applies
+  the same rule and explains how to fix an entry that breaks it. Heroic import
+  likewise skips a game whose folder or executable name would leave Fable's
+  `Heroic` folder, instead of creating a link elsewhere in the bottle.
 - **Corrected the Steam Controller guidance shipped in v1.0.1.** It told users
   to open Steam and use Steam Input, "which switches it into gamepad mode".
   Steam does not see this controller over Bluetooth either, so that advice sent

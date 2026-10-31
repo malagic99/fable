@@ -330,6 +330,13 @@ final class BottleManager: ObservableObject {
         var imported: [String] = []
         for game in games {
             let folder = game.folderName ?? game.installPath.lastPathComponent
+            // Both names come from Heroic's own JSON. A folder that isn't one
+            // plain path component would put the link somewhere other than
+            // drive_c/Heroic, and `..` in the exe would leave the install dir.
+            let exeComponents = game.executable.split(separator: "/", omittingEmptySubsequences: false)
+            guard !folder.isEmpty, folder != ".", folder != "..", !folder.contains("/"),
+                  !game.executable.hasPrefix("/"), !exeComponents.contains("..")
+            else { continue }
             let link = heroicDir.appending(path: folder, directoryHint: .isDirectory)
             // Symlink the install dir in (leave an existing link/dir as-is).
             if !fm.fileExists(atPath: link.path) {
