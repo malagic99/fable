@@ -100,6 +100,11 @@ enum GameRecipeCatalog {
             note: "UE5 D3D12. Must use Sikarugir — the DXVK/Vulkan path silently crashes because vkd3d-proton has no production macOS support. Cap to 60 + MetalFX on unified-memory machines; drop textures a notch if pressure climbs.",
             dependencies: ["vcredist-x64", "vcredist-x86"]
         ),
+        GameRecipe(
+            name: "Ace Combat 3 Remix", executables: ["ac3r.exe"],
+            backend: .sikarugir, metalFX: true, frameRateCap: 60,
+            note: "D3D12 PC port (development build). Validated ~3 h on an M4 Pro (24 GB). In settings.exe turn OFF ray tracing and DLSS — DLSS isn't available on a Mac GPU, and with them on the game crashes 1–3 minutes into a mission. It reads controllers through XInput only: for a DualSense, turn on the bottle's \"PlayStation Pads as Xbox (XInput)\"."
+        ),
     ]
 
     // Adding an entry: only from a REAL tested setup — read the bottle's

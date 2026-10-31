@@ -52,6 +52,9 @@ struct BottleDetailView: View {
                             await wineManager.reconcileRetinaMode(
                                 bottle.retinaMode, at: bottleManager.prefixDirectory(for: bottle)
                             )
+                            await wineManager.reconcilePlayStationPadsAsXInput(
+                                bottle.playStationPadsAsXInput, at: bottleManager.prefixDirectory(for: bottle)
+                            )
                         }
                     }
                 }
@@ -163,6 +166,13 @@ struct BottleDetailView: View {
                     Label("DualSense Triggers", systemImage: "l2.rectangle.roundedbottom")
                 }
                 .help("Set adaptive-trigger resistance (weapon-break, brake, etc.) for this bottle's games")
+
+                Toggle("PlayStation Pads as Xbox (XInput)", isOn: Binding(
+                    get: { bottle.playStationPadsAsXInput },
+                    set: { setPlayStationPadsAsXInput($0, bottle: bottle) }
+                ))
+                .disabled(bottle.status != .ready || isAnyGameRunning(in: bottle))
+                .help("Turn on if a game ignores your DualSense or DualShock but supports Xbox controllers. Leave off for games with built-in PlayStation support.")
             } header: {
                 Text("Controllers")
             }
@@ -771,6 +781,27 @@ struct BottleDetailView: View {
                 errorMessage = nil
             } catch {
                 try? bottleManager.setRetinaMode(!enabled, for: bottle.id)
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+
+    private func setPlayStationPadsAsXInput(_ enabled: Bool, bottle: Bottle) {
+        // Same shape as Retina: persist, write the registry, revert on failure.
+        do {
+            try bottleManager.setPlayStationPadsAsXInput(enabled, for: bottle.id)
+        } catch {
+            errorMessage = error.localizedDescription
+            return
+        }
+        Task {
+            do {
+                try await wineManager.setPlayStationPadsAsXInput(
+                    enabled, at: bottleManager.prefixDirectory(for: bottle)
+                )
+                errorMessage = nil
+            } catch {
+                try? bottleManager.setPlayStationPadsAsXInput(!enabled, for: bottle.id)
                 errorMessage = error.localizedDescription
             }
         }
