@@ -5,6 +5,8 @@ enum GameLaunchError: LocalizedError {
     case executableOutsideBottle(String)
     case runtimeConflict(String)
     case notConfigured
+    case steamBridgeNeedsSikarugir
+    case steamBridgeNotReady(String)
 
     var errorDescription: String? {
         switch self {
@@ -16,6 +18,10 @@ enum GameLaunchError: LocalizedError {
             "Another game in “\(bottle)” is running on a different Wine runtime. Stop it first — one bottle can't run two Wine versions at once."
         case .notConfigured:
             "Fable's launcher isn't ready yet — try again in a moment."
+        case .steamBridgeNeedsSikarugir:
+            "This game launches through the native Steam bridge, which runs on Sikarugir. Set the game or its bottle to Sikarugir."
+        case .steamBridgeNotReady(let reason):
+            "The native Steam bridge isn't ready (\(reason)). Build it with scripts/steam-bridge/build.sh."
         }
     }
 }
@@ -29,6 +35,18 @@ protocol RuntimeResolving {
     /// Alternate-runtime wineserver to drain after exit; nil for the default
     /// runtime (whose wineserver needs no explicit drain).
     func wineserverBinary(for backend: GraphicsBackend) -> URL?
+    /// The native Steam bridge build, or why there isn't a usable one.
+    func steamBridge() -> Result<URL, GameLaunchError>
+}
+
+extension RuntimeResolving {
+    func steamBridge() -> Result<URL, GameLaunchError> {
+        switch SteamBridge.status() {
+        case .ready: .success(SteamBridge.directory)
+        case .notBuilt: .failure(.steamBridgeNotReady("not built"))
+        case .damaged(let reason): .failure(.steamBridgeNotReady(reason))
+        }
+    }
 }
 
 /// Launches and stops games. App-wide so games keep running while you
@@ -245,10 +263,25 @@ final class GameLauncher: ObservableObject {
         let overrides = WineEnv.screenedOverrides(game.environment)
         environment.merge(overrides.applied) { _, new in new }
 
+        // Native Steam bridge: Wine runs the stand-in steam.exe, which points
+        // steam_api at the bridge and starts the game. Applied after the
+        // per-game layer so the bridge's own variables always hold.
+        var launched = executable
+        var arguments = ArgumentTokenizer.tokenize(game.arguments)
+        if let appID = game.steamAppID {
+            guard effectiveBackend == .sikarugir else { throw GameLaunchError.steamBridgeNeedsSikarugir }
+            let bridge = try runtime.steamBridge().get()
+            launched = try SteamBridge.stage(driveC: driveC, bridge: bridge)
+            arguments = [SteamBridge.windowsPath(forExecutablePath: game.executablePath)] + arguments
+            environment.merge(SteamBridge.launchEnvironment(
+                appID: appID, bridge: bridge, macSteamClient: SteamBridge.macSteamClientDirectory()
+            )) { _, new in new }
+        }
+
         return LaunchPlan(
             wine: wine,
-            executable: executable,
-            arguments: ArgumentTokenizer.tokenize(game.arguments),
+            executable: launched,
+            arguments: arguments,
             environment: environment,
             workingDirectory: executable.deletingLastPathComponent(),
             logFile: logFile,

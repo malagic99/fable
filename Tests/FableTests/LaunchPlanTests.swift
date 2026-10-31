@@ -29,6 +29,9 @@ import Testing
                 nil
             }
         }
+        /// Explicit, so no test depends on this Mac's real bridge folder.
+        var bridge: Result<URL, GameLaunchError> = .failure(.steamBridgeNotReady("not built"))
+        func steamBridge() -> Result<URL, GameLaunchError> { bridge }
     }
 
     /// Temp prefix with a drive_c and a fake game exe.
@@ -46,14 +49,113 @@ import Testing
         bottle: Bottle,
         prefix: URL,
         driveC: URL,
-        base: [String: String] = ["WINEDLLOVERRIDES": "mscoree,mshtml="]
+        base: [String: String] = ["WINEDLLOVERRIDES": "mscoree,mshtml="],
+        runtime: StubRuntime = StubRuntime()
     ) throws -> GameLauncher.LaunchPlan {
         try GameLauncher.composeLaunchPlan(
             game: game, bottle: bottle, prefix: prefix, driveC: driveC,
             baseEnvironment: base,
             logFile: fm.temporaryDirectory.appending(path: "plan-test.log"),
-            runtime: StubRuntime()
+            runtime: runtime
         )
+    }
+
+    /// The files staging copies out of a bridge build.
+    private func makeBridge() throws -> URL {
+        let bridge = fm.temporaryDirectory.appending(path: "bridge-\(UUID().uuidString)", directoryHint: .isDirectory)
+        for path in ["steam.exe", "x86_64-windows/steamclient64.dll", "i386-windows/steamclient.dll"] {
+            let url = bridge.appending(path: path)
+            try fm.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try Data(path.utf8).write(to: url)
+        }
+        return bridge
+    }
+
+    // MARK: Native Steam bridge
+
+    @Test
+    func bridgeGameLaunchesThroughTheStandIn() throws {
+        let (prefix, driveC) = try makePrefix()
+        let bridge = try makeBridge()
+        defer { try? fm.removeItem(at: prefix); try? fm.removeItem(at: bridge) }
+        let game = Game(name: "D", executablePath: "Games/Demo/demo.exe", arguments: "-windowed",
+                        environment: ["SteamAppId": "999", "DXVK_HUD": "fps"], steamAppID: 1168880)
+        var runtime = StubRuntime()
+        runtime.bridge = .success(bridge)
+
+        let plan = try plan(game: game, bottle: Bottle(name: "B", graphicsBackend: .sikarugir),
+                            prefix: prefix, driveC: driveC, runtime: runtime)
+
+        // Wine runs the stand-in from the bridge's own folder in the bottle…
+        #expect(plan.executable == driveC.appending(path: "\(SteamBridge.prefixFolder)/steam.exe"))
+        #expect(fm.fileExists(atPath: plan.executable.path))
+        // …which gets the game as a C: path, then the game's own arguments.
+        #expect(plan.wineArguments.dropFirst() == [#"C:\Games\Demo\demo.exe"#, "-windowed"])
+        // The game still starts in its own folder.
+        #expect(plan.workingDirectory.standardizedFileURL.path(percentEncoded: false)
+                == driveC.appending(path: "Games/Demo/").standardizedFileURL.path(percentEncoded: false))
+        // Bridge variables are set and can't be overridden per game.
+        #expect(plan.environment["WINEDLLPATH"] == bridge.path)
+        #expect(plan.environment["SteamAppId"] == "1168880")
+        #expect(plan.environment["SteamGameId"] == "1168880")
+        #expect(plan.environment["STEAM_COMPAT_CLIENT_INSTALL_PATH"]?
+            .hasSuffix("Steam.AppBundle/Steam/Contents/MacOS") == true)
+        #expect(plan.environment["DXVK_HUD"] == "fps")              // other per-game settings still apply
+        #expect(plan.runtimeKey == "sikarugir")
+    }
+
+    @Test
+    func bridgeNeedsSikarugir() throws {
+        let (prefix, driveC) = try makePrefix()
+        let bridge = try makeBridge()
+        defer { try? fm.removeItem(at: prefix); try? fm.removeItem(at: bridge) }
+        var runtime = StubRuntime()
+        runtime.bridge = .success(bridge)
+        let game = Game(name: "D", executablePath: "Games/Demo/demo.exe", steamAppID: 480)
+        do {
+            _ = try plan(game: game, bottle: Bottle(name: "B", graphicsBackend: .dxvk),
+                         prefix: prefix, driveC: driveC, runtime: runtime)
+            Issue.record("planned a bridge launch off Sikarugir")
+        } catch GameLaunchError.steamBridgeNeedsSikarugir {
+        } catch {
+            Issue.record("expected .steamBridgeNeedsSikarugir, got \(error)")
+        }
+    }
+
+    @Test
+    func bridgeGameWithoutABuildSaysSo() throws {
+        let (prefix, driveC) = try makePrefix()
+        defer { try? fm.removeItem(at: prefix) }
+        let game = Game(name: "D", executablePath: "Games/Demo/demo.exe", steamAppID: 480)
+        do {
+            _ = try plan(game: game, bottle: Bottle(name: "B", graphicsBackend: .sikarugir),
+                         prefix: prefix, driveC: driveC)
+            Issue.record("planned a bridge launch with no bridge")
+        } catch GameLaunchError.steamBridgeNotReady {
+        } catch {
+            Issue.record("expected .steamBridgeNotReady, got \(error)")
+        }
+    }
+
+    @Test
+    func ordinaryGamesDontTouchTheBridge() throws {
+        let (prefix, driveC) = try makePrefix()
+        defer { try? fm.removeItem(at: prefix) }
+        let plan = try plan(game: Game(name: "D", executablePath: "Games/Demo/demo.exe"),
+                            bottle: Bottle(name: "B", graphicsBackend: .sikarugir), prefix: prefix, driveC: driveC)
+        #expect(plan.executable == driveC.appending(path: "Games/Demo/demo.exe"))
+        #expect(plan.environment["WINEDLLPATH"] == nil)
+        #expect(plan.environment["SteamAppId"] == nil)
+        #expect(!fm.fileExists(atPath: driveC.appending(path: SteamBridge.prefixFolder).path))
+    }
+
+    @Test
+    func steamAppIDSurvivesAndOlderGamesDecodeWithoutIt() throws {
+        let game = Game(name: "D", executablePath: "x.exe", steamAppID: 1168880)
+        let decoded = try JSONDecoder().decode(Game.self, from: JSONEncoder().encode(game))
+        #expect(decoded.steamAppID == 1168880)
+        let old = #"{"id":"6F9619FF-8B86-D011-B42D-00C04FC964FF","name":"D","executablePath":"x.exe"}"#
+        #expect(try JSONDecoder().decode(Game.self, from: Data(old.utf8)).steamAppID == nil)
     }
 
     // MARK: Routing table
