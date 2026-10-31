@@ -96,6 +96,21 @@ import Testing
     }
 
     @Test
+    func aceCombat3RemixRecipeNamesTheControllerToggle() throws {
+        let r = try #require(GameRecipeCatalog.recipe(forExecutablePath: #"Program Files\ac3r-3d98f42\AC3R.exe"#))
+        #expect(r.backend == .sikarugir)
+        #expect(r.performance.frameRateCap == 60)
+        // The note sends DualSense users to a toggle by its label; if the
+        // label is renamed in BottleDetailView, this keeps the note honest.
+        let view = try String(contentsOf: URL(filePath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+            .appending(path: "Sources/Fable/UI/BottleDetailView.swift"), encoding: .utf8)
+        let label = "PlayStation Pads as Xbox (XInput)"
+        #expect(view.contains("Toggle(\"\(label)\""))
+        #expect(r.note.contains(label))
+    }
+
+    @Test
     func everyRecipeHasUniqueExecutablesAndANote() {
         var seen = Set<String>()
         for recipe in GameRecipeCatalog.all {

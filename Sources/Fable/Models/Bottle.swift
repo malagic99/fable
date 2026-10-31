@@ -158,6 +158,10 @@ struct Bottle: Codable, Identifiable, Hashable, Sendable {
     /// but renders many non-HiDPI-aware games (SDL/GL) into a corner with
     /// mismatched input — so it defaults OFF, since the point is games.
     var retinaMode: Bool
+    /// Read PlayStation pads through Wine's SDL path so XInput-only games see
+    /// them (winebus `DisableHidraw`). Off keeps Wine's default raw pass-
+    /// through, which games with native PlayStation support want.
+    var playStationPadsAsXInput: Bool
     /// Default DualSense adaptive-trigger profile for this bottle's games.
     /// A per-game override on `Game` wins over this.
     var triggerProfile: TriggerProfile
@@ -174,6 +178,7 @@ struct Bottle: Codable, Identifiable, Hashable, Sendable {
         performance: PerformanceOptions = PerformanceOptions(),
         installedWinetricksVerbs: Set<String> = [],
         retinaMode: Bool = false,
+        playStationPadsAsXInput: Bool = false,
         triggerProfile: TriggerProfile = TriggerProfile()
     ) {
         self.id = id
@@ -187,6 +192,7 @@ struct Bottle: Codable, Identifiable, Hashable, Sendable {
         self.performance = performance
         self.installedWinetricksVerbs = installedWinetricksVerbs
         self.retinaMode = retinaMode
+        self.playStationPadsAsXInput = playStationPadsAsXInput
         self.triggerProfile = triggerProfile
     }
 
@@ -226,6 +232,7 @@ struct Bottle: Codable, Identifiable, Hashable, Sendable {
         // Added post-launch; older bottles default to off (matches the
         // winemac.drv default and keeps existing games rendering correctly).
         retinaMode = try container.decodeIfPresent(Bool.self, forKey: .retinaMode) ?? false
+        playStationPadsAsXInput = try container.decodeIfPresent(Bool.self, forKey: .playStationPadsAsXInput) ?? false
         triggerProfile = try container.decodeIfPresent(TriggerProfile.self, forKey: .triggerProfile) ?? TriggerProfile()
     }
 }

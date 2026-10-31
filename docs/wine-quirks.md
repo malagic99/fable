@@ -40,6 +40,7 @@ regression or upgrading the Wine build is a lookup, not an archaeology dig.
 | **msync log flood** | msync logs `err:server_register_wait` *per frame* → 25 GB log | `WINEDEBUG=fixme-all,-msync` everywhere | `WineEnv.debugDiagnostic` | `fable-msync-iocp-spin` |
 | **Mono/Gecko dialogs** | Prefix creation blocks on installer UI | `WINEDLLOVERRIDES=mscoree,mshtml=` | `WineEnv.skipMonoGeckoDialogs` | — |
 | **PlayStation pads** | DualSense/DS4 unrecognized by SDL games | `SDL_JOYSTICK_HIDAPI_PS4/PS5=1` | `WineEnv.playstationControllers` | — |
+| **PlayStation pads, XInput games** | XInput-only game ignores a connected DualSense (no error anywhere — Wine accepts the pad) | winebus `DisableHidraw=1`: Wine keeps its SDL device (decodes the BT pad's extended 0x31 reports, exposes XInput) instead of raw HID pass-through | `Bottle.playStationPadsAsXInput` → `WineManager.setPlayStationPadsAsXInput` (per-bottle toggle, default off) | `fable-playstation-xinput` |
 | **D3DMetal for Steam CEF** | Steam login renders a black square | `D3DMETAL_FRAMEWORK_PATH` + builtin override | `SikarugirManager.launchEnvironment` | `fable-d3d12-breakthrough`, `fable-winemac-drv-gap` |
 | **Steam CEF flags** | Black/blank login window, dead QR | `-no-cef-sandbox -cef-disable-gpu-compositing -language english` | `BottleTemplateCatalog` steam template | `fable-cef-dwrite-trap` |
 | **never disable dwrite** | `dwrite=` override → `c0000135`, Steam won't open | (don't) | `fable-cef-dwrite-trap` | `fable-cef-dwrite-trap` |
