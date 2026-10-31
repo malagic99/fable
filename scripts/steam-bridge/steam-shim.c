@@ -60,14 +60,27 @@ int wmain(int argc, wchar_t **argv)
     wchar_t *game_slash = wcsrchr(game_dir, L'\\');
     if (game_slash) *game_slash = 0;
 
+    /* Fable stops a game by ending this process. The game (and anything it
+     * starts) sits in a kill-on-close job, so it ends with us instead of
+     * outliving the Stop button. */
+    HANDLE job = CreateJobObjectW(NULL, NULL);
+    if (job) {
+        JOBOBJECT_EXTENDED_LIMIT_INFORMATION limits = { 0 };
+        limits.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
+        SetInformationJobObject(job, JobObjectExtendedLimitInformation, &limits, sizeof(limits));
+    }
+
     wprintf(L"fable steam shim: pid %lu, launching %ls\n", pid, argv[1]);
     STARTUPINFOW si = { sizeof(si) };
     PROCESS_INFORMATION pi;
-    if (!CreateProcessW(argv[1], cmd, NULL, NULL, FALSE, 0, NULL,
+    if (!CreateProcessW(argv[1], cmd, NULL, NULL, FALSE, CREATE_SUSPENDED, NULL,
                         game_slash ? game_dir : NULL, &si, &pi)) {
         fwprintf(stderr, L"fable steam shim: CreateProcess failed: %lu\n", GetLastError());
         return 3;
     }
+    if (job && !AssignProcessToJobObject(job, pi.hProcess))
+        fwprintf(stderr, L"fable steam shim: couldn't tie the game to Stop (%lu)\n", GetLastError());
+    ResumeThread(pi.hThread);
     WaitForSingleObject(pi.hProcess, INFINITE);
     DWORD code = 0;
     GetExitCodeProcess(pi.hProcess, &code);
