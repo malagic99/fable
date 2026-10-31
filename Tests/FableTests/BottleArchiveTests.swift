@@ -96,6 +96,16 @@ import Testing
         try Data("48GB of game".utf8).write(to: steam.appending(path: "steamapps/common/Game/game.bin"))
         try Data("account tokens".utf8).write(to: steam.appending(path: "config/loginusers.vdf"))
         try Data("sentry".utf8).write(to: steam.appending(path: "ssfn1234567890"))
+        // Login state the client keeps outside its own folder, in the Wine
+        // user's local AppData — the saved-login cache and the web cookies.
+        let users = manager.prefixDirectory(for: bottle).appending(path: "drive_c/users", directoryHint: .isDirectory)
+        let localSteam = users.appending(path: "donor/AppData/Local/Steam", directoryHint: .isDirectory)
+        try fm.createDirectory(at: localSteam.appending(path: "htmlcache/Default/Network"), withIntermediateDirectories: true)
+        try Data("ConnectCache".utf8).write(to: localSteam.appending(path: "local.vdf"))
+        try Data("steamLoginSecure".utf8).write(to: localSteam.appending(path: "htmlcache/Default/Network/Cookies"))
+        // Other AppData of that user is not login state and still travels.
+        try fm.createDirectory(at: users.appending(path: "donor/AppData/Local/Other"), withIntermediateDirectories: true)
+        try Data("keep".utf8).write(to: users.appending(path: "donor/AppData/Local/Other/settings.ini"))
 
         // Metadata side: the steamapps game entry is stripped, Steam stays.
         var withGames = bottle
@@ -119,6 +129,10 @@ import Testing
         #expect(!fm.fileExists(atPath: outSteam.appending(path: "steamapps").path))
         #expect(!fm.fileExists(atPath: outSteam.appending(path: "config").path))
         #expect(!fm.fileExists(atPath: outSteam.appending(path: "ssfn1234567890").path))
+        let outUsers = unpacked.prefixDirectory.appending(path: "drive_c/users/donor/AppData/Local")
+        #expect(!fm.fileExists(atPath: outUsers.appending(path: "Steam/local.vdf").path))
+        #expect(!fm.fileExists(atPath: outUsers.appending(path: "Steam/htmlcache").path))
+        #expect(fm.fileExists(atPath: outUsers.appending(path: "Other/settings.ini").path))
         // The keeper from the fixture still travels.
         #expect(fm.fileExists(atPath: unpacked.prefixDirectory.appending(path: "drive_c/marker.txt").path))
     }
