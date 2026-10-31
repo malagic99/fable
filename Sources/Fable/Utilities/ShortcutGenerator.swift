@@ -60,7 +60,9 @@ enum ShortcutGenerator {
             "# A snapshot — re-create it from Fable if the bottle's backend or paths change.",
             "",
         ]
-        for key in plan.environment.keys.sorted() {
+        // Names go into the script unquoted, so anything that isn't a plain
+        // variable name is left out rather than run as shell syntax.
+        for key in plan.environment.keys.sorted() where WineEnv.isPlainVariableName(key) {
             lines.append("export \(key)=\(shellQuote(plan.environment[key]!))")
         }
         lines.append("")

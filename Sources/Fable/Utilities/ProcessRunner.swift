@@ -53,13 +53,15 @@ final class LaunchedProcess: @unchecked Sendable {
 /// capturing output. The workhorse behind WineManager and GameLauncher.
 enum ProcessRunner {
     /// Starts a process without waiting for it, redirecting stdout/stderr
-    /// to `logFile` (created, parent directories included).
+    /// to `logFile` (created, parent directories included). `logHeader`, if
+    /// given, is written to the fresh log before the process's own output.
     static func start(
         _ executable: URL,
         arguments: [String] = [],
         environment: [String: String]? = nil,
         currentDirectory: URL? = nil,
         redirectingOutputTo logFile: URL? = nil,
+        logHeader: String? = nil,
         qualityOfService: QualityOfService = .default
     ) throws -> LaunchedProcess {
         let process = Process()
@@ -81,8 +83,10 @@ enum ProcessRunner {
                 at: logFile.deletingLastPathComponent(),
                 withIntermediateDirectories: true
             )
-            FileManager.default.createFile(atPath: logFile.path, contents: nil)
-            return try FileHandle(forWritingTo: logFile)
+            FileManager.default.createFile(atPath: logFile.path, contents: logHeader.map { Data($0.utf8) })
+            let handle = try FileHandle(forWritingTo: logFile)
+            try handle.seekToEnd()
+            return handle
         }
         if let logHandle {
             process.standardOutput = logHandle

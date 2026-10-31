@@ -133,6 +133,9 @@ final class GameLauncher: ObservableObject {
         let runtimeKey: String
         /// Alternate-runtime wineserver to drain after exit (nil for the default).
         let releaseWineserver: URL?
+        /// Per-game override names left out of `environment` — see
+        /// `WineEnv.screenedOverrides`. Noted at the top of the game's log.
+        var refusedEnvironmentKeys: [String] = []
 
         /// Full argv passed to `wine`: the executable path then its arguments.
         var wineArguments: [String] { [executable.path] + arguments }
@@ -228,8 +231,10 @@ final class GameLauncher: ObservableObject {
             )) { _, new in new }
         }
         environment.merge(bottle.performance.backendAgnosticEnvironment()) { _, new in new }
-        // Per-game environment overrides win over everything.
-        environment.merge(game.environment) { _, new in new }
+        // Per-game environment overrides win over everything — except the
+        // ones that could load native code or break the shortcut script.
+        let overrides = WineEnv.screenedOverrides(game.environment)
+        environment.merge(overrides.applied) { _, new in new }
 
         return LaunchPlan(
             wine: wine,
@@ -239,7 +244,8 @@ final class GameLauncher: ObservableObject {
             workingDirectory: executable.deletingLastPathComponent(),
             logFile: logFile,
             runtimeKey: runtimeKey,
-            releaseWineserver: runtime.wineserverBinary(for: effectiveBackend)
+            releaseWineserver: runtime.wineserverBinary(for: effectiveBackend),
+            refusedEnvironmentKeys: overrides.refused
         )
     }
 
@@ -444,6 +450,10 @@ final class GameLauncher: ObservableObject {
             environment: plan.environment,
             currentDirectory: plan.workingDirectory,
             redirectingOutputTo: plan.logFile,
+            logHeader: plan.refusedEnvironmentKeys.isEmpty ? nil
+                : "fable: ignored per-game environment variables "
+                    + "(could load native code or aren't valid names): "
+                    + plan.refusedEnvironmentKeys.joined(separator: ", ") + "\n",
             // Claim the performance cores — the game is the foreground workload.
             qualityOfService: Stability.gameQoS
         )

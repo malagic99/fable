@@ -38,6 +38,19 @@ import Testing
     }
 
     @Test
+    func launchScriptOmitsNamesThatAreNotShellIdentifiers() {
+        // Names are written unquoted after `export`, so one smuggling shell
+        // syntax would run when the shortcut opens. Plans screen these out;
+        // the script refuses them too, in case a plan is built some other way.
+        let script = ShortcutGenerator.launchScript(plan: samplePlan(env: [
+            "WINEESYNC": "1",
+            "X=1;touch /tmp/pwned;Y": "1",
+        ]))
+        #expect(script.contains("export WINEESYNC='1'"))
+        #expect(!script.contains("pwned"))
+    }
+
+    @Test
     func launchScriptExportsEnvAndExecsWine() {
         let script = ShortcutGenerator.launchScript(plan: samplePlan())
         #expect(script.hasPrefix("#!/bin/sh"))
