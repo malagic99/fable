@@ -27,8 +27,8 @@ final class ThemeStore: ObservableObject {
     /// theme's own.
     func backgroundImage(for skin: FableSkin, customPath: String?) -> NSImage? {
         if let customPath, let image = NSImage(contentsOfFile: customPath) { return image }
-        guard let file = skin.backgroundImageFile else { return nil }
-        return NSImage(contentsOf: imagesDirectory.appending(path: file))
+        guard let url = storedImageURL(for: skin) else { return nil }
+        return NSImage(contentsOf: url)
     }
 
     // MARK: Import / export
@@ -39,10 +39,18 @@ final class ThemeStore: ObservableObject {
     func importSkin(from url: URL) throws -> FableSkin {
         let document = try JSONDecoder().decode(FableSkinDocument.self, from: Data(contentsOf: url))
         var skin = document.skin
+        // The id becomes a file name: one that could leave the themes folder
+        // gets a fresh id instead.
+        if !FableSkin.isSafeFileStem(skin.id) {
+            skin.id = "user-\(UUID().uuidString.lowercased())"
+        }
         // Namespace imports so they can't shadow a built-in.
         if FableSkin.builtIns.contains(where: { $0.id == skin.id }) {
             skin.id = "user-\(skin.id)"
         }
+        // Only an image the file carries counts; a name it brings along could
+        // point at any file on disk, and re-exporting would embed that file.
+        skin.backgroundImageFile = nil
         if let imageData = document.backgroundImageData {
             try FileManager.default.createDirectory(at: imagesDirectory, withIntermediateDirectories: true)
             let filename = "\(skin.id).img"
@@ -57,8 +65,8 @@ final class ThemeStore: ObservableObject {
     /// image so the theme travels as one file.
     func exportData(for skin: FableSkin) throws -> Data {
         var document = FableSkinDocument(skin: skin)
-        if let file = skin.backgroundImageFile {
-            document.backgroundImageData = try? Data(contentsOf: imagesDirectory.appending(path: file))
+        if let url = storedImageURL(for: skin) {
+            document.backgroundImageData = try? Data(contentsOf: url)
         }
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
@@ -76,6 +84,16 @@ final class ThemeStore: ObservableObject {
     }
 
     // MARK: Internals
+
+    /// The skin's image inside the images folder, or nil when its name isn't
+    /// a plain file name — themes stored by older builds weren't checked, and
+    /// may have legitimate ids with spaces, so this checks containment only.
+    private func storedImageURL(for skin: FableSkin) -> URL? {
+        guard let file = skin.backgroundImageFile, !file.isEmpty,
+              !file.contains("/"), !file.contains("\0"), !file.hasPrefix(".")
+        else { return nil }
+        return imagesDirectory.appending(path: file)
+    }
 
     private func persist(_ skin: FableSkin) throws {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)

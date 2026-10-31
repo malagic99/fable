@@ -54,6 +54,16 @@ struct FableSkin: Codable, Identifiable, Hashable, Sendable {
 
     var windowTint: Color? { windowTintHex.flatMap(Color.init(hex:)) }
 
+    /// True when `name` is safe to use as a file name inside the themes
+    /// folder: 1–64 ASCII letters, digits, `-` or `_`. No dots or slashes,
+    /// so an id or image name from a shared file can't climb out with `..`.
+    static func isSafeFileStem(_ name: String) -> Bool {
+        (1...64).contains(name.count)
+            && name.unicodeScalars.allSatisfy {
+                $0.isASCII && (CharacterSet.alphanumerics.contains($0) || $0 == "-" || $0 == "_")
+            }
+    }
+
     // MARK: Built-ins
 
     /// Fable as shipped: system appearance, the wineglass purple→indigo.
