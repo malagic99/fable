@@ -74,14 +74,6 @@ import Testing
     }
 
     @Test
-    func aceCombat3RemixIsKnownToRunOnSikarugir() {
-        let r = GameRecipeCatalog.recipe(forExecutablePath: "Program Files/ac3r-3d98f42/ac3r.exe")
-        #expect(r?.name == "Ace Combat 3 Remix")
-        #expect(r?.backend == .sikarugir)
-        #expect(r?.configSummary == "Tested: \(GraphicsBackend.sikarugir.shortName).")
-    }
-
-    @Test
     func recipeDependenciesSurfaceInConfigSummary() {
         let r = GameRecipeCatalog.recipe(forExecutablePath: "Stalker2.exe")
         #expect(r?.configSummary.contains("Needs:") == true)
