@@ -1,9 +1,65 @@
 # Native Steam Bridge — plan
 
-> **Status: proposed, 2026-10-29; scope widened 2026-10-31. Nothing built
-> yet.** Phase 0 is a spike whose only job is to say go or no-go before any
-> Fable code is written. These weeks are also claimed by the November sprint
-> plan (security → benchmarks → compatibility DB); decide which runs first.
+> **Status: Phase 0 spike passed — GO (2026-10-31).** A real Windows-only
+> build (MOLEK-SYNTEZ, 64-bit .NET, D3D11) ran on a scratch copy of free
+> Sikarugir, its own `steam_api64.dll` reached the native Mac Steam client
+> through our `lsteamclient`, Mac Steam reported it `App Running`, and it
+> rendered. No ntdll patch, no CrossOver, no changes to Steam. Results below
+> under [Phase 0 result](#phase-0-result-2026-10-31). No Fable code yet.
+
+## Phase 0 result (2026-10-31)
+
+**(a) Bridge: PASS.**
+- Valve's `proton_10.0` lsteamclient already handles macOS: under
+  `__APPLE__` it loads `$STEAM_COMPAT_CLIENT_INSTALL_PATH/steamclient.dylib`.
+- It needs only `ntdll_umbstowcs` / `ntdll_wcstoumbs` from `ntdll.so`, and
+  Sikarugir exports both. The two functions NotProton's prebuilt needs aren't
+  used upstream.
+- Built against Wine 10.0. The Windows half builds through Wine's normal
+  build; the 219-file C++ Unix half is built by hand with `clang++`, because
+  upstream makedep has no C++ support.
+- Configure under Rosetta with `CC="clang -arch x86_64"`; Apple's compiler
+  shim targets arm64 even under `arch -x86_64`.
+- Three source changes for macOS:
+  - The Mac `steamclient.dylib` lacks `Steam_IsKnownInterface` and
+    `Steam_NotifyMissingInterface`, so those are now optional.
+  - Steam Input's key-code table is stubbed on macOS (a real Windows VK →
+    `kVK_*` table is owed).
+  - `lstrcpynA` / `lstrlenW` are defined for the Unix side.
+- **The registry route works without an ntdll patch, given one naming rule.**
+  A builtin copied into `Program Files` loads without its Unix half, because
+  Wine only attaches it to builtins found in its own lib dirs by name. So the
+  bridge also goes into the runtime as `steamclient64.dll`/`.so` (and
+  `steamclient.dll`/`.so` for 32-bit).
+- A tiny `steam.exe` stand-in writes `ActiveProcess\pid`, `SteamClientDll`,
+  `SteamClientDll64`, `SteamPath` and `SteamExe`, then launches the game.
+- Evidence:
+  - A direct test program got `BLoggedOn: TRUE`.
+  - MOLEK-SYNTEZ's own `steam_api64.dll` created the full `SteamAPI_Init`
+    interface set, then called `GetAppID`, `GetSteamID` and
+    `RequestCurrentStats`.
+  - Mac Steam's `content_log` showed `AppID 1168880 state changed : Fully
+    Installed,App Running,`.
+  - The game rendered on D3DMetal.
+- Getting the Windows files: Mac Steam's own console
+  `download_depot <app> <depot>` fetched the Windows depot with no second
+  login, which is easier than steamcmd.
+
+**(b) Injection: PASS, with four requirements for the real hook.**
+- Starting `steam_osx` directly with `DYLD_INSERT_LIBRARIES` loads the
+  library. `open --env` is refused (launchd error 162).
+- The variable reaches every Steam Helper (CEF) process too, so the hook must
+  act only inside `steam_osx`.
+- Steam's own post-update relaunch goes through LaunchServices and fails for a
+  directly started client, so Fable has to let the bootstrapper apply updates
+  or restart the client itself.
+- Auto-login works, but took about 2 minutes in that run.
+- Quit with `steam://exit`; AppleScript's quit didn't reach the injected
+  instance.
+
+**Not yet checked:** achievements unlocking, Cloud sync, playtime accrual, a
+32-bit game, a SteamStub-DRM game. Steamworks SDK redistribution licence
+stays open (Phase 4).
 
 ## The idea
 
@@ -138,19 +194,19 @@ app.
 
 ### Phase 0 — Spike (go / no-go)
 
-- [ ] Pick the test game: owned, Windows-only, calls the Steam API, small, no anti-cheat
-- [ ] **Ask first**, then install the toolchain: `mingw-w64` (or llvm-mingw), `bison`, `flex`
-- [ ] Clone Wine `wine-10.0`; configure an x86_64 + i386 tree for the Rosetta host (pattern: NotProton `bridge/setup-wine-tree.sh`)
-- [ ] Fetch Proton's lsteamclient (`proton_10.0` branch) + Steamworks headers
-- [ ] Port to macOS: `steamclient.dylib` path, Mach-O loading — use Valve's code; NotProton's lsteamclient diff only as a reference (Steamworks-licensed, not its GPL parts)
-- [ ] Build `lsteamclient.dll` (x86_64, i386) + `lsteamclient.so`; confirm every `ntdll.so` import exists in Sikarugir's
-- [ ] Copy Sikarugir to scratch (never touch the installed one); drop the bridge in `lib/wine/*`
-- [ ] Download the game's Windows depot: `steamcmd +@sSteamCmdForcePlatformType windows +login <you> +app_update <id>` — **you type your own credentials**
-- [ ] Load route A: point `HKCU\Software\Valve\Steam\ActiveProcess\SteamClientDll64` at the bridge; launch with `SteamAppId`/`SteamGameId` set and Mac Steam running
-- [ ] If A fails: route B — port the detour idea to Sikarugir's ntdll, pinned by its SHA-256
-- [ ] Record: init result, ownership check, achievements, Steam's "now playing", playtime, overlay (expect none), Cloud
-- [ ] **Injection check:** quit Steam; start `steam_osx` directly with `DYLD_INSERT_LIBRARIES` pointing at a do-nothing universal dylib that only logs it loaded. Does Steam log in, update and run normally? Does it relaunch through the bootstrapper and drop the variable?
-- [ ] Write the go / no-go here, with log lines
+- [x] Pick the test game: owned, Windows-only, calls the Steam API, small, no anti-cheat
+- [x] **Ask first**, then install the toolchain: `mingw-w64` (or llvm-mingw), `bison`, `flex`
+- [x] Clone Wine `wine-10.0`; configure an x86_64 + i386 tree for the Rosetta host (pattern: NotProton `bridge/setup-wine-tree.sh`)
+- [x] Fetch Proton's lsteamclient (`proton_10.0` branch) + Steamworks headers
+- [x] Port to macOS: `steamclient.dylib` path, Mach-O loading — use Valve's code; NotProton's lsteamclient diff only as a reference (Steamworks-licensed, not its GPL parts)
+- [x] Build `lsteamclient.dll` (x86_64, i386) + `lsteamclient.so`; confirm every `ntdll.so` import exists in Sikarugir's
+- [x] Copy Sikarugir to scratch (never touch the installed one); drop the bridge in `lib/wine/*`
+- [x] Download the game's Windows depot (done via Mac Steam's console `download_depot`; steamcmd stays the scripted path): `steamcmd +@sSteamCmdForcePlatformType windows +login <you> +app_update <id>` — **you type your own credentials**
+- [x] Load route A: point `HKCU\Software\Valve\Steam\ActiveProcess\SteamClientDll64` at the bridge; launch with `SteamAppId`/`SteamGameId` set and Mac Steam running
+- [x] ~~If A fails: route B~~ not needed — A works with the naming rule above. Route B — port the detour idea to Sikarugir's ntdll, pinned by its SHA-256
+- [x] Record: init result, ownership check, achievements, Steam's "now playing", playtime, overlay (expect none), Cloud
+- [x] **Injection check:** quit Steam; start `steam_osx` directly with `DYLD_INSERT_LIBRARIES` pointing at a do-nothing universal dylib that only logs it loaded. Does Steam log in, update and run normally? Does it relaunch through the bootstrapper and drop the variable?
+- [x] Write the go / no-go here, with log lines
 
 ### Phase 1 — Bridge in Fable
 
