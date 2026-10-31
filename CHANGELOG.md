@@ -29,6 +29,16 @@
   real SHA-256 is refused before anything downloads, and Check for Updates
   skips releases GitHub can't give a digest for. Every current Wine and DXMT
   release has one, so nothing you'd install today is affected.
+- **A game's own environment settings can no longer load native Mac code.**
+  Per-game environment variables travel inside a shared `.fbottle`, and Fable
+  applied them verbatim — so a bottle from someone else could set
+  `DYLD_INSERT_LIBRARIES` and have its dylib loaded into Wine itself, or point
+  `WINELOADER`/`WINESERVER`/`WINEDLLPATH` at its own binaries. Those are now
+  ignored for per-game settings (Fable's own backend setup is unaffected), and
+  the game's log says which ones were skipped. Desktop shortcuts also no longer
+  write a variable whose *name* isn't a plain identifier: the name went into
+  the launch script unquoted, so a crafted one ran as a shell command when the
+  shortcut opened.
 - **Corrected the Steam Controller guidance shipped in v1.0.1.** It told users
   to open Steam and use Steam Input, "which switches it into gamepad mode".
   Steam does not see this controller over Bluetooth either, so that advice sent

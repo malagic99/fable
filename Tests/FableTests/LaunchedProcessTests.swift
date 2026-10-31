@@ -37,6 +37,26 @@ import Testing
     }
 
     @Test
+    func logHeaderPrecedesOutputAndReplacesTheOldLog() async throws {
+        let log = FileManager.default.temporaryDirectory
+            .appending(path: "logs-\(UUID().uuidString)")
+            .appending(path: "run.log")
+        defer { try? FileManager.default.removeItem(at: log.deletingLastPathComponent()) }
+        try FileManager.default.createDirectory(
+            at: log.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try Data("stale previous run\n".utf8).write(to: log)
+
+        let process = try ProcessRunner.start(
+            URL(filePath: "/bin/sh"),
+            arguments: ["-c", "echo out"],
+            redirectingOutputTo: log,
+            logHeader: "fable: header\n"
+        )
+        #expect(await process.waitForExit() == 0)
+        #expect(try String(contentsOf: log, encoding: .utf8) == "fable: header\nout\n")
+    }
+
+    @Test
     func waitAfterExitReturnsBufferedCode() async throws {
         let process = try ProcessRunner.start(URL(filePath: "/usr/bin/true"))
         // Give it time to exit before we start waiting.

@@ -121,4 +121,47 @@ enum WineEnv {
         env[debug] = debugDiagnostic
         return env
     }
+
+    // MARK: - Per-game overrides
+
+    /// Names a per-game override may not set. A game's settings can arrive
+    /// inside a shared `.fbottle`, and each of these makes the *native* side
+    /// load a binary of the sender's choosing: dyld's `DYLD_*` inject a dylib
+    /// into Wine itself; `WINELOADER`/`WINESERVER` name the Wine executables;
+    /// `WINEDLLPATH` finds builtin DLLs and their unix-side libraries. Fable's
+    /// own layers may still set them. Matched case-insensitively.
+    static let refusedOverridePrefixes = ["DYLD_"]
+    static let refusedOverrideNames: Set<String> = ["WINELOADER", "WINESERVER", "WINEDLLPATH"]
+
+    /// True for a POSIX shell variable name: `[A-Za-z_][A-Za-z0-9_]*`. The
+    /// desktop-shortcut script exports names unquoted, so nothing else is safe.
+    static func isPlainVariableName(_ name: String) -> Bool {
+        guard let first = name.unicodeScalars.first,
+              first == "_" || (first.isASCII && CharacterSet.letters.contains(first))
+        else { return false }
+        return name.unicodeScalars.allSatisfy {
+            $0 == "_" || ($0.isASCII && CharacterSet.alphanumerics.contains($0))
+        }
+    }
+
+    /// Splits per-game overrides into the ones applied and the names refused
+    /// (sorted): any that isn't a plain variable name, and the loader
+    /// variables above.
+    static func screenedOverrides(
+        _ overrides: [String: String]
+    ) -> (applied: [String: String], refused: [String]) {
+        var applied: [String: String] = [:]
+        var refused: [String] = []
+        for (name, value) in overrides {
+            let upper = name.uppercased()
+            if !isPlainVariableName(name)
+                || refusedOverrideNames.contains(upper)
+                || refusedOverridePrefixes.contains(where: upper.hasPrefix) {
+                refused.append(name)
+            } else {
+                applied[name] = value
+            }
+        }
+        return (applied, refused.sorted())
+    }
 }
