@@ -1,6 +1,10 @@
 # Changelog
 
-## Unreleased
+## v1.0.2 — 2026-10-31
+
+**A security pass over everything Fable accepts from someone else.** Shared
+bottles, themes and downloads were each trusted a little more than they should
+have been; the full audit is in `docs/SECURITY-AUDIT-2026-11.md`.
 
 - **"Donor for a Friend" exports now really leave your Steam login behind.**
   The export skipped Steam's own `config` folder and sentry files, but the
