@@ -31,10 +31,13 @@ struct SteamAppInfo: Equatable, Sendable {
 
         var executable: String?
         var arguments = ""
-        if case .object(let entries) = root["config"]?["launch"] {
-            // Launch entries are keyed "0", "1", …; take the first Windows one
-            // (no oslist means every platform).
-            for (_, entry) in entries.sorted(by: { (Int($0.key) ?? .max) < (Int($1.key) ?? .max) }) {
+        // Unwrap before matching: Swift 6.2 (CI) hits a circular-reference
+        // error matching `.object` against an optional of this recursive enum.
+        if let launch = root["config"]?["launch"], case .object(let entries) = launch {
+            // Launch entries are keyed "0", "1", … in order; take the first
+            // Windows one (no oslist means every platform).
+            for pair in entries {
+                let entry: VDFValue = pair.value
                 guard let exe = entry.string("executable"), exe.lowercased().hasSuffix(".exe") else { continue }
                 let oslist = entry["config"]?.string("oslist") ?? ""
                 guard oslist.isEmpty || oslist.split(separator: ",").contains("windows") else { continue }
