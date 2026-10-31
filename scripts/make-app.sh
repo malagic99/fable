@@ -17,6 +17,9 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/Fable"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
 cp Resources/Fable.icns "$APP/Contents/Resources/Fable.icns"
+# The native Steam bridge is built on the user's Mac (Steamworks licence), so
+# the app carries the build script, not the bridge.
+cp -R scripts/steam-bridge "$APP/Contents/Resources/steam-bridge"
 # SwiftPM resource bundle (versions.json, .lproj). Contents/Resources is the
 # right place for an .app, but SwiftPM's generated Bundle.module does NOT look
 # here — it checks beside the executable, then an absolute path inside the

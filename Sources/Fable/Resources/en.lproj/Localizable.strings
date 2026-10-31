@@ -172,3 +172,7 @@
 "health.untested"               = "Untested";
 "health.crashed"                = "Crashed last run";
 "health.native"                 = "Native Mac";
+
+/* Native Steam bridge */
+"steambridge.added"             = "Added “%@”. Press Play while your Mac Steam app is running.";
+"steambridge.download_failed"   = "steamcmd didn't finish the download. Check the Terminal window, then try again.";

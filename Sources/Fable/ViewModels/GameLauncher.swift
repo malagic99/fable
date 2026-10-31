@@ -7,6 +7,7 @@ enum GameLaunchError: LocalizedError {
     case notConfigured
     case steamBridgeNeedsSikarugir
     case steamBridgeNotReady(String)
+    case macSteamNotRunning(String)
 
     var errorDescription: String? {
         switch self {
@@ -22,6 +23,8 @@ enum GameLaunchError: LocalizedError {
             "This game launches through the native Steam bridge, which runs on Sikarugir. Set the game or its bottle to Sikarugir."
         case .steamBridgeNotReady(let reason):
             "The native Steam bridge isn't ready (\(reason)). Build it with scripts/steam-bridge/build.sh."
+        case .macSteamNotRunning(let game):
+            "“\(game)” plays through your Mac Steam app. Open Steam and sign in, then press Play again."
         }
     }
 }
@@ -326,6 +329,13 @@ final class GameLauncher: ObservableObject {
         guard let deps else {
             assertionFailure("GameLauncher used before configure(_:)")
             throw GameLaunchError.notConfigured
+        }
+
+        // A native Steam bridge game talks to the Mac Steam app; without it
+        // steam_api's init fails and most games just quit. Refuse up front.
+        if game.steamAppID != nil,
+           !SteamBridge.isMacSteamRunning(commands: ProcessActivity.runningCommands()) {
+            throw GameLaunchError.macSteamNotRunning(game.name)
         }
 
         // Steam games need the client up first — surface that instead of

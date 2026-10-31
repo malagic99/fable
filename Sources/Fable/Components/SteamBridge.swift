@@ -80,6 +80,24 @@ enum SteamBridge {
         return .ready(manifest)
     }
 
+    /// build.sh as shipped inside Fable.app (make-app.sh copies
+    /// scripts/steam-bridge in). nil in a `swift run` build.
+    static var bundledBuildScript: URL? {
+        Bundle.main.url(forResource: "build", withExtension: "sh", subdirectory: "steam-bridge")
+    }
+
+    /// A `.command` script Terminal runs to build the bridge, then tells you
+    /// to go back to Fable.
+    static func buildCommand(script: URL) -> String {
+        let quoted = "'" + script.path.replacingOccurrences(of: "'", with: "'\\''") + "'"
+        return """
+        #!/bin/sh
+        # Fable: build the native Steam bridge on this Mac (a few minutes).
+        /bin/bash \(quoted) && echo 'Bridge built. Go back to Fable and press Check Again.'
+
+        """
+    }
+
     // MARK: Mac Steam
 
     /// Where the Mac Steam client keeps `steamclient.dylib`; the bridge's Unix

@@ -30,6 +30,7 @@ struct GameWallView: View {
     @State private var selection: Selection?
     @State private var isShowingSteamImport = false
     @State private var isShowingHeroicImport = false
+    @State private var isShowingSteamBridgeAdd = false
 
     private var entries: [LibraryEntry] {
         LibraryIndex.entries(from: bottleManager.bottles, query: searchText)
@@ -185,6 +186,7 @@ struct GameWallView: View {
                                             hasNativeSteam: SteamAppManifest.nativeSteamRoot() != nil,
                                             importSteam: { isShowingSteamImport = true },
                                             importHeroic: { isShowingHeroicImport = true },
+                                            addSteamBridge: { isShowingSteamBridgeAdd = true },
                                             addApp: { pickApp() },
                                             openBottles: openBottles
                                         )
@@ -219,6 +221,9 @@ struct GameWallView: View {
         }
         .sheet(isPresented: $isShowingHeroicImport) {
             HeroicImportView()
+        }
+        .sheet(isPresented: $isShowingSteamBridgeAdd) {
+            SteamBridgeAddView()
         }
     }
 
@@ -534,12 +539,14 @@ private struct NativeInspector: View {
 }
 
 /// The wall's ONE add flow — every way a game can enter the library, in a
-/// single menu: native Steam import, Heroic import, a plain Mac app, or
-/// setting up a Windows game in a bottle.
+/// single menu: native Steam import, Heroic import, a plain Mac app, a Steam
+/// game through the native Steam bridge, or setting up a Windows game in a
+/// bottle.
 private struct AddGameTile: View {
     let hasNativeSteam: Bool
     let importSteam: () -> Void
     let importHeroic: () -> Void
+    let addSteamBridge: () -> Void
     let addApp: () -> Void
     let openBottles: () -> Void
     @State private var isHovering = false
@@ -554,6 +561,7 @@ private struct AddGameTile: View {
                 Button("A Mac App…", systemImage: "applelogo") { addApp() }
             }
             Section("Windows games") {
+                Button("From Steam (Native Bridge)…", systemImage: "link") { addSteamBridge() }
                 Button("Set Up in a Bottle…", systemImage: "wineglass") { openBottles() }
             }
         } label: {
