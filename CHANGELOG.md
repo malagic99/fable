@@ -22,6 +22,13 @@
   background image the file actually carries, and the store refuses to read
   any image name that isn't a plain file name, which also covers themes
   imported by earlier builds.
+- **Component downloads are never installed unverified.** Wine, DXMT and
+  Winetricks are checked against a SHA-256 before install — but an empty
+  checksum silently skipped the check, and updates found on GitHub got an empty
+  one whenever the release asset carried no digest. Now a component without a
+  real SHA-256 is refused before anything downloads, and Check for Updates
+  skips releases GitHub can't give a digest for. Every current Wine and DXMT
+  release has one, so nothing you'd install today is affected.
 - **Corrected the Steam Controller guidance shipped in v1.0.1.** It told users
   to open Steam and use Steam Input, "which switches it into gamepad mode".
   Steam does not see this controller over Bluetooth either, so that advice sent

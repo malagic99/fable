@@ -40,4 +40,31 @@ import Testing
             try ChecksumVerifier.verify(url, sha256: String(repeating: "0", count: 64))
         }
     }
+
+    @Test
+    func missingOrMalformedPinFailsClosed() throws {
+        let url = try tempFile("hello")
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        // Each of these once meant "skip the check" or can never match;
+        // all must refuse rather than pass the file through.
+        let notPins = [
+            "",
+            "2cf24dba",                                         // truncated
+            String(repeating: "z", count: 64),                  // not hex
+            "sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
+        ]
+        for pin in notPins {
+            #expect(!ChecksumVerifier.isPinned(pin), Comment(rawValue: pin))
+            do {
+                try ChecksumVerifier.verify(url, sha256: pin)
+                Issue.record("verify passed with pin \"\(pin)\"")
+            } catch ChecksumError.notPinned {
+            } catch {
+                Issue.record("expected .notPinned for \"\(pin)\", got \(error)")
+            }
+        }
+        #expect(ChecksumVerifier.isPinned(
+            "2CF24DBA5FB0A30E26E83B2AC5B9E29E1B161E5C1FA7425E73043362938B9824"))
+    }
 }

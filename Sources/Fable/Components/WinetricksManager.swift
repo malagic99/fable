@@ -75,14 +75,15 @@ final class WinetricksManager: ObservableObject {
         try fm.createDirectory(at: AppPaths.downloads, withIntermediateDirectories: true)
         defer { try? fm.removeItem(at: downloadDest) }
 
+        guard ChecksumVerifier.isPinned(component.sha256) else {
+            throw ChecksumError.notPinned(file: component.url.lastPathComponent)
+        }
         try await DownloadManager.download(from: component.url, to: downloadDest)
 
-        if !component.sha256.isEmpty {
-            let expected = component.sha256
-            try await Task.detached {
-                try ChecksumVerifier.verify(downloadDest, sha256: expected)
-            }.value
-        }
+        let expected = component.sha256
+        try await Task.detached {
+            try ChecksumVerifier.verify(downloadDest, sha256: expected)
+        }.value
 
         let installRoot = AppPaths.components
             .appending(path: Self.componentID, directoryHint: .isDirectory)

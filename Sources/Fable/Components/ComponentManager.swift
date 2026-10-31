@@ -80,7 +80,7 @@ final class ComponentManager: ObservableObject {
             // attempt is worthwhile before giving up.
             do {
                 try await downloadAndVerify(component, id: id, to: archive)
-            } catch is ChecksumError {
+            } catch ChecksumError.mismatch {
                 try? FileManager.default.removeItem(at: archive)
                 try await downloadAndVerify(component, id: id, to: archive)
             }
@@ -106,18 +106,20 @@ final class ComponentManager: ObservableObject {
         id: String,
         to archive: URL
     ) async throws {
+        // Refuse before spending a (possibly multi-GB) download on it.
+        guard ChecksumVerifier.isPinned(component.sha256) else {
+            throw ChecksumError.notPinned(file: component.url.lastPathComponent)
+        }
         states[id] = .downloading(DownloadProgress(bytesReceived: 0, totalBytes: nil))
         try await DownloadManager.download(from: component.url, to: archive) { [weak self] progress in
             Task { @MainActor in self?.states[id] = .downloading(progress) }
         }
 
-        if !component.sha256.isEmpty {
-            states[id] = .verifying
-            let expected = component.sha256
-            try await Task.detached {
-                try ChecksumVerifier.verify(archive, sha256: expected)
-            }.value
-        }
+        states[id] = .verifying
+        let expected = component.sha256
+        try await Task.detached {
+            try ChecksumVerifier.verify(archive, sha256: expected)
+        }.value
     }
 
     /// Extracts to a staging directory first, then moves into place, so a

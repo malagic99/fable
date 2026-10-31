@@ -19,6 +19,10 @@ import Testing
 }
 
 @Suite struct UpdateManagerParsingTests {
+    private static let shaA = String(repeating: "a", count: 64)
+    private static let shaB = String(repeating: "b", count: 64)
+    private static let shaC = String(repeating: "c", count: 64)
+
     private let fixture = """
     [
       {
@@ -26,10 +30,10 @@ import Testing
         "assets": [
           {"name": "wine-devel-11.10-osx64.tar.xz",
            "browser_download_url": "https://example.com/devel.tar.xz",
-           "digest": "sha256:aaaa"},
+           "digest": "sha256:\(shaA)"},
           {"name": "wine-staging-11.10-osx64.tar.xz",
            "browser_download_url": "https://example.com/staging.tar.xz",
-           "digest": "sha256:bbbb"}
+           "digest": "sha256:\(shaB)"}
         ]
       },
       {
@@ -37,7 +41,7 @@ import Testing
         "assets": [
           {"name": "wine-stable-11.0_2-osx64.tar.xz",
            "browser_download_url": "https://example.com/stable.tar.xz",
-           "digest": "sha256:cccc"}
+           "digest": "sha256:\(shaC)"}
         ]
       }
     ]
@@ -53,7 +57,7 @@ import Testing
         )
         // 11.10 has no stable asset, so 11.0_2 wins.
         #expect(component?.version == "11.0_2")
-        #expect(component?.sha256 == "cccc")
+        #expect(component?.sha256 == Self.shaC)
         #expect(component?.url.absoluteString == "https://example.com/stable.tar.xz")
     }
 
@@ -74,7 +78,7 @@ import Testing
         [{"tag_name": "v0.81", "assets": [
           {"name": "dxmt-v0.81-builtin.tar.gz",
            "browser_download_url": "https://example.com/dxmt.tar.gz",
-           "digest": null}
+           "digest": "sha256:\(Self.shaA)"}
         ]}]
         """
         let component = try UpdateManager.component(
@@ -84,7 +88,50 @@ import Testing
             displayName: "DXMT"
         )
         #expect(component?.version == "0.81")
-        #expect(component?.sha256 == "")
+        #expect(component?.sha256 == Self.shaA)
+    }
+
+    @Test
+    func skipsReleasesWithoutAUsableDigest() throws {
+        // Newest first: no digest, then a non-SHA-256 one, then a truncated
+        // one — none can be verified, so the update offered is v0.80.
+        let json = """
+        [{"tag_name": "v0.83", "assets": [
+           {"name": "dxmt-v0.83-builtin.tar.gz",
+            "browser_download_url": "https://example.com/83.tar.gz", "digest": null}]},
+         {"tag_name": "v0.82", "assets": [
+           {"name": "dxmt-v0.82-builtin.tar.gz",
+            "browser_download_url": "https://example.com/82.tar.gz",
+            "digest": "sha512:\(Self.shaA)"}]},
+         {"tag_name": "v0.81", "assets": [
+           {"name": "dxmt-v0.81-builtin.tar.gz",
+            "browser_download_url": "https://example.com/81.tar.gz", "digest": "sha256:abcd"}]},
+         {"tag_name": "v0.80", "assets": [
+           {"name": "dxmt-v0.80-builtin.tar.gz",
+            "browser_download_url": "https://example.com/80.tar.gz",
+            "digest": "sha256:\(Self.shaB)"}]}]
+        """
+        let component = try UpdateManager.component(
+            fromReleasesJSON: Data(json.utf8),
+            assetPrefix: "dxmt-v",
+            assetSuffix: "-builtin.tar.gz",
+            displayName: "DXMT"
+        )
+        #expect(component?.version == "0.80")
+        #expect(component?.sha256 == Self.shaB)
+
+        // And when no release can be verified, nothing is offered at all.
+        let unverifiable = """
+        [{"tag_name": "v0.83", "assets": [
+           {"name": "dxmt-v0.83-builtin.tar.gz",
+            "browser_download_url": "https://example.com/83.tar.gz"}]}]
+        """
+        #expect(try UpdateManager.component(
+            fromReleasesJSON: Data(unverifiable.utf8),
+            assetPrefix: "dxmt-v",
+            assetSuffix: "-builtin.tar.gz",
+            displayName: "DXMT"
+        ) == nil)
     }
 }
 

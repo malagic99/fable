@@ -79,6 +79,27 @@ import Testing
     }
 
     @Test
+    func unpinnedComponentIsRefusedBeforeDownloading() async throws {
+        let (manager, archive, _, root) = try await makeFixture()
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        // An empty sha256 used to mean "skip verification" and install anyway.
+        let component = VersionCatalog.Component(
+            name: "Test", version: "1.0", url: archive, sha256: ""
+        )
+        do {
+            try await manager.install(id: "test", component: component)
+            Issue.record("install succeeded without a checksum")
+        } catch ChecksumError.notPinned {
+        } catch {
+            Issue.record("expected .notPinned, got \(error)")
+        }
+        #expect(manager.installedDirectory(for: "test", version: "1.0") == nil)
+        let downloads = try FileManager.default.contentsOfDirectory(atPath: manager.downloadsDirectory.path)
+        #expect(downloads.isEmpty, "nothing should have been downloaded")
+    }
+
+    @Test
     func corruptArchiveFailsAndInstallsNothing() async throws {
         let (manager, _, _, root) = try await makeFixture()
         defer { try? FileManager.default.removeItem(at: root) }
