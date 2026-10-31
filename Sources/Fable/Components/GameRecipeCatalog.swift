@@ -108,13 +108,10 @@ enum GameRecipeCatalog {
             backend: .sikarugir, metalFX: false, frameRateCap: nil,
             note: "UE4, launched through Steam in a Sikarugir bottle. Reported running well on Apple Silicon (Oct 2026); recommended frame cap and MetalFX not recorded yet."
         ),
-        // ~3 h tracked in game-stats.json (Oct 2026), no per-game override.
-        // Only the backend is stated, same as Ace Combat 7, until the cap and
-        // MetalFX are confirmed.
         GameRecipe(
             name: "Ace Combat 3 Remix", executables: ["ac3r.exe"],
-            backend: .sikarugir, metalFX: false, frameRateCap: nil,
-            note: "Fan PC port of Ace Combat 3: Electrosphere (github.com/i5han/ac3-remix); needs your own disc images next to ac3r.exe. ~3 h played on a Sikarugir bottle on Apple Silicon (Oct 2026); recommended frame cap and MetalFX not recorded yet."
+            backend: .sikarugir, metalFX: true, frameRateCap: 60,
+            note: "D3D12 PC port (development build). Validated ~3 h on an M4 Pro (24 GB). In settings.exe turn OFF ray tracing and DLSS — DLSS isn't available on a Mac GPU, and with them on the game crashes 1–3 minutes into a mission. It reads controllers through XInput only: for a DualSense, turn on the bottle's \"PlayStation Pads as Xbox (XInput)\"."
         ),
     ]
 
