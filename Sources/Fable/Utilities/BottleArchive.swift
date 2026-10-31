@@ -287,7 +287,10 @@ enum BottleArchive {
             from: Data(contentsOf: bottleURL)
         )
 
-        // Re-checksum the prefix to detect corruption / tampering.
+        // Re-checksum the prefix to detect corruption, or an edit that didn't
+        // update the manifest. This is integrity, not authenticity: the
+        // manifest travels in the same archive, so whoever repacks a bottle
+        // can recompute it. Treat an imported .fbottle as trusted as its sender.
         let prefixDir = workingDir.appending(path: prefixEntryName, directoryHint: .isDirectory)
         let recomputed = try await prefixChecksum(stagingPrefix: prefixDir)
         guard recomputed == manifest.prefixChecksum else {
