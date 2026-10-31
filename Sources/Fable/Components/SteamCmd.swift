@@ -24,15 +24,17 @@ struct SteamAppInfo: Equatable, Sendable {
     /// `"<appID>" { … }` KeyValues block.
     static func parse(appID: Int, steamcmdOutput output: String) -> SteamAppInfo? {
         guard let start = output.range(of: "\"\(appID)\"") else { return nil }
-        guard let (key, root) = SteamKeyValues.parse(String(output[start.lowerBound...])),
-              key == String(appID),
-              let name = root["common"]?.string("name")
+        // Bind the parsed pair whole, as SteamInstallCommitter does: Swift 6.2
+        // (CI) reports a circular reference when this optional tuple of the
+        // recursive VDFValue is destructured in a `guard let`.
+        guard let parsed = SteamKeyValues.parse(String(output[start.lowerBound...])),
+              parsed.key == String(appID),
+              let name = parsed.value["common"]?.string("name")
         else { return nil }
+        let root: VDFValue = parsed.value
 
         var executable: String?
         var arguments = ""
-        // Unwrap before matching: Swift 6.2 (CI) hits a circular-reference
-        // error matching `.object` against an optional of this recursive enum.
         if let launch = root["config"]?["launch"], case .object(let entries) = launch {
             // Launch entries are keyed "0", "1", … in order; take the first
             // Windows one (no oslist means every platform).
