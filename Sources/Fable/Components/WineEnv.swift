@@ -122,6 +122,47 @@ enum WineEnv {
         return env
     }
 
+    // MARK: - Visual C++ runtime
+
+    /// The DLLs Microsoft's VC++ 2015–2022 redistributable installs and Wine
+    /// also builds in — the set `winetricks vcrun2022` switches to native.
+    static let visualCppRuntimeDLLs = [
+        "concrt140", "msvcp140", "msvcp140_1", "msvcp140_2", "msvcp140_atomic_wait",
+        "msvcp140_codecvt_ids", "vcamp140", "vccorlib140", "vcomp140",
+        "vcruntime140", "vcruntime140_1",
+    ]
+
+    /// `native,builtin` for the VC++ runtime when the bottle has Microsoft's.
+    ///
+    /// Installing the redistributable puts Microsoft's DLLs in system32, but
+    /// Wine still loads its own same-named builtins first unless told
+    /// otherwise — so games run on Wine's runtime anyway, and launchers that
+    /// read the runtime's version find none. Unreal's bootstrap launcher
+    /// (STALKER 2, 2026-11-03) does exactly that with `msvcp140_2.dll` and
+    /// shows "Microsoft Visual C++ Runtime is required" though it's
+    /// installed. nil when the bottle only has Wine's own copies.
+    static func visualCppNativeOverride(driveC: URL) -> String? {
+        let candidates = ["windows/system32/msvcp140.dll", "windows/syswow64/msvcp140.dll"]
+        guard candidates.contains(where: { isMicrosoftDLL(driveC.appending(path: $0)) }) else { return nil }
+        return visualCppRuntimeDLLs.joined(separator: ",") + "=n,b"
+    }
+
+    /// True for a DLL on disk that isn't one of Wine's: Wine stamps its
+    /// builtins and placeholders in the DOS stub ("Wine builtin DLL").
+    static func isMicrosoftDLL(_ url: URL) -> Bool {
+        guard let handle = try? FileHandle(forReadingFrom: url) else { return false }
+        defer { try? handle.close() }
+        guard let head = try? handle.read(upToCount: 128), head.count >= 64 else { return false }
+        return head.range(of: Data("Wine builtin DLL".utf8)) == nil
+            && head.range(of: Data("Wine placeholder DLL".utf8)) == nil
+    }
+
+    /// Adds `override` to a WINEDLLOVERRIDES value without a stray separator.
+    static func appendingOverride(_ override: String, to existing: String?) -> String {
+        guard let existing, !existing.isEmpty else { return override }
+        return existing + ";" + override
+    }
+
     // MARK: - Per-game overrides
 
     /// Names a per-game override may not set. A game's settings can arrive

@@ -56,6 +56,80 @@ import Testing
         )
     }
 
+    // MARK: Visual C++ runtime
+
+    /// A msvcp140.dll in the bottle: Wine's own (its DOS stub carries the
+    /// "Wine builtin DLL" stamp at 0x40) or Microsoft's.
+    private func putMSVCP140(in driveC: URL, folder: String, wine: Bool) throws {
+        var bytes = Data("MZ".utf8) + Data(repeating: 0, count: 62)
+        bytes += Data((wine ? "Wine builtin DLL" : "This program cannot be run in DOS mode.").utf8)
+        bytes += Data(repeating: 0, count: 64)
+        let url = driveC.appending(path: "windows/\(folder)/msvcp140.dll")
+        try fm.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try bytes.write(to: url)
+    }
+
+    @Test
+    func microsoftsVisualCppRuntimeLoadsFirstWhenInstalled() throws {
+        let (prefix, driveC) = try makePrefix()
+        defer { try? fm.removeItem(at: prefix) }
+        try putMSVCP140(in: driveC, folder: "system32", wine: false)
+
+        let plan = try plan(game: Game(name: "D", executablePath: "Games/Demo/demo.exe"),
+                            bottle: Bottle(name: "B", graphicsBackend: .sikarugir), prefix: prefix, driveC: driveC)
+        let overrides = try #require(plan.environment["WINEDLLOVERRIDES"])
+        // STALKER 2's launcher reads msvcp140_2's version; it must be native.
+        #expect(overrides.contains("msvcp140_2"))
+        #expect(overrides.hasSuffix("vcruntime140,vcruntime140_1=n,b"))
+        // The backend's own routing is kept, not replaced.
+        #expect(overrides.contains("d3d11,d3d12,dxgi,nvapi64=b"))
+    }
+
+    @Test
+    func wineOwnRuntimeOrNoneLeavesOverridesAlone() throws {
+        let (prefix, driveC) = try makePrefix()
+        defer { try? fm.removeItem(at: prefix) }
+        let game = Game(name: "D", executablePath: "Games/Demo/demo.exe")
+        let bottle = Bottle(name: "B", graphicsBackend: .sikarugir)
+
+        let none = try plan(game: game, bottle: bottle, prefix: prefix, driveC: driveC)
+        #expect(none.environment["WINEDLLOVERRIDES"]?.contains("msvcp140") == false)
+
+        try putMSVCP140(in: driveC, folder: "system32", wine: true)
+        let wineOnly = try plan(game: game, bottle: bottle, prefix: prefix, driveC: driveC)
+        #expect(wineOnly.environment["WINEDLLOVERRIDES"]?.contains("msvcp140") == false)
+    }
+
+    @Test
+    func a32BitOnlyRuntimeCountsToo() throws {
+        let (prefix, driveC) = try makePrefix()
+        defer { try? fm.removeItem(at: prefix) }
+        try putMSVCP140(in: driveC, folder: "system32", wine: true)
+        try putMSVCP140(in: driveC, folder: "syswow64", wine: false)
+        let plan = try plan(game: Game(name: "D", executablePath: "Games/Demo/demo.exe"),
+                            bottle: Bottle(name: "B", graphicsBackend: .dxmt), prefix: prefix, driveC: driveC)
+        #expect(plan.environment["WINEDLLOVERRIDES"]?.contains("msvcp140_2") == true)
+    }
+
+    @Test
+    func aPerGameOverrideStillWins() throws {
+        let (prefix, driveC) = try makePrefix()
+        defer { try? fm.removeItem(at: prefix) }
+        try putMSVCP140(in: driveC, folder: "system32", wine: false)
+        let game = Game(name: "D", executablePath: "Games/Demo/demo.exe",
+                        environment: ["WINEDLLOVERRIDES": "msvcp140=b"])
+        let plan = try plan(game: game, bottle: Bottle(name: "B", graphicsBackend: .sikarugir),
+                            prefix: prefix, driveC: driveC)
+        #expect(plan.environment["WINEDLLOVERRIDES"] == "msvcp140=b")
+    }
+
+    @Test
+    func appendingAnOverride() {
+        #expect(WineEnv.appendingOverride("a=n", to: nil) == "a=n")
+        #expect(WineEnv.appendingOverride("a=n", to: "") == "a=n")
+        #expect(WineEnv.appendingOverride("a=n", to: "b=b") == "b=b;a=n")
+    }
+
     // MARK: Routing table
 
     @Test
