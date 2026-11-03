@@ -9,6 +9,64 @@ import Testing
         Set(findings.map(\.id))
     }
 
+    // MARK: .NET Windows token (GOG Galaxy installer, 2026-11-03)
+
+    /// Real lines from C:\ProgramData\GOG.com\Galaxy\logs\InstallerWebinstaller.log.
+    private let galaxyLog = """
+    [11/3/2026 2:35:25 AM] [information] Loading icon file: C:\\users\\x\\AppData\\Local\\Temp\\GalaxyInstaller_QrEic\\icon.ico
+    [11/3/2026 2:35:25 AM] [error] Error: GetCurrentToken returned error 34374144
+    [11/3/2026 2:35:25 AM] [information] Sending error to galaxy-client-reports.gog.com: Unexpected Error
+    [11/3/2026 2:35:33 AM] [information] Exiting application with return code -1
+    """
+
+    /// Fable's own installer log for the same run: only Wine's chatter.
+    private let fableInstallerLog = """
+    wine: configuration in L"/x/prefix" has been updated.
+    0150:err:kerberos:kerberos_LsaApInitializePackage no Kerberos support, expect problems
+    """
+
+    @Test
+    func windowsTokenFailureIsABlockerThatPointsAtOfflineInstallers() throws {
+        let finding = try #require(GameDoctor.diagnose(log: galaxyLog).first { $0.id == "doctor-dotnet-windows-token" })
+        #expect(finding.severity == .knownBlocker)
+        #expect(finding.suggestion.contains("offline installer"))
+        // .NET apps that print the exception rather than a log line too.
+        #expect(ids(GameDoctor.diagnose(log: "System.Security.Principal.WindowsIdentity.GetCurrent()"))
+            .contains("doctor-dotnet-windows-token"))
+        // Fable's log alone says nothing about it.
+        #expect(!ids(GameDoctor.diagnose(log: fableInstallerLog)).contains("doctor-dotnet-windows-token"))
+    }
+
+    private func installerRun() throws -> (driveC: URL, fableLog: URL, galaxy: URL, root: URL) {
+        let root = FileManager.default.temporaryDirectory.appending(path: "doctor-install-\(UUID().uuidString)", directoryHint: .isDirectory)
+        let driveC = root.appending(path: "drive_c", directoryHint: .isDirectory)
+        let galaxy = driveC.appending(path: GameDoctor.installerOwnLogs[0])
+        try FileManager.default.createDirectory(at: galaxy.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try Data(galaxyLog.utf8).write(to: galaxy)
+        let fableLog = root.appending(path: "installer.log")
+        try Data(fableInstallerLog.utf8).write(to: fableLog)
+        return (driveC, fableLog, galaxy, root)
+    }
+
+    @Test
+    func installerBlockerReadsTheInstallersOwnLogFromThisRun() throws {
+        let run = try installerRun()
+        defer { try? FileManager.default.removeItem(at: run.root) }
+        let blocker = GameDoctor.installerBlocker(
+            fableLog: run.fableLog, driveC: run.driveC, since: Date().addingTimeInterval(-60))
+        #expect(blocker?.id == "doctor-dotnet-windows-token")
+    }
+
+    @Test
+    func anInstallerLogFromAnEarlierAttemptIsIgnored() throws {
+        let run = try installerRun()
+        defer { try? FileManager.default.removeItem(at: run.root) }
+        let earlier = Date().addingTimeInterval(-3600)
+        try FileManager.default.setAttributes([.modificationDate: earlier], ofItemAtPath: run.galaxy.path)
+        #expect(GameDoctor.installerBlocker(
+            fableLog: run.fableLog, driveC: run.driveC, since: Date().addingTimeInterval(-60)) == nil)
+    }
+
     @Test
     func cleanLogYieldsNothing() {
         #expect(GameDoctor.diagnose(log: "fixme:everything is fine\ninfo:loaded ok").isEmpty)

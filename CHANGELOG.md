@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **The GOG Galaxy installer's failure now says why — and what to do
+  instead.** Galaxy's installer is a .NET program that asks Windows for the
+  current user's security token, which Wine Mono can't provide, so it quits
+  at startup. Fable's own installer log only showed Wine chatter, and the real
+  error sat in Galaxy's log inside the bottle. After any installer run, Fable
+  now also reads that log (only if it was written during this run), and a
+  new Doctor rule recognises the token failure: the installer sheet explains
+  it and points to GOG's offline installers or Heroic, even when the
+  installer itself exited without an error code.
 - **Ace Combat 7 is a known setup.** It runs on Sikarugir. The entry records
   the backend only for now; the frame cap and MetalFX settings get added once
   they're confirmed, so the "Tested:" line doesn't claim settings nobody

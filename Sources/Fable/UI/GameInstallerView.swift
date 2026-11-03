@@ -21,6 +21,9 @@ struct GameInstallerView: View {
 
     @State private var phase: Phase = .running
     @State private var registrationError: String?
+    /// A known blocker the Doctor found behind this run — shown even on exit
+    /// code 0, since a bootstrapper can succeed after its payload failed.
+    @State private var blocker: CompatibilityFinding?
 
     var body: some View {
         VStack(spacing: 16) {
@@ -36,14 +39,23 @@ struct GameInstallerView: View {
                 )
 
             case .finished(let exitCode):
-                SheetStatusView(
-                    systemImage: installSucceeded(exitCode: exitCode) ? "checkmark.circle.fill" : "exclamationmark.triangle",
-                    tint: installSucceeded(exitCode: exitCode) ? .green : .yellow,
-                    title: installSucceeded(exitCode: exitCode) ? "Installer Finished" : "Installer Failed (exit code \(exitCode))",
-                    message: installSucceeded(exitCode: exitCode)
-                        ? "Pick the installed game's .exe (usually in C:\\Program Files) to add it to this bottle."
-                        : failureAdvice(exitCode: exitCode)
-                )
+                if let blocker {
+                    SheetStatusView(
+                        systemImage: "exclamationmark.triangle",
+                        tint: .yellow,
+                        title: blocker.title,
+                        message: blocker.detail + " " + blocker.suggestion
+                    )
+                } else {
+                    SheetStatusView(
+                        systemImage: installSucceeded(exitCode: exitCode) ? "checkmark.circle.fill" : "exclamationmark.triangle",
+                        tint: installSucceeded(exitCode: exitCode) ? .green : .yellow,
+                        title: installSucceeded(exitCode: exitCode) ? "Installer Finished" : "Installer Failed (exit code \(exitCode))",
+                        message: installSucceeded(exitCode: exitCode)
+                            ? "Pick the installed game's .exe (usually in C:\\Program Files) to add it to this bottle."
+                            : failureAdvice(exitCode: exitCode)
+                    )
+                }
                 if let registrationError {
                     Text(registrationError)
                         .font(.callout)
@@ -135,11 +147,17 @@ struct GameInstallerView: View {
             // Installers run the DEFAULT wine — drain any game runtime's
             // wineserver first or fail with 'version mismatch'.
             try await gameLauncher.prepareExclusivePrefix(for: bottle, runtime: .off)
+            let started = Date()
             let exitCode = try await installer.runInstaller(
                 installerExe,
                 bottle: bottle,
                 bottleManager: bottleManager,
                 wineManager: wineManager
+            )
+            blocker = GameDoctor.installerBlocker(
+                fableLog: installer.installerLog,
+                driveC: bottleManager.driveCDirectory(for: bottle),
+                since: started
             )
             phase = .finished(exitCode: exitCode)
         } catch {

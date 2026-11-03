@@ -173,6 +173,13 @@ enum GameDoctor {
              title: "Launcher hits a Wine Mono IPC bug",
              detail: "A .NET launcher's single-instance check (Microsoft.Shell.SingleInstance → .NET Remoting IpcServerChannel) throws MarshalDirectiveException on Wine Mono, which doesn't fully implement that channel. The real Microsoft .NET Framework handles it — but that won't install under Wine. Seen with Battlestate's Escape from Tarkov launcher, 2026-07-09.",
              suggestion: "Wine Mono can't run this launcher and the real .NET Framework can't be installed on this stack. If you only need the launcher to fetch game files, get them from a Windows machine/VM and copy them into the bottle, then launch the game (or its offline/mod launcher) directly."),
+        Rule(id: "dotnet-windows-token",
+             needles: ["getcurrenttoken returned error", "windowsidentity.getcurrent",
+                       "system.security.principal.windowsidentity"],
+             severity: .knownBlocker,
+             title: ".NET app needs a Windows user token Wine can't provide",
+             detail: "The program asked .NET for the current Windows user's security token (WindowsIdentity) and Wine Mono can't create one, so it stops at startup. Seen with the GOG Galaxy installer (\"GetCurrentToken returned error\"), 2026-11-03; the same wall stops the Escape from Tarkov launcher — see docs/DOTNET-FRAMEWORK-LAUNCHERS.md.",
+             suggestion: "There's no fix on the free Wine stack today. For GOG games, skip Galaxy: download the game's offline installer (gog.com → your library → the game → offline backup installers) and use Extract Directly, or sign in to GOG in Heroic and import from there."),
         Rule(id: "wpf-culture-4096",
              needles: ["culturenotfoundexception", "4096 (0x1000) is an invalid culture", "invalid culture identifier"],
              severity: .caveat,
@@ -291,5 +298,29 @@ enum GameDoctor {
         }
         guard let data = try? handle.readToEnd() else { return [] }
         return diagnose(log: String(decoding: data, as: UTF8.self))
+    }
+
+    // MARK: Installers
+
+    /// Logs some installers write inside the prefix (drive_c-relative). Their
+    /// real error is often only there — Fable's own installer log just has
+    /// Wine's chatter, and a bootstrapper can exit 0 after its payload failed.
+    static let installerOwnLogs = [
+        "ProgramData/GOG.com/Galaxy/logs/InstallerWebinstaller.log",
+    ]
+
+    /// The first known blocker behind an installer run, from Fable's installer
+    /// log and any installer-owned log in the bottle written since `since`
+    /// (older ones belong to some earlier attempt).
+    static func installerBlocker(fableLog: URL?, driveC: URL, since: Date) -> CompatibilityFinding? {
+        var logs = fableLog.map { [$0] } ?? []
+        for path in installerOwnLogs {
+            let url = driveC.appending(path: path)
+            let modified = (try? url.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate
+            if let modified, modified >= since { logs.append(url) }
+        }
+        return logs.lazy
+            .flatMap { diagnose(logFile: $0) }
+            .first { $0.severity == .knownBlocker }
     }
 }
