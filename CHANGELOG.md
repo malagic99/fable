@@ -9,6 +9,15 @@
   matched its store title ("S.T.A.L.K.E.R. 2: …") because only spacing
   differed — now it does. Games that aren't on Steam still need SteamGridDB
   or Set Custom Cover.
+- **The GOG Galaxy installer's failure now says why — and what to do
+  instead.** Galaxy's installer is a .NET program that asks Windows for the
+  current user's security token, which Wine Mono can't provide, so it quits
+  at startup. Fable's own installer log only showed Wine chatter, and the real
+  error sat in Galaxy's log inside the bottle. After any installer run, Fable
+  now also reads that log (only if it was written during this run), and a
+  new Doctor rule recognises the token failure: the installer sheet explains
+  it and points to GOG's offline installers or Heroic, even when the
+  installer itself exited without an error code.
 - **Games now actually use the Visual C++ runtime you installed.** Installing
   Microsoft's redistributable puts its DLLs in the bottle, but Wine kept
   loading its own same-named stand-ins first — so games ran on Wine's
