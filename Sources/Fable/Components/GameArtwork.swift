@@ -3,7 +3,8 @@ import Foundation
 /// The cover-art pipeline's pure parts: URL builders, response parsing, and
 /// cache naming. Resolution order (cheapest, most-official first):
 ///
-///   1. Steam appid from the bottle's appmanifest → Steam's keyless CDN portrait.
+///   1. Steam appid from the bottle's appmanifest → Steam's keyless CDN portrait
+///      (newer titles keep it at a hashed path the store API reports).
 ///   2. Keyless Steam store search by name (covers Epic/GOG copies of games
 ///      that are also on Steam — most of a real library).
 ///   3. SteamGridDB by name (optional API key) for everything else.
@@ -15,6 +16,16 @@ enum GameArtwork {
     /// Steam's public CDN portrait capsule (600×900) — keyless, official art.
     static func steamCoverURL(appID: Int) -> URL {
         URL(string: "https://cdn.cloudflare.steamstatic.com/steam/apps/\(appID)/library_600x900.jpg")!
+    }
+
+    /// Keyless store-item lookup with asset paths. Newer titles (app ids in
+    /// the millions, e.g. 4199960) aren't at ``steamCoverURL(appID:)`` — their
+    /// art sits under a content hash only this reports.
+    static func storeItemsURL(appID: Int) -> URL {
+        let input = #"{"ids":[{"appid":\#(appID)}],"context":{"language":"english","country_code":"US"},"data_request":{"include_assets":true}}"#
+        var components = URLComponents(string: "https://api.steampowered.com/IStoreBrowseService/GetItems/v1")!
+        components.queryItems = [URLQueryItem(name: "input_json", value: input)]
+        return components.url!
     }
 
     /// Keyless Steam store search — resolves a name to an appid even when the
@@ -54,11 +65,42 @@ enum GameArtwork {
         }
         guard let response = try? JSONDecoder().decode(Response.self, from: data) else { return nil }
         let wanted = normalize(name)
+        // A name that's all punctuation normalizes to "" — a prefix of
+        // everything, which would take the first result's art.
+        guard !wanted.isEmpty else { return nil }
         // Exact normalized match first, then prefix/containment.
         if let exact = response.items.first(where: { normalize($0.name) == wanted }) { return exact.id }
-        return response.items.first(where: {
+        if let loose = response.items.first(where: {
             normalize($0.name).hasPrefix(wanted) || wanted.hasPrefix(normalize($0.name))
-        })?.id
+        }) { return loose.id }
+        // Same two rules with spaces ignored: an exe-derived name like
+        // "Stalker2" against "S.T.A.L.K.E.R. 2: Heart of Chornobyl" (whose
+        // dots normalize to spaces) only agrees once spacing is dropped.
+        let compact = wanted.replacingOccurrences(of: " ", with: "")
+        func squeezed(_ s: String) -> String { normalize(s).replacingOccurrences(of: " ", with: "") }
+        if let exact = response.items.first(where: { squeezed($0.name) == compact }) { return exact.id }
+        return response.items.first(where: { squeezed($0.name).hasPrefix(compact) })?.id
+    }
+
+    /// The portrait cover from a store-items reply: the 2x library capsule
+    /// (600×900, what the old CDN path served), else the 1x one.
+    static func coverURL(fromStoreItems data: Data) -> URL? {
+        struct Response: Decodable {
+            struct Body: Decodable { let store_items: [Item] }
+            struct Item: Decodable { let assets: Assets? }
+            struct Assets: Decodable {
+                let asset_url_format: String?
+                let library_capsule: String?
+                let library_capsule_2x: String?
+            }
+            let response: Body
+        }
+        guard let assets = (try? JSONDecoder().decode(Response.self, from: data))?.response.store_items.first?.assets,
+              let format = assets.asset_url_format, format.contains("${FILENAME}"),
+              let file = assets.library_capsule_2x ?? assets.library_capsule
+        else { return nil }
+        return URL(string: "https://shared.steamstatic.com/store_item_assets/"
+                   + format.replacingOccurrences(of: "${FILENAME}", with: file))
     }
 
     static func gameID(fromSGDBSearch data: Data) -> Int? {

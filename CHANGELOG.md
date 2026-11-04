@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **Covers for games that had none.** Two gaps in the cover fetcher: newer
+  Steam titles (Jackbox 12, Castlevania: Belmont's Curse) keep their art at
+  a path the old fixed address can't reach, so Fable now asks Steam's store
+  for the real one; and a game named after its .exe ("Stalker2") never
+  matched its store title ("S.T.A.L.K.E.R. 2: …") because only spacing
+  differed — now it does. Games that aren't on Steam still need SteamGridDB
+  or Set Custom Cover.
 - **Games now actually use the Visual C++ runtime you installed.** Installing
   Microsoft's redistributable puts its DLLs in the bottle, but Wine kept
   loading its own same-named stand-ins first — so games ran on Wine's
