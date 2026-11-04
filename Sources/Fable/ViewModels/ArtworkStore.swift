@@ -87,13 +87,13 @@ final class ArtworkStore: ObservableObject {
         let data = await Task.detached(priority: .utility) { () -> Data? in
             // Steam CDN via the bottle's own manifest appid.
             if let appID = manifestAppID,
-               let art = await Self.download(GameArtwork.steamCoverURL(appID: appID)) {
+               let art = await Self.steamCover(appID: appID) {
                 return art
             }
             // Keyless store search by name (Epic/GOG copies of Steam titles).
             if let search = await Self.download(GameArtwork.storeSearchURL(name: name)),
                let appID = GameArtwork.appID(fromStoreSearch: search, matching: name),
-               let art = await Self.download(GameArtwork.steamCoverURL(appID: appID)) {
+               let art = await Self.steamCover(appID: appID) {
                 return art
             }
             // SteamGridDB, when the user provided a key.
@@ -171,6 +171,15 @@ final class ArtworkStore: ObservableObject {
         await Task.detached(priority: .utility) {
             try? Data(contentsOf: url)
         }.value
+    }
+
+    /// A Steam title's portrait cover: the fixed CDN path older titles use,
+    /// else the hashed path the store API reports for newer ones.
+    nonisolated private static func steamCover(appID: Int) async -> Data? {
+        if let art = await download(GameArtwork.steamCoverURL(appID: appID)) { return art }
+        guard let items = await download(GameArtwork.storeItemsURL(appID: appID)),
+              let url = GameArtwork.coverURL(fromStoreItems: items) else { return nil }
+        return await download(url)
     }
 
     nonisolated private static func download(_ url: URL, bearer: String? = nil) async -> Data? {
