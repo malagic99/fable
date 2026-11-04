@@ -240,6 +240,13 @@ final class GameLauncher: ObservableObject {
             )) { _, new in new }
         }
         environment.merge(bottle.performance.backendAgnosticEnvironment()) { _, new in new }
+        // A bottle with Microsoft's VC++ runtime should actually use it —
+        // Wine prefers its own builtins otherwise (see WineEnv). Every launch
+        // goes through here, so games Steam starts inherit it too.
+        if let vcRuntime = WineEnv.visualCppNativeOverride(driveC: driveC) {
+            environment[WineEnv.dllOverrides] = WineEnv.appendingOverride(
+                vcRuntime, to: environment[WineEnv.dllOverrides])
+        }
         // Per-game environment overrides win over everything — except the
         // ones that could load native code or break the shortcut script.
         let overrides = WineEnv.screenedOverrides(game.environment)

@@ -11,6 +11,14 @@
   new Doctor rule recognises the token failure: the installer sheet explains
   it and points to GOG's offline installers or Heroic, even when the
   installer itself exited without an error code.
+- **Games now actually use the Visual C++ runtime you installed.** Installing
+  Microsoft's redistributable puts its DLLs in the bottle, but Wine kept
+  loading its own same-named stand-ins first — so games ran on Wine's
+  runtime anyway, and STALKER 2's launcher, which reads the runtime's version,
+  found none and said "Microsoft Visual C++ Runtime is required" although it
+  was installed. When a bottle has Microsoft's runtime, Fable now tells Wine
+  to use it first on every launch (including games Steam starts). Nothing is
+  written into the bottle; a per-game DLL override still wins.
 - **Ace Combat 7 is a known setup.** It runs on Sikarugir. The entry records
   the backend only for now; the frame cap and MetalFX settings get added once
   they're confirmed, so the "Tested:" line doesn't claim settings nobody
