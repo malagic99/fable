@@ -33,6 +33,29 @@ enum PEInfo {
         }
     }
 
+    /// True for a console program (`IMAGE_SUBSYSTEM_WINDOWS_CUI`, e.g.
+    /// cmd.exe). Run like a game — output to a log, no console attached —
+    /// it prints its prompt, reads no input, and exits before anything
+    /// shows; it needs a console window (`wineconsole`).
+    static func isConsoleProgram(_ url: URL) -> Bool {
+        guard let handle = try? FileHandle(forReadingFrom: url),
+              let head = try? handle.read(upToCount: 0x1000) else { return false }
+        try? handle.close()
+        return subsystem(of: head) == consoleSubsystem
+    }
+
+    static let consoleSubsystem: UInt16 = 3
+
+    /// The optional header's Subsystem field (2 = GUI, 3 = console) — at the
+    /// same offset in PE32 and PE32+.
+    static func subsystem(of data: Data) -> UInt16? {
+        guard architecture(of: data) != nil else { return nil }
+        let peOffset = Int(readU32(data, 0x3C))
+        let field = peOffset + 24 + 68
+        guard field + 2 <= data.count else { return nil }
+        return readU16(data, field)
+    }
+
     private static func readU16(_ data: Data, _ offset: Int) -> UInt16 {
         guard offset + 2 <= data.count else { return 0 }
         return UInt16(data[data.startIndex + offset])
