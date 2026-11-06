@@ -1,7 +1,28 @@
 # Changelog
 
-## Unreleased
+## v1.0.3 — 2026-11-06
 
+**Things that silently didn't work, now do — plus a first look at the native
+Steam bridge.**
+
+- **New, experimental: the native Steam bridge.** Add menu → **From Steam
+  (Native Bridge)…** plays a Steam game's Windows build in a Sikarugir bottle
+  while it talks to your **Mac** Steam app — your login, ownership, "now
+  playing" — with no Windows Steam inside Wine. The bridge is Valve's Proton
+  `lsteamclient`, built on your Mac by a bundled script (a few minutes, once;
+  Fable ships none of Valve's code). Games download through Valve's steamcmd
+  in Terminal, where you sign in yourself. Verified so far with one game
+  (MOLEK-SYNTEZ): it starts, Mac Steam shows it as running, and Stop ends
+  it. Not yet checked: achievements, Cloud saves, playtime, 32-bit and
+  DRM-wrapped games. Plan and evidence: `docs/NATIVE-STEAM-BRIDGE.md`.
+- **PlayStation pads in XInput-only games.** A connected DualSense was
+  invisible to games that only read Xbox controllers (found with Ace Combat
+  3 Remix), with no error anywhere: Wine kept the pad's raw HID device, which
+  such games can't decode. A new per-bottle toggle in **Controllers →
+  PlayStation Pads as Xbox (XInput)** switches Wine to its SDL device, which
+  presents the pad as an Xbox controller. Off by default — games with native
+  PlayStation support want the raw path. Also a known setup for Ace Combat 3
+  Remix.
 - **Console programs open in a window.** Adding `cmd.exe` (or any other
   console program) to a bottle and pressing Play did nothing visible: Fable
   starts programs like games, with their output going to a log and no
