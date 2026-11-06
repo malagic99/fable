@@ -60,6 +60,42 @@ import Testing
         )
     }
 
+    // MARK: Console programs
+
+    /// Overwrites an exe with a PE32+ header whose subsystem is `subsystem`.
+    private func writePE(at url: URL, subsystem: UInt8) throws {
+        var data = Data(count: 0x200)
+        data[0] = 0x4D; data[1] = 0x5A
+        data[0x3C] = 0x40
+        data[0x40] = 0x50; data[0x41] = 0x45
+        data[0x40 + 24] = 0x0B; data[0x40 + 25] = 0x02
+        data[0x40 + 24 + 68] = subsystem
+        try data.write(to: url)
+    }
+
+    @Test
+    func aConsoleProgramGetsAConsoleWindow() throws {
+        let (prefix, driveC) = try makePrefix(exe: "windows/system32/cmd.exe")
+        defer { try? fm.removeItem(at: prefix) }
+        try writePE(at: driveC.appending(path: "windows/system32/cmd.exe"), subsystem: 3)
+
+        let plan = try plan(game: Game(name: "cmd", executablePath: "windows/system32/cmd.exe", arguments: "/k ver"),
+                            bottle: Bottle(name: "B", graphicsBackend: .sikarugir), prefix: prefix, driveC: driveC)
+        // Launched like a game, cmd printed its prompt into the log and quit.
+        #expect(plan.wineArguments == ["wineconsole", #"C:\windows\system32\cmd.exe"#, "/k", "ver"])
+    }
+
+    @Test
+    func windowedProgramsLaunchAsBefore() throws {
+        let (prefix, driveC) = try makePrefix()
+        defer { try? fm.removeItem(at: prefix) }
+        let exe = driveC.appending(path: "Games/Demo/demo.exe")
+        try writePE(at: exe, subsystem: 2)
+        let plan = try plan(game: Game(name: "D", executablePath: "Games/Demo/demo.exe"),
+                            bottle: Bottle(name: "B", graphicsBackend: .sikarugir), prefix: prefix, driveC: driveC)
+        #expect(plan.wineArguments == [exe.path])
+    }
+
     // MARK: Visual C++ runtime
 
     /// A msvcp140.dll in the bottle: Wine's own (its DOS stub carries the

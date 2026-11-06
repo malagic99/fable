@@ -21,6 +21,27 @@ import Testing
         #expect(PEInfo.architecture(of: Data("ELF".utf8)) == nil)
         #expect(PEInfo.architecture(of: Data()) == nil)
     }
+
+    @Test
+    func readsTheSubsystemInBothFormats() throws {
+        for magic: UInt16 in [0x10B, 0x20B] {
+            var console = peData(magic: magic)
+            console[0x40 + 24 + 68] = 3                      // IMAGE_SUBSYSTEM_WINDOWS_CUI
+            var gui = peData(magic: magic)
+            gui[0x40 + 24 + 68] = 2                          // IMAGE_SUBSYSTEM_WINDOWS_GUI
+            #expect(PEInfo.subsystem(of: console) == PEInfo.consoleSubsystem)
+            #expect(PEInfo.subsystem(of: gui) == 2)
+        }
+        #expect(PEInfo.subsystem(of: Data("MZ".utf8)) == nil)
+
+        let file = FileManager.default.temporaryDirectory.appending(path: "cui-\(UUID().uuidString).exe")
+        defer { try? FileManager.default.removeItem(at: file) }
+        var console = peData(magic: 0x20B)
+        console[0x40 + 24 + 68] = 3
+        try console.write(to: file)
+        #expect(PEInfo.isConsoleProgram(file))
+        #expect(!PEInfo.isConsoleProgram(file.appendingPathExtension("missing")))
+    }
 }
 
 @Suite struct CompanionPartsTests {

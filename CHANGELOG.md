@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Console programs open in a window.** Adding `cmd.exe` (or any other
+  console program) to a bottle and pressing Play did nothing visible: Fable
+  starts programs like games, with their output going to a log and no
+  console attached, so cmd printed its prompt into the log, read no input and
+  quit. Fable now reads the program's header and runs console programs in
+  Wine's console window instead, where you can type into them.
 - **Covers for games that had none.** Two gaps in the cover fetcher: newer
   Steam titles (Jackbox 12, Castlevania: Belmont's Curse) keep their art at
   a path the old fixed address can't reach, so Fable now asks Steam's store

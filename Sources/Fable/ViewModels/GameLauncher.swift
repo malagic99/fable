@@ -160,9 +160,16 @@ final class GameLauncher: ObservableObject {
         /// Per-game override names left out of `environment` — see
         /// `WineEnv.screenedOverrides`. Noted at the top of the game's log.
         var refusedEnvironmentKeys: [String] = []
+        /// Set for a console program (cmd.exe and the like): its C: path,
+        /// run through `wineconsole` so it gets a window and keyboard input.
+        var consoleProgram: String?
 
-        /// Full argv passed to `wine`: the executable path then its arguments.
-        var wineArguments: [String] { [executable.path] + arguments }
+        /// Full argv passed to `wine`: the executable path then its arguments —
+        /// or, for a console program, `wineconsole` hosting it.
+        var wineArguments: [String] {
+            if let consoleProgram { return ["wineconsole", consoleProgram] + arguments }
+            return [executable.path] + arguments
+        }
     }
 
     /// The routing + environment-composition core: backend → wine binary,
@@ -288,6 +295,15 @@ final class GameLauncher: ObservableObject {
             )) { _, new in new }
         }
 
+        // A console program started like a game (output to the log, nothing
+        // attached) prints its prompt, reads no input and exits before a
+        // window ever shows. Host it in wineconsole instead, by its C: path —
+        // wineconsole hands the command line to CreateProcess. (The bridge's
+        // steam.exe stand-in is a console program too, but it isn't the game.)
+        let consoleProgram = game.steamAppID == nil && PEInfo.isConsoleProgram(executable)
+            ? SteamBridge.windowsPath(forExecutablePath: game.executablePath)
+            : nil
+
         return LaunchPlan(
             wine: wine,
             executable: launched,
@@ -297,7 +313,8 @@ final class GameLauncher: ObservableObject {
             logFile: logFile,
             runtimeKey: runtimeKey,
             releaseWineserver: runtime.wineserverBinary(for: effectiveBackend),
-            refusedEnvironmentKeys: overrides.refused
+            refusedEnvironmentKeys: overrides.refused,
+            consoleProgram: consoleProgram
         )
     }
 
