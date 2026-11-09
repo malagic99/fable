@@ -185,7 +185,7 @@ struct BottleDetailView: View {
                     get: { bottle.graphicsBackend },
                     set: { setGraphicsBackend($0, bottle: bottle) }
                 )) {
-                    ForEach(GraphicsBackend.allCases) { backend in
+                    ForEach(GraphicsBackend.pickerChoices(current: bottle.graphicsBackend)) { backend in
                         Text(backend.displayName).tag(backend)
                     }
                 }

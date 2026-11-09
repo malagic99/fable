@@ -8,10 +8,12 @@
   of its own code; on Wine 11 it boots, plays its movies and runs missions
   through DX12 on Metal (tested on an M4 Pro). Fable downloads the engine and
   Sikarugir's template from Sikarugir's own releases (about 260 MB, pinned by
-  SHA-256) the first time a bottle or game uses it, so it doesn't depend on
-  which engine your Sikarugir app has. Opt-in per bottle or per game: running
-  it upgrades a bottle to Wine 11, and the native Steam bridge still needs
-  Wine 10. Ace Combat 8 gets a known setup that picks it automatically.
+  SHA-256) the first time a bottle uses it, so it doesn't depend on which
+  engine your Sikarugir app has. For now it's reachable only through Ace
+  Combat 8's known setup — applying it moves that game's bottle (Steam
+  included) to Wine 11 — and isn't offered in the backend pickers until more
+  games are confirmed on it. A bottle on Wine 11 stays there, and the native
+  Steam bridge still needs Wine 10.
   Online play stays blocked by Easy Anti-Cheat, as on Linux.
 
 ## v1.0.3 — 2026-11-06

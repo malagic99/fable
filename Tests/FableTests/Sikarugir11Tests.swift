@@ -19,6 +19,16 @@ import Testing
     }
 
     @Test
+    func pickersOfferItOnlyWhereItsAlreadyInUse() {
+        #expect(!GraphicsBackend.pickerChoices(current: .sikarugir).contains(.sikarugir11))
+        #expect(!GraphicsBackend.pickerChoices(current: nil).contains(.sikarugir11))
+        #expect(GraphicsBackend.pickerChoices(current: nil).contains(.sikarugir))
+        // A bottle the recipe already moved still shows its backend.
+        #expect(GraphicsBackend.pickerChoices(current: .sikarugir11).contains(.sikarugir11))
+        #expect(GraphicsBackend.pickerChoices(current: .sikarugir11).count == GraphicsBackend.allCases.count)
+    }
+
+    @Test
     func environmentCarriesTheEngineSwitchAndNoD3DOverrides() {
         let env = Sikarugir11Manager.launchEnvironment(baseOverrides: "mscoree,mshtml=", bundleRoot: nil)
         #expect(env["SikarugirAppWine11"] != nil)

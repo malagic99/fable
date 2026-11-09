@@ -58,7 +58,7 @@ struct GameSettingsView: View {
                         Text(L10n.string("game.backend.bottle_default", bottle.graphicsBackend.displayName))
                             .tag(BackendChoice.inherit)
                         Divider()
-                        ForEach(GraphicsBackend.allCases) { backend in
+                        ForEach(GraphicsBackend.pickerChoices(current: backendOverride)) { backend in
                             Text(backend.displayName)
                                 .tag(BackendChoice.override(backend))
                         }

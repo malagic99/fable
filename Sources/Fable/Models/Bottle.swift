@@ -122,6 +122,18 @@ enum GraphicsBackend: String, Codable, CaseIterable, Identifiable, Sendable {
 
     var id: String { rawValue }
 
+    /// Reachable only through a known setup (recipe) for now, not offered in
+    /// the backend pickers: Sikarugir 11 is proven on Ace Combat 8 alone, and
+    /// picking it moves a bottle to Wine 11 for good. Widen once other games
+    /// are confirmed on it.
+    var isRecipeOnly: Bool { self == .sikarugir11 }
+
+    /// What a backend picker lists: everything but the recipe-only backends —
+    /// plus `current`, so a bottle or game already on one still shows it.
+    static func pickerChoices(current: GraphicsBackend?) -> [GraphicsBackend] {
+        allCases.filter { !$0.isRecipeOnly || $0 == current }
+    }
+
     /// Backends that render through Apple's D3DMetal (MetalFX, Metal HUD and
     /// the D3DMetal frame cap apply).
     var usesD3DMetal: Bool {
