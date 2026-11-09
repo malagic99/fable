@@ -96,7 +96,7 @@ struct GameSettingsView: View {
                     }
                     .disabled(effectiveBackend == .off)
 
-                    if effectiveBackend == .gptk || effectiveBackend == .sikarugir {
+                    if effectiveBackend.usesD3DMetal {
                         Toggle("MetalFX Upscaling", isOn: $performance.metalFXUpscaling)
                     }
                 } header: {
@@ -231,6 +231,8 @@ struct GameSettingsView: View {
             return "Routes through your installed CrossOver. Different wineserver — can't share the bottle with other backends running."
         case .sikarugir:
             return "Routes through Sikarugir's wine-10.0 + D3DMetal. The free D3D12 path for modern games."
+        case .sikarugir11:
+            return "Routes through Sikarugir's Wine 11 engine + D3DMetal, for games Wine 10 can't start (newer Denuvo builds). Downloads about 260 MB on first launch, and running it upgrades the bottle to Wine 11."
         }
     }
 

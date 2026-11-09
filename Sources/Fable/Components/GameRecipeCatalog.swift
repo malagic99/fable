@@ -108,6 +108,14 @@ enum GameRecipeCatalog {
             backend: .sikarugir, metalFX: false, frameRateCap: nil,
             note: "UE4, launched through Steam in a Sikarugir bottle. Reported running well on Apple Silicon (Oct 2026); recommended frame cap and MetalFX not recorded yet."
         ),
+        // Validated by hand on the same runtime (Nov 2026, M4 Pro): menus,
+        // movies and the first mission's intro cutscene. Cap and MetalFX
+        // aren't recorded yet — fill them in from a real session.
+        GameRecipe(
+            name: "ACE COMBAT 8: WINGS OF THEVE", executables: ["acecombat8.exe"],
+            backend: .sikarugir11, metalFX: false, frameRateCap: nil,
+            note: "UE5 D3D12 with Denuvo — needs Sikarugir 11: on Wine 10 it crashes at Denuvo's first check (page fault at 0x27F0…). Start Steam in the bottle first; the game relaunches itself through Steam and Easy Anti-Cheat, which runs in its offline mode on Wine, so single-player works and online play doesn't. The first launch compiles shaders for a few minutes."
+        ),
         GameRecipe(
             name: "Ace Combat 3 Remix", executables: ["ac3r.exe"],
             backend: .sikarugir, metalFX: true, frameRateCap: 60,

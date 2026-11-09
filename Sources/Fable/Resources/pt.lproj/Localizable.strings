@@ -417,6 +417,7 @@
 "backend.display.dxvk"        = "DXVK + vkd3d — DirectX → Vulkan → Metal";
 "backend.display.crossover"   = "CrossOver — usa sua cópia instalada (pago)";
 "backend.display.sikarugir"   = "Sikarugir — DirectX 12 + Steam → Metal (grátis)";
+"backend.display.sikarugir11" = "Sikarugir 11 — Wine 11 + D3DMetal, para jogos com Denuvo recente (grátis)";
 "backend.short.off"           = "Integrado";
 "winetricks.category.apps"        = "Apps";
 "winetricks.category.benchmarks"  = "Testes";

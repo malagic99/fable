@@ -34,7 +34,7 @@ struct PerformanceOptions: Codable, Hashable, Sendable {
         let roomy = (hardware.chipTier == .max || hardware.chipTier == .ultra)
             && hardware.memoryGB >= 48
         switch backend {
-        case .sikarugir, .gptk:
+        case .sikarugir, .sikarugir11, .gptk:
             // D3DMetal AAA path: upscale + cap to ease sustained GPU load and
             // unified-memory pressure — unless the machine has real headroom.
             return roomy
@@ -62,7 +62,7 @@ struct PerformanceOptions: Codable, Hashable, Sendable {
         let roomy = (hardware.chipTier == .max || hardware.chipTier == .ultra)
             && hardware.memoryGB >= 48
         switch backend {
-        case .sikarugir, .gptk:
+        case .sikarugir, .sikarugir11, .gptk:
             return roomy
                 ? L10n.string("advice.hw.headroom", hardware.chipName, String(hardware.memoryGB))
                 : L10n.string("advice.hw.d3dmetal", hardware.chipName, String(hardware.memoryGB))
@@ -80,7 +80,7 @@ struct PerformanceOptions: Codable, Hashable, Sendable {
     /// ``recommended(for:)``, this is applied on demand even to a tuned bottle.
     static func rockSolid(for backend: GraphicsBackend) -> PerformanceOptions {
         switch backend {
-        case .sikarugir, .gptk:
+        case .sikarugir, .sikarugir11, .gptk:
             return PerformanceOptions(metalHUD: false, metalFXUpscaling: true, frameRateCap: 60)
         case .dxmt, .dxvk, .off, .crossover:
             // MetalFX is D3DMetal-only; the cap still steadies everything else.

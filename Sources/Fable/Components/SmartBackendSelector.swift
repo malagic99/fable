@@ -64,6 +64,9 @@ enum SmartBackendSelector {
         switch backend {
         case .dxvk: false
         case .off, .dxmt, .gptk, .crossover, .sikarugir: true
+        // Downloads ~260 MB and upgrades the prefix to Wine 11 — never a
+        // silent pick.
+        case .sikarugir11: false
         }
     }
 }

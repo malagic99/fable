@@ -156,13 +156,20 @@ struct CompatibilityBanner: View {
     /// the matching performance preset (the recipe's exact tuning when known,
     /// else the backend's steady-FPS default) — only when untuned.
     private func applyRecommendation(_ backend: GraphicsBackend) {
+        // Wine 11 Sikarugir has to cover Steam too: a Steam game relaunches
+        // through the bottle's Steam and runs on its Wine, so a per-game
+        // override would never take effect. Switch the bottle instead.
+        if backend == .sikarugir11 {
+            applyToBottle(backend)
+            return
+        }
         var updated = game
         updated.graphicsBackend = backend
         do {
             try bottleManager.updateGame(updated, in: bottle.id)
             if let recipe {
                 bottleManager.applyPerformanceIfDefault(recipe.performance, for: bottle.id)
-            } else if backend == .sikarugir || backend == .gptk {
+            } else if backend.usesD3DMetal {
                 bottleManager.applyRecommendedPerformanceIfDefault(for: bottle.id)
             }
             toastCenter.success("\(game.name) will use \(backend.shortName)")
@@ -171,6 +178,28 @@ struct CompatibilityBanner: View {
             if backend == .dxvk, winetricksManager.needsDXVK(in: bottle, bottleManager: bottleManager) {
                 installDXVK()
             }
+            if let recipe {
+                installMissingDependencies(recipe.dependencies)
+            }
+        } catch {
+            toastCenter.error(error.localizedDescription)
+        }
+    }
+
+    private func applyToBottle(_ backend: GraphicsBackend) {
+        do {
+            if game.graphicsBackend != nil {
+                var updated = game
+                updated.graphicsBackend = nil
+                try bottleManager.updateGame(updated, in: bottle.id)
+            }
+            try bottleManager.setGraphics(backend: backend, for: bottle.id)
+            if let recipe {
+                bottleManager.applyPerformanceIfDefault(recipe.performance, for: bottle.id)
+            } else {
+                bottleManager.applyRecommendedPerformanceIfDefault(for: bottle.id)
+            }
+            toastCenter.success("“\(bottle.name)” now uses \(backend.shortName) — Steam included. Its engine (about 260 MB) downloads on the next launch, and the bottle moves to Wine 11.")
             if let recipe {
                 installMissingDependencies(recipe.dependencies)
             }

@@ -10,6 +10,7 @@ struct BottleDetailView: View {
     @EnvironmentObject private var gptkManager: GPTKManager
     @EnvironmentObject private var crossOverManager: CrossOverManager
     @EnvironmentObject private var sikarugirManager: SikarugirManager
+    @EnvironmentObject private var sikarugir11Manager: Sikarugir11Manager
     @EnvironmentObject private var gameLauncher: GameLauncher
     @EnvironmentObject private var diskUsageStore: BottleDiskUsageStore
     @EnvironmentObject private var toastCenter: ToastCenter
@@ -231,7 +232,7 @@ struct BottleDetailView: View {
                 }
                 .disabled(bottle.graphicsBackend == .off)
 
-                if bottle.graphicsBackend == .gptk || bottle.graphicsBackend == .sikarugir {
+                if bottle.graphicsBackend.usesD3DMetal {
                     Toggle("MetalFX Upscaling", isOn: Binding(
                         get: { bottle.performance.metalFXUpscaling },
                         set: { setMetalFXUpscaling($0, bottle: bottle) }
@@ -693,6 +694,8 @@ struct BottleDetailView: View {
             "Routes through your installed CrossOver. Modern wine 9+ AND Apple-licensed D3DMetal — the highest-compatibility path. Requires CrossOver (codeweavers.com)."
         case .sikarugir:
             "Sikarugir's wine-10.0 + D3DMetal recompiled against it. The free matched pair — modern SEH AND real D3D12→Metal. Best for 2024+ D3D12 games. Requires Sikarugir installed."
+        case .sikarugir11:
+            "Sikarugir's Wine 11 engine + the D3DMetal renderer built for it, downloaded from Sikarugir's releases (~260 MB). For games Wine 10 can't start, like newer Denuvo builds. Running it upgrades this bottle to Wine 11, and the native Steam bridge doesn't support it yet."
         }
     }
 
@@ -730,11 +733,23 @@ struct BottleDetailView: View {
                     // Extracts Sikarugir's wine-10.0 engine + overlays its
                     // d3dmetal renderer into Fable's components (one-time).
                     try await sikarugirManager.ensureInstalled()
+                case .sikarugir11:
+                    // Downloads Sikarugir's Wine 11 engine + template and
+                    // assembles them (one-time).
+                    toastCenter.success("Downloading Sikarugir's Wine 11 engine… about 260 MB.")
+                    try await sikarugir11Manager.ensureInstalled()
                 case .off:
                     // Launches route around any installed DLLs.
                     break
                 }
                 try bottleManager.setGraphics(backend: backend, for: bottle.id)
+                if backend == .sikarugir11 {
+                    // Its D3DMetal choices live in the prefix registry; write
+                    // them now so Steam started any way finds them.
+                    let prefix = bottleManager.prefixDirectory(for: bottle)
+                    await sikarugir11Manager.ensureRegistryOverrides(
+                        prefix: prefix, baseEnvironment: wineManager.environment(forPrefix: prefix))
+                }
                 // Heavy D3DMetal backends get a steady-FPS default (60 cap +
                 // MetalFX) — only when the user hasn't tuned performance yet.
                 if bottleManager.applyRecommendedPerformanceIfDefault(for: bottle.id) {
@@ -759,7 +774,7 @@ struct BottleDetailView: View {
             "Frame-rate cap routed through DXVK_FRAME_RATE. MetalFX is GPTK-only."
         case .crossover:
             "CrossOver manages its own performance config — Metal HUD still works via MTL_HUD_ENABLED."
-        case .sikarugir:
+        case .sikarugir, .sikarugir11:
             "Metal HUD, frame-rate cap, and MetalFX all run through D3DMetal. If FPS starts smooth then slowly drops, cap to 60 and/or enable MetalFX to ease sustained GPU + unified-memory load."
         }
     }
@@ -817,7 +832,7 @@ struct BottleDetailView: View {
         try? bottleManager.setPerformance(
             .rockSolid(for: bottle.graphicsBackend), for: bottle.id
         )
-        toastCenter.success("Rock Solid applied: 60 fps cap\(bottle.graphicsBackend == .gptk || bottle.graphicsBackend == .sikarugir ? " + MetalFX" : "").")
+        toastCenter.success("Rock Solid applied: 60 fps cap\(bottle.graphicsBackend.usesD3DMetal ? " + MetalFX" : "").")
     }
 
     private func setMetalHUD(_ enabled: Bool, bottle: Bottle) {

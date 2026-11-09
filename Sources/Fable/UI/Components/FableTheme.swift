@@ -41,7 +41,7 @@ enum FableTheme {
     /// the brand gradient rather than as the legacy fallback it is.
     static func tint(for backend: GraphicsBackend) -> Color {
         switch backend {
-        case .sikarugir: .accentColor
+        case .sikarugir, .sikarugir11: .accentColor
         case .dxmt: .blue
         case .dxvk: .teal
         case .crossover: .green
