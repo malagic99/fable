@@ -1,8 +1,17 @@
 # Changelog
 
-## Unreleased
+## v1.1.1 — 2026-11-11
 
 **Fewer surprises — from a (simulated) user panel's sharpest notes.**
+
+- **Fable is now GPL-3.0.** The README said MIT but no licence file was ever
+  committed, so GitHub showed none. From this release on, Fable's code is
+  GPL-3.0-only: free to use, study, share and modify, and any distributed
+  modified version must stay open under the same terms. Releases up to
+  v1.1.0 stay available under MIT.
+- **A debugging playbook** (`docs/DEBUGGING.md`): how to take a crash to a
+  root cause — logs, crash reports, safe reproduction in a clone, Wine trace
+  channels — with Ace Combat 8 as the worked example.
 
 - **The anti-cheat warning now works for everyone.** Fable checks a game
   against AreWeAntiCheatYet's list before you download it, but nothing ever
