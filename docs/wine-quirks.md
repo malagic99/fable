@@ -8,6 +8,8 @@ regression or upgrading the Wine build is a lookup, not an archaeology dig.
 
 > Deep background — why the stack is shaped this way, the ABI law, the Steam
 > CEF saga, and the closed dead ends — lives in [ARCHITECTURE.md](ARCHITECTURE.md).
+> How to *find* a new quirk — logs, trace channels, crash reports, safe
+> reproduction — is in [DEBUGGING.md](DEBUGGING.md).
 
 > **Maintenance rule:** a quirk lives in exactly one place in code, documented
 > at that place. If you find the same magic string in two files, centralize it
