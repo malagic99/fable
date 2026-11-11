@@ -195,7 +195,7 @@ final class Sikarugir11Manager: ObservableObject {
             URL(filePath: "/usr/bin/xattr"), arguments: ["-dr", "com.apple.quarantine", engineRoot.path])
     }
 
-    nonisolated private static func hasLibraryRpath(_ binary: URL) async throws -> Bool {
+    nonisolated static func hasLibraryRpath(_ binary: URL) async throws -> Bool {
         let probe = try await ProcessRunner.run(URL(filePath: "/usr/bin/otool"), arguments: ["-l", binary.path])
         guard probe.succeeded else {
             throw Sikarugir11Error.toolFailed("otool: \(probe.standardError.isEmpty ? "exit \(probe.exitCode)" : probe.standardError)")
@@ -203,7 +203,7 @@ final class Sikarugir11Manager: ObservableObject {
         return probe.standardOutput.contains("@loader_path/../lib")
     }
 
-    nonisolated private static func checked(_ tool: String, _ arguments: [String]) async throws {
+    nonisolated static func checked(_ tool: String, _ arguments: [String]) async throws {
         let result = try await ProcessRunner.run(URL(filePath: tool), arguments: arguments)
         guard result.succeeded else {
             let name = URL(filePath: tool).lastPathComponent
@@ -237,7 +237,7 @@ final class Sikarugir11Manager: ObservableObject {
     /// Replaces whatever is at `target` (file, directory, or a link — even a
     /// dangling one, which `fileExists` can't see) with a copy of `source`.
     /// `copyItem` copies a symbolic link as a link.
-    nonisolated private static func replaceItem(at target: URL, with source: URL) throws {
+    nonisolated static func replaceItem(at target: URL, with source: URL) throws {
         let fm = FileManager.default
         if (try? fm.attributesOfItem(atPath: target.path)) != nil {
             try fm.removeItem(at: target)

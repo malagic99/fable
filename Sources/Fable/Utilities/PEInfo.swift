@@ -33,6 +33,26 @@ enum PEInfo {
         }
     }
 
+    /// True for a 16-bit Windows program ("NE", Windows 3.x era — many
+    /// mid-90s setup.exe files). These can't run on Apple Silicon at all:
+    /// Wine's 16-bit support needs CPU features Rosetta doesn't provide, and
+    /// the program just hangs at 100% CPU with no window.
+    static func isSixteenBit(_ data: Data) -> Bool {
+        guard data.count > 0x40, data[data.startIndex] == 0x4D, data[data.startIndex + 1] == 0x5A else {
+            return false
+        }
+        let offset = Int(readU32(data, 0x3C))
+        guard offset > 0, offset + 2 <= data.count else { return false }
+        return data[data.startIndex + offset] == 0x4E && data[data.startIndex + offset + 1] == 0x45
+    }
+
+    static func isSixteenBit(_ url: URL) -> Bool {
+        guard let handle = try? FileHandle(forReadingFrom: url),
+              let head = try? handle.read(upToCount: 0x1000) else { return false }
+        try? handle.close()
+        return isSixteenBit(head)
+    }
+
     /// True for a console program (`IMAGE_SUBSYSTEM_WINDOWS_CUI`, e.g.
     /// cmd.exe). Run like a game — output to a log, no console attached —
     /// it prints its prompt, reads no input, and exits before anything

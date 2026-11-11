@@ -12,6 +12,7 @@ struct FableApp: App {
     @StateObject private var crossOverManager = CrossOverManager()
     @StateObject private var sikarugirManager: SikarugirManager
     @StateObject private var sikarugir11Manager: Sikarugir11Manager
+    @StateObject private var installerEngine: InstallerEngineManager
     @StateObject private var winetricksManager: WinetricksManager
     @StateObject private var updateManager: UpdateManager
     @StateObject private var appUpdateChecker = AppUpdateChecker()
@@ -56,6 +57,10 @@ struct FableApp: App {
             componentManager: componentManager
         ))
         _sikarugir11Manager = StateObject(wrappedValue: Sikarugir11Manager(
+            componentManager: componentManager,
+            catalog: appState.versionCatalog
+        ))
+        _installerEngine = StateObject(wrappedValue: InstallerEngineManager(
             componentManager: componentManager,
             catalog: appState.versionCatalog
         ))
@@ -181,6 +186,7 @@ struct FableApp: App {
                 .environmentObject(crossOverManager)
                 .environmentObject(sikarugirManager)
                 .environmentObject(sikarugir11Manager)
+                .environmentObject(installerEngine)
                 .environmentObject(winetricksManager)
                 .environmentObject(updateManager)
                 .environmentObject(appUpdateChecker)

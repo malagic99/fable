@@ -9,6 +9,7 @@ struct GameInstallerView: View {
     @EnvironmentObject private var bottleManager: BottleManager
     @EnvironmentObject private var wineManager: WineManager
     @EnvironmentObject private var gameLauncher: GameLauncher
+    @EnvironmentObject private var installerEngine: InstallerEngineManager
     @Environment(\.dismiss) private var dismiss
 
     @StateObject private var installer = GameInstaller()
@@ -31,12 +32,20 @@ struct GameInstallerView: View {
 
             switch phase {
             case .running:
-                SheetStatusView(
-                    systemImage: nil,
-                    title: "Installer Running",
-                    message: "Complete the “\(installerExe.lastPathComponent)” installer in its own window. Fable will continue when it finishes."
-                        + (installer.compatibilityRuntimeName.map { " Running via \($0) for 32-bit compatibility." } ?? "")
-                )
+                if installer.isPreparingEngine {
+                    SheetStatusView(
+                        systemImage: nil,
+                        title: "Getting the Installer Engine",
+                        message: "“\(installerExe.lastPathComponent)” is a 32-bit installer. Fable is downloading the Wine it runs those on (about 270 MB, one time). The installer starts when it's ready."
+                    )
+                } else {
+                    SheetStatusView(
+                        systemImage: nil,
+                        title: "Installer Running",
+                        message: "Complete the “\(installerExe.lastPathComponent)” installer in its own window. Fable will continue when it finishes."
+                            + (installer.compatibilityRuntimeName.map { " Running via \($0) for 32-bit compatibility." } ?? "")
+                    )
+                }
 
             case .finished(let exitCode):
                 if let blocker {
@@ -134,9 +143,8 @@ struct GameInstallerView: View {
         }
 
         var advice = "The installer crashed or was stopped before finishing. Check the log for details."
-        if PEInfo.architecture(of: installerExe) == .pe32,
-           CompatibilityRuntime.discover() == nil {
-            advice += " This is a 32-bit installer, which can crash Wine — installing Heroic's Game Porting Toolkit (or CrossOver/Whisky) gives Fable a compatibility runtime that fixes most of these."
+        if PEInfo.architecture(of: installerExe) == .pe32, !installerEngine.isInstalled {
+            advice += " This is a 32-bit installer and Fable's installer engine couldn't be downloaded, so it ran on a fallback Wine. Check your connection and try again."
         }
         advice += " GOG offline installers can use Extract Directly instead."
         return advice
@@ -152,7 +160,8 @@ struct GameInstallerView: View {
                 installerExe,
                 bottle: bottle,
                 bottleManager: bottleManager,
-                wineManager: wineManager
+                wineManager: wineManager,
+                installerEngine: installerEngine
             )
             blocker = GameDoctor.installerBlocker(
                 fableLog: installer.installerLog,
@@ -160,6 +169,8 @@ struct GameInstallerView: View {
                 since: started
             )
             phase = .finished(exitCode: exitCode)
+        } catch is CancellationError {
+            dismiss()
         } catch {
             phase = .failed(error.localizedDescription)
         }
