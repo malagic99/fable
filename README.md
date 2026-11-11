@@ -149,8 +149,14 @@ already-extracted files into place and writing the Steam manifest.
 
 ## License & credits
 
-Fable's own code is **MIT** ([LICENSE](LICENSE)); everything it stands on and
-what that implies is inventoried in
+Fable's own code is licensed under the **GNU General Public License, version 3**
+([LICENSE](LICENSE), SPDX `GPL-3.0-only`). You're free to use, study, share and
+modify it; if you distribute a modified version, you must release its source
+under the same licence. That keeps Fable and anything built from it open.
+Releases up to and including v1.1.0 were published under the MIT licence and
+remain available under it.
+
+Everything Fable stands on, and what that implies, is inventoried in
 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) — Wine (LGPL), DXMT (zlib),
 DXVK/vkd3d-proton, MoltenVK, Apple's Game Porting Toolkit (D3DMetal, never
 bundled), Sikarugir, innoextract (zlib), and the Gcenx packaging work.
