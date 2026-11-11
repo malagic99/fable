@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## v1.1.0 — 2026-11-11
+
+**Newer Wine where it counts: Denuvo-era games and installers that work.**
 
 - **Installers: a Wine that actually installs things.** 32-bit Windows
   installers now run on a dedicated installer engine — a free build of
