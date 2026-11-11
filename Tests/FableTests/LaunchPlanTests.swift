@@ -18,12 +18,13 @@ import Testing
             case .gptk: URL(filePath: "/stub/gptk/bin/wine64")
             case .crossover: URL(filePath: "/stub/crossover/bin/wine")
             case .sikarugir: URL(filePath: "/stub/sikarugir/wswine.bundle/bin/wine64")
+            case .sikarugir11: URL(filePath: "/stub/sikarugir11/wswine.bundle/bin/wine")
             case .off, .dxmt, .dxvk: URL(filePath: "/stub/wine/bin/wine64")
             }
         }
         func wineserverBinary(for backend: GraphicsBackend) -> URL? {
             switch backend {
-            case .gptk, .crossover, .sikarugir:
+            case .gptk, .crossover, .sikarugir, .sikarugir11:
                 URL(filePath: "/stub/\(backend.rawValue)/wineserver")
             case .off, .dxmt, .dxvk:
                 nil
@@ -283,6 +284,7 @@ import Testing
             (.gptk, "/stub/gptk/bin/wine64", "gptk", true),
             (.crossover, "/stub/crossover/bin/wine", "crossover", true),
             (.sikarugir, "/stub/sikarugir/wswine.bundle/bin/wine64", "sikarugir", true),
+            (.sikarugir11, "/stub/sikarugir11/wswine.bundle/bin/wine", "sikarugir11", true),
         ]
         for (backend, binary, key, drains) in expected {
             let bottle = Bottle(name: "B", graphicsBackend: backend)
@@ -477,6 +479,42 @@ import Testing
         // D3DMetal perf knobs ride along on the D3DMetal-family backends.
         #expect(plan.environment["D3DM_MAX_FPS"] == "60")
         #expect(plan.environment["D3DM_ENABLE_METALFX"] == "1")
+    }
+
+    @Test
+    func sikarugir11KeepsD3DMetalOutOfTheEnvironment() throws {
+        let (prefix, driveC) = try makePrefix()
+        defer { try? fm.removeItem(at: prefix) }
+        var bottle = Bottle(name: "B", graphicsBackend: .sikarugir11)
+        bottle.performance = PerformanceOptions(metalHUD: false, metalFXUpscaling: true, frameRateCap: 60)
+        let plan = try plan(game: Game(name: "D", executablePath: "Games/Demo/demo.exe"),
+                            bottle: bottle, prefix: prefix, driveC: driveC)
+        // Without it every Windows process after the first exits with 1.
+        #expect(plan.environment["SikarugirAppWine11"] != nil)
+        #expect(plan.environment["WINEMSYNC"] == "1")
+        // Forced in the registry instead, so Steam's web helper can opt out.
+        #expect(plan.environment["WINEDLLOVERRIDES"]?.contains("d3d12") != true)
+        #expect(plan.environment["GST_PLUGIN_PATH"]?.hasSuffix("GStreamer.framework/Libraries/gstreamer-1.0") == true)
+        #expect(plan.environment["D3DM_MAX_FPS"] == "60")
+        #expect(plan.environment["D3DM_ENABLE_METALFX"] == "1")
+    }
+
+    @Test
+    func steamBridgeStaysOnWine10Sikarugir() throws {
+        let (prefix, driveC) = try makePrefix()
+        let bridge = try makeBridge()
+        defer { try? fm.removeItem(at: prefix); try? fm.removeItem(at: bridge) }
+        var runtime = StubRuntime()
+        runtime.bridge = .success(bridge)
+        let game = Game(name: "D", executablePath: "Games/Demo/demo.exe", steamAppID: 480)
+        do {
+            _ = try plan(game: game, bottle: Bottle(name: "B", graphicsBackend: .sikarugir11),
+                         prefix: prefix, driveC: driveC, runtime: runtime)
+            Issue.record("planned a bridge launch on Wine 11")
+        } catch GameLaunchError.steamBridgeNeedsSikarugir {
+        } catch {
+            Issue.record("expected .steamBridgeNeedsSikarugir, got \(error)")
+        }
     }
 
     @Test

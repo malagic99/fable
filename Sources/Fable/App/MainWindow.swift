@@ -11,6 +11,7 @@ struct FableApp: App {
     @StateObject private var gptkManager: GPTKManager
     @StateObject private var crossOverManager = CrossOverManager()
     @StateObject private var sikarugirManager: SikarugirManager
+    @StateObject private var sikarugir11Manager: Sikarugir11Manager
     @StateObject private var winetricksManager: WinetricksManager
     @StateObject private var updateManager: UpdateManager
     @StateObject private var appUpdateChecker = AppUpdateChecker()
@@ -54,6 +55,10 @@ struct FableApp: App {
         _sikarugirManager = StateObject(wrappedValue: SikarugirManager(
             componentManager: componentManager
         ))
+        _sikarugir11Manager = StateObject(wrappedValue: Sikarugir11Manager(
+            componentManager: componentManager,
+            catalog: appState.versionCatalog
+        ))
         _winetricksManager = StateObject(wrappedValue: WinetricksManager(
             componentManager: componentManager,
             catalog: appState.versionCatalog
@@ -81,6 +86,7 @@ struct FableApp: App {
                         gptkManager: gptkManager,
                         crossOverManager: crossOverManager,
                         sikarugirManager: sikarugirManager,
+                        sikarugir11Manager: sikarugir11Manager,
                         triggerController: triggerController,
                         activityMonitor: activityMonitor,
                         toastCenter: toastCenter
@@ -174,6 +180,7 @@ struct FableApp: App {
                 .environmentObject(gptkManager)
                 .environmentObject(crossOverManager)
                 .environmentObject(sikarugirManager)
+                .environmentObject(sikarugir11Manager)
                 .environmentObject(winetricksManager)
                 .environmentObject(updateManager)
                 .environmentObject(appUpdateChecker)

@@ -8,6 +8,8 @@ enum GameLaunchError: LocalizedError {
     case steamBridgeNeedsSikarugir
     case steamBridgeNotReady(String)
     case macSteamNotRunning(String)
+    /// A Steam game set to a runtime its bottle's Steam doesn't run on.
+    case steamGameNeedsBottleRuntime(game: String, backend: String)
 
     var errorDescription: String? {
         switch self {
@@ -25,6 +27,8 @@ enum GameLaunchError: LocalizedError {
             "The native Steam bridge isn't ready (\(reason)). Build it with scripts/steam-bridge/build.sh."
         case .macSteamNotRunning(let game):
             "“\(game)” plays through your Mac Steam app. Open Steam and sign in, then press Play again."
+        case .steamGameNeedsBottleRuntime(let game, let backend):
+            "“\(game)” is set to \(backend), but Steam games restart through the Steam in their bottle and run on its Wine. Set the whole bottle to \(backend) instead (Bottle → Graphics), then start Steam and the game again."
         }
     }
 }
@@ -103,6 +107,7 @@ final class GameLauncher: ObservableObject {
         let gptkManager: GPTKManager
         let crossOverManager: CrossOverManager
         let sikarugirManager: SikarugirManager
+        let sikarugir11Manager: Sikarugir11Manager
         let triggerController: DualSenseTriggerController
         let activityMonitor: ActivityMonitor
         let toastCenter: ToastCenter
@@ -124,6 +129,7 @@ final class GameLauncher: ObservableObject {
             case .gptk: try deps.gptkManager.wineBinary()
             case .crossover: try deps.crossOverManager.wineBinary()
             case .sikarugir: try deps.sikarugirManager.wineBinary()
+            case .sikarugir11: try deps.sikarugir11Manager.wineBinary()
             case .off, .dxmt, .dxvk: try deps.wineManager.wineBinary()
             }
         }
@@ -133,6 +139,7 @@ final class GameLauncher: ObservableObject {
             case .gptk: try? deps.gptkManager.wineserverBinary()
             case .crossover: try? deps.crossOverManager.wineserverBinary()
             case .sikarugir: try? deps.sikarugirManager.wineserverBinary()
+            case .sikarugir11: try? deps.sikarugir11Manager.wineserverBinary()
             case .off, .dxmt, .dxvk: nil
             }
         }
@@ -253,6 +260,16 @@ final class GameLauncher: ObservableObject {
             let sikBundle = wine.deletingLastPathComponent().deletingLastPathComponent()
             environment.merge(
                 SikarugirManager.launchEnvironment(baseOverrides: baseOverrides, bundleRoot: sikBundle)
+            ) { _, new in new }
+            environment.merge(bottle.performance.gptkEnvironment()) { _, new in new }
+        case .sikarugir11:
+            // Sikarugir's Wine 11 engine + the renderer built for it. Its
+            // D3DMetal DLLs are forced in the prefix registry instead of the
+            // environment (see Sikarugir11Manager.builtinDLLs).
+            runtimeKey = "sikarugir11"
+            let bundle = wine.deletingLastPathComponent().deletingLastPathComponent()
+            environment.merge(
+                Sikarugir11Manager.launchEnvironment(baseOverrides: baseOverrides, bundleRoot: bundle)
             ) { _, new in new }
             environment.merge(bottle.performance.gptkEnvironment()) { _, new in new }
         case .dxmt, .off:
@@ -406,8 +423,40 @@ final class GameLauncher: ObservableObject {
             )
         }
 
+        try await prepareSikarugir11(for: prepared, in: fresh)
+
         try launch(prepared, in: fresh)
         refreshTriggers()
+    }
+
+    /// Readies a game that runs on Sikarugir's Wine 11 engine: fetches the
+    /// engine on first use (a per-game override can pick it before the bottle
+    /// ever did) and writes its registry DLL overrides — D3DMetal builtin,
+    /// and off for Steam's web helper. Called before a launch and before a
+    /// desktop shortcut is made, since the shortcut runs Wine on its own.
+    /// No-op for every other backend.
+    func prepareSikarugir11(for game: Game, in bottle: Bottle) async throws {
+        guard let deps else { throw GameLaunchError.notConfigured }
+        let backend = game.graphicsBackend ?? bottle.graphicsBackend
+        guard backend == .sikarugir11 else { return }
+        // A Steam game relaunches itself through the bottle's Steam and
+        // inherits its Wine — a per-game override alone can't take effect.
+        if Self.needsSteamRunning(game), bottle.graphicsBackend != .sikarugir11 {
+            throw GameLaunchError.steamGameNeedsBottleRuntime(game: game.name, backend: backend.shortName)
+        }
+        if !deps.sikarugir11Manager.isInstalled {
+            deps.toastCenter.success("Downloading Sikarugir's Wine 11 engine for “\(game.name)”… about 260 MB, one time.")
+            do {
+                try await deps.sikarugir11Manager.ensureInstalled()
+            } catch {
+                // Some callers (the Game Wall's double-click) drop the error.
+                deps.toastCenter.error("Sikarugir's Wine 11 engine couldn't be set up: \(error.localizedDescription)")
+                throw error
+            }
+        }
+        let prefix = deps.bottleManager.prefixDirectory(for: bottle)
+        await deps.sikarugir11Manager.ensureRegistryOverrides(
+            prefix: prefix, baseEnvironment: deps.wineManager.environment(forPrefix: prefix))
     }
 
     /// Keeps the DualSense adaptive-trigger profile matched to whatever's
@@ -456,6 +505,7 @@ final class GameLauncher: ObservableObject {
         if runtimeFamily(of: runtime) != "gptk" { foreign.append(contentsOf: [try? deps.gptkManager.wineserverBinary()].compactMap { $0 }) }
         if runtimeFamily(of: runtime) != "crossover" { foreign.append(contentsOf: [try? deps.crossOverManager.wineserverBinary()].compactMap { $0 }) }
         if runtimeFamily(of: runtime) != "sikarugir" { foreign.append(contentsOf: [try? deps.sikarugirManager.wineserverBinary()].compactMap { $0 }) }
+        if runtimeFamily(of: runtime) != "sikarugir11" { foreign.append(contentsOf: [try? deps.sikarugir11Manager.wineserverBinary()].compactMap { $0 }) }
 
         try await PrefixRuntimeGate.ensureExclusive(
             prefix: deps.bottleManager.prefixDirectory(for: bottle),
@@ -480,6 +530,7 @@ final class GameLauncher: ObservableObject {
         case .gptk: "gptk"
         case .crossover: "crossover"
         case .sikarugir: "sikarugir"
+        case .sikarugir11: "sikarugir11"
         case .off, .dxmt, .dxvk: "wine"
         }
     }

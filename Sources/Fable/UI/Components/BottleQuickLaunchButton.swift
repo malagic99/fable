@@ -66,14 +66,18 @@ struct BottleQuickLaunchButton: View {
     }
 
     private func createShortcut(_ game: Game) {
-        do {
-            let plan = try gameLauncher.makeLaunchPlan(game, in: bottle)
-            let desktop = FileManager.default.urls(for: .desktopDirectory, in: .userDomainMask).first
-                ?? FileManager.default.homeDirectoryForCurrentUser.appending(path: "Desktop")
-            let app = try ShortcutGenerator.createApp(named: "\(bottle.name) — \(game.name)", plan: plan, in: desktop)
-            NSWorkspace.shared.activateFileViewerSelecting([app])
-        } catch {
-            launchError = error.localizedDescription
+        Task {
+            do {
+                // The shortcut runs Wine without Fable — set up the prefix first.
+                try await gameLauncher.prepareSikarugir11(for: game, in: bottle)
+                let plan = try gameLauncher.makeLaunchPlan(game, in: bottle)
+                let desktop = FileManager.default.urls(for: .desktopDirectory, in: .userDomainMask).first
+                    ?? FileManager.default.homeDirectoryForCurrentUser.appending(path: "Desktop")
+                let app = try ShortcutGenerator.createApp(named: "\(bottle.name) — \(game.name)", plan: plan, in: desktop)
+                NSWorkspace.shared.activateFileViewerSelecting([app])
+            } catch {
+                launchError = error.localizedDescription
+            }
         }
     }
 }

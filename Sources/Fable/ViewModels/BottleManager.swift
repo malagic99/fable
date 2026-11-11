@@ -205,7 +205,11 @@ final class BottleManager: ObservableObject {
     /// on a dead corefonts mirror.
     func steamDonorBottle(excluding excludeID: Bottle.ID?) -> Bottle? {
         let candidates = bottles.filter { candidate in
+            // A Wine 11 prefix would silently make the new bottle Wine 11
+            // (the clone inherits the donor's backend) — not what "a Steam
+            // bottle" means, and it can't go back to Wine 10 cleanly.
             candidate.id != excludeID && candidate.status == .ready
+                && candidate.graphicsBackend != .sikarugir11
                 && FileManager.default.fileExists(
                     atPath: SteamPaths.uiMarker(inDriveC: driveCDirectory(for: candidate)).path)
         }
@@ -519,7 +523,7 @@ final class BottleManager: ObservableObject {
             try updateGame(updated, in: bottle.id)
             if let recipe {
                 applyPerformanceIfDefault(recipe.performance, for: bottle.id)
-            } else if backend == .sikarugir || backend == .gptk {
+            } else if backend.usesD3DMetal {
                 applyRecommendedPerformanceIfDefault(for: bottle.id)
             }
             return updated

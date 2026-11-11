@@ -6,7 +6,7 @@ import Testing
     @Test
     func sikarugirIsACaseInTheBackendEnum() {
         #expect(GraphicsBackend.allCases.contains(.sikarugir))
-        #expect(GraphicsBackend.allCases.count == 6)
+        #expect(GraphicsBackend.allCases.count == 7)
     }
 
     @Test

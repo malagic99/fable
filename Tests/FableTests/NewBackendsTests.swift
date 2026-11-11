@@ -12,7 +12,8 @@ import Testing
         #expect(all.contains(.dxvk))
         #expect(all.contains(.crossover))
         #expect(all.contains(.sikarugir))
-        #expect(all.count == 6)
+        #expect(all.contains(.sikarugir11))
+        #expect(all.count == 7)
     }
 
     @Test

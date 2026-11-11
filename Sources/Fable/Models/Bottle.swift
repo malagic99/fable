@@ -87,6 +87,7 @@ struct Game: Codable, Identifiable, Hashable, Sendable {
 /// | DirectX 12 / modern AAA / Steam client | `.sikarugir` | Free matched Wine-10 + D3DMetal: modern SEH + D3D12→Metal, and the only free path that renders Steam's CEF |
 /// | Vulkan-friendly / DXVK titles          | `.dxvk`      | DirectX→Vulkan→Metal, modern Wine |
 /// | You already own CrossOver              | `.crossover` | Routes through its engine     |
+/// | Denuvo titles Wine 10 can't start      | `.sikarugir11` | Sikarugir's Wine 11 engine + its D3DMetal renderer, downloaded by Fable |
 /// | Legacy fallback                        | `.gptk`      | Apple GPTK on Wine 7.7 — superseded by `.sikarugir` for anything needing modern SEH |
 ///
 /// NB: `rawValue`s are persisted in every bottle.json — never rename a
@@ -112,8 +113,35 @@ enum GraphicsBackend: String, Codable, CaseIterable, Identifiable, Sendable {
     /// D3D12→Metal — and, with the D3DMetal framework wired, the only
     /// free backend that renders Steam's CEF client. The modern flagship.
     case sikarugir
+    /// Sikarugir's Wine 11 engine + the D3DMetal renderer built for it,
+    /// downloaded by Fable. For games Wine 10 can't run — newer Denuvo builds
+    /// crash at their first anti-tamper check on Wine 10. Opt-in per bottle:
+    /// a prefix that has run Wine 11 is upgraded, and the native Steam bridge
+    /// is built for Wine 10.
+    case sikarugir11
 
     var id: String { rawValue }
+
+    /// Reachable only through a known setup (recipe) for now, not offered in
+    /// the backend pickers: Sikarugir 11 is proven on Ace Combat 8 alone, and
+    /// picking it moves a bottle to Wine 11 for good. Widen once other games
+    /// are confirmed on it.
+    var isRecipeOnly: Bool { self == .sikarugir11 }
+
+    /// What a backend picker lists: everything but the recipe-only backends —
+    /// plus `current`, so a bottle or game already on one still shows it.
+    static func pickerChoices(current: GraphicsBackend?) -> [GraphicsBackend] {
+        allCases.filter { !$0.isRecipeOnly || $0 == current }
+    }
+
+    /// Backends that render through Apple's D3DMetal (MetalFX, Metal HUD and
+    /// the D3DMetal frame cap apply).
+    var usesD3DMetal: Bool {
+        switch self {
+        case .gptk, .sikarugir, .sikarugir11: true
+        case .off, .dxmt, .dxvk, .crossover: false
+        }
+    }
 
     /// One-line label for the backend picker: name — what it does (note).
     /// The descriptive tail is translated; the backend names inside stay
@@ -132,6 +160,7 @@ enum GraphicsBackend: String, Codable, CaseIterable, Identifiable, Sendable {
         case .dxvk: "DXVK"
         case .crossover: "CrossOver"
         case .sikarugir: "Sikarugir"
+        case .sikarugir11: "Sikarugir 11"
         }
     }
 }
