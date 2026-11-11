@@ -45,11 +45,21 @@ enum GameDoctor {
              detail: "A c0000135 around DWrite usually means a DLL override broke DirectWrite — Steam's CEF hard-needs it.",
              suggestion: "Never override `dwrite` to disabled for a Steam/CEF bottle. Reset DLL overrides for this bottle."),
         Rule(id: "anticheat",
-             needles: ["easyanticheat", "battleye", "beservice", "vgc.exe", "vanguard"],
+             needles: ["vgc.exe", "vanguard", "battleye", "beservice", "faceitclient", "faceit.sys", "randgrid.sys"],
              severity: .knownBlocker,
-             title: "Anti-cheat detected in the log",
-             detail: "A kernel-level anti-cheat tried to load. These have no working Wine implementation.",
-             suggestion: "This game can't run on macOS Wine. Consider a cloud-streaming service."),
+             title: "Kernel anti-cheat detected in the log",
+             detail: "A kernel-level anti-cheat tried to load. Wine can't give it the access it needs, on Linux or on a Mac.",
+             suggestion: "This game won't run in Fable. A cloud service such as GeForce Now, or streaming from a Windows PC, works instead."),
+        // Easy Anti-Cheat is different: on Wine it usually starts in its
+        // offline ("null client") mode, so the game runs and only online play
+        // is refused — Ace Combat 8 does exactly this (2026-11-09).
+        Rule(id: "anticheat-eac",
+             needles: ["easyanticheat", "easy anti-cheat"],
+             vetoes: ["vgc.exe", "vanguard", "battleye", "beservice", "faceitclient", "faceit.sys", "randgrid.sys"],
+             severity: .caveat,
+             title: "Easy Anti-Cheat: single-player may work, online won't",
+             detail: "Easy Anti-Cheat loaded. Under Wine it usually runs in an offline mode: the game starts and single-player works, but online modes refuse to connect. If this crash happened in an online mode, that's the cause.",
+             suggestion: "Play single-player or offline modes. If the game won't start at all, it's something else — check the other notes here."),
         Rule(id: "d3d12-device",
              needles: ["failed to create d3d12", "d3d12createdevice", "vkd3d", "device removed"],
              severity: .caveat,
@@ -222,6 +232,23 @@ enum GameDoctor {
              suggestion: "If this bottle isn't on Sikarugir, switch to it — DXVK covers D3D9–11 only. If it already is, reinstall the Sikarugir component so the renderer's dispatch libraries are re-staged."),
     ]
 
+    /// The log minus Fable's own `fable:` lines. The launch header lists the
+    /// environment — `WINEDLLOVERRIDES=mscoree,…`, `VKD3D_…` — which would
+    /// otherwise trip the .NET and D3D12 rules on every launch.
+    static func withoutFableLines(_ log: String) -> String {
+        guard log.contains("fable:") else { return log }
+        // Everything up to the end-of-header marker is Fable's — also when the
+        // read started partway through the header, which leaves a first line
+        // that no longer begins with "fable:".
+        let body = log.range(of: launchHeaderEnd).map { String(log[$0.upperBound...]) } ?? log
+        return body.split(separator: "\n", omittingEmptySubsequences: false)
+            .filter { !$0.hasPrefix("fable:") }
+            .joined(separator: "\n")
+    }
+
+    /// The line that closes the launch header (`LaunchPlan.launchDetails`).
+    static let launchHeaderEnd = "fable: ---- Wine output ----"
+
     // MARK: Cross-backend crash correlation (the First Light rule)
 
     /// Classifies an abnormal exit into a comparable crash signature, or nil
@@ -230,7 +257,7 @@ enum GameDoctor {
     /// family, which is what protectors and Rosetta CPU gates produce — the
     /// crashes that look identical no matter which backend runs the game.
     static func crashSignature(exitCode: Int32, logTail: String) -> String? {
-        let haystack = logTail.lowercased()
+        let haystack = withoutFableLines(logTail).lowercased()
         let breakpointTells = ["int3", "0x80000003", "exception_breakpoint", "illegal instruction"]
         if breakpointTells.contains(where: { haystack.contains($0) }) {
             return "int3"
@@ -268,7 +295,8 @@ enum GameDoctor {
     }
 
     /// Diagnoses raw log text. Empty result = no known problems matched.
-    static func diagnose(log: String) -> [CompatibilityFinding] {
+    static func diagnose(log rawLog: String) -> [CompatibilityFinding] {
+        let log = withoutFableLines(rawLog)
         let haystack = log.lowercased()
         return rules
             .filter { rule in

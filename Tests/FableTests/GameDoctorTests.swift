@@ -82,10 +82,22 @@ import Testing
     }
 
     @Test
-    func anticheatIsAHardBlocker() {
-        let log = "Loading EasyAntiCheat_x64.dll ... blocked"
+    func kernelAnticheatIsAHardBlocker() {
+        let log = "Loading BEClient_x64.dll ... BattlEye service failed"
         let finding = GameDoctor.diagnose(log: log).first { $0.id == "doctor-anticheat" }
         #expect(finding?.severity == .knownBlocker)
+    }
+
+    @Test
+    func easyAntiCheatMeansOnlineOnlyNotABlocker() {
+        // Ace Combat 8: EAC runs in its offline mode on Wine, single-player works.
+        let findings = GameDoctor.diagnose(log: "Loading EasyAntiCheat_x64.dll ... launching with null client")
+        #expect(findings.first { $0.id == "doctor-anticheat-eac" }?.severity == .caveat)
+        #expect(!findings.contains { $0.id == "doctor-anticheat" })
+        // Alongside a kernel anti-cheat, only the blocker shows.
+        let both = GameDoctor.diagnose(log: "easyanticheat ... vgc.exe")
+        #expect(both.contains { $0.id == "doctor-anticheat" })
+        #expect(!both.contains { $0.id == "doctor-anticheat-eac" })
     }
 
     @Test

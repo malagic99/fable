@@ -85,6 +85,10 @@ final class GameLauncher: ObservableObject {
     /// Light rule (docs/ARCHITECTURE.md).
     var onCrashSignature: ((Game.ID, GraphicsBackend, String?) -> Void)?
 
+    /// Whether a game has run before (wired to GameStatsStore) — decides the
+    /// one-time "compiling shaders" notice.
+    var hasPlayedBefore: ((Game.ID) -> Bool)?
+
     func isRunning(_ gameID: Game.ID) -> Bool {
         running[gameID] != nil
     }
@@ -170,6 +174,34 @@ final class GameLauncher: ObservableObject {
         /// Set for a console program (cmd.exe and the like): its C: path,
         /// run through `wineconsole` so it gets a window and keyboard input.
         var consoleProgram: String?
+
+        /// The first lines of the game's log: exactly what was launched, so a
+        /// bug report (or a curious user) never has to guess. Only the
+        /// variables that steer Wine and the renderers are listed — not the
+        /// whole inherited environment.
+        var launchDetails: String {
+            let prefixes = ["WINE", "DYLD_", "D3DM", "DXMT", "DXVK", "MTL_", "MVK_", "CX_", "GST_",
+                            "ROSETTA_", "SDL_", "Steam", "SikarugirApp", "VKD3D", "__GL"]
+            let shown = environment
+                .filter { key, _ in prefixes.contains { key.hasPrefix($0) } }
+                .sorted { $0.key < $1.key }
+                .map { "fable:   \($0.key)=\($0.value)" }
+            var lines = [
+                "fable: launch \(Date().formatted(.iso8601))",
+                "fable: runtime \(runtimeKey) — \(wine.path)",
+                "fable: command \(wineArguments.joined(separator: " "))",
+                "fable: working directory \(workingDirectory.path)",
+                "fable: environment (Wine and renderer variables):",
+            ] + shown
+            if !refusedEnvironmentKeys.isEmpty {
+                lines.append("fable: ignored per-game environment variables "
+                    + "(could load native code or aren't valid names): "
+                    + refusedEnvironmentKeys.joined(separator: ", "))
+            }
+            // A value with a newline would end a header line early.
+            return lines.map { $0.replacingOccurrences(of: "\n", with: " ") }.joined(separator: "\n")
+                + "\n" + GameDoctor.launchHeaderEnd + "\n"
+        }
 
         /// Full argv passed to `wine`: the executable path then its arguments —
         /// or, for a console program, `wineconsole` hosting it.
@@ -295,7 +327,13 @@ final class GameLauncher: ObservableObject {
         // Per-game environment overrides win over everything — except the
         // ones that could load native code or break the shortcut script.
         let overrides = WineEnv.screenedOverrides(game.environment)
-        environment.merge(overrides.applied) { _, new in new }
+        var applied = overrides.applied
+        // A game's own DLL overrides add to Fable's instead of replacing them.
+        if let userDLLs = applied.removeValue(forKey: WineEnv.dllOverrides) {
+            environment[WineEnv.dllOverrides] = WineEnv.mergingDLLOverrides(
+                userDLLs, into: environment[WineEnv.dllOverrides])
+        }
+        environment.merge(applied) { _, new in new }
 
         // Native Steam bridge: Wine runs the stand-in steam.exe, which points
         // steam_api at the bridge and starts the game. Applied after the
@@ -399,6 +437,15 @@ final class GameLauncher: ObservableObject {
             sikarugirAvailable: deps.sikarugirManager.isDiscovered
         )
         let fresh = deps.bottleManager.bottle(with: bottle.id) ?? bottle
+        // Smart Bottle just changed something on its own — say so, and say
+        // where to change it back. A silent backend switch reads as "Fable
+        // broke my game"; a silent bottle-wide preset retunes other games.
+        if let notice = Self.smartBottleNotice(
+            game: game, prepared: prepared,
+            performanceChanged: fresh.performance != bottle.performance, bottleName: fresh.name
+        ) {
+            deps.toastCenter.success(notice)
+        }
 
         // A helper (winetricks, an installer, winecfg) may have left the
         // DEFAULT wine's server on this prefix — a different build's server
@@ -425,8 +472,44 @@ final class GameLauncher: ObservableObject {
 
         try await prepareSikarugir11(for: prepared, in: fresh)
 
+        // Read before launching: launch() records the session, after which
+        // every game counts as played and the notice could never show.
+        let playedBefore = hasPlayedBefore?(prepared.id) ?? true
         try launch(prepared, in: fresh)
+        if let notice = Self.firstLaunchNotice(
+            game: prepared, backend: prepared.graphicsBackend ?? fresh.graphicsBackend,
+            playedBefore: playedBefore
+        ) {
+            deps.toastCenter.success(notice)
+        }
         refreshTriggers()
+    }
+
+    /// What to tell the user when Smart Bottle picked a backend by itself, or
+    /// nil when it changed nothing.
+    nonisolated static func smartBottleNotice(
+        game: Game, prepared: Game, performanceChanged: Bool, bottleName: String
+    ) -> String? {
+        guard game.graphicsBackend == nil, let picked = prepared.graphicsBackend else { return nil }
+        // Credit the recipe only when it's what picked this backend — a recipe
+        // whose backend can't be auto-applied falls through to the folder scan.
+        let fromRecipe = GameRecipeCatalog.recipe(forExecutablePath: game.executablePath)?.backend == picked
+        var message = L10n.string(
+            fromRecipe ? "launch.smart_bottle.recipe" : "launch.smart_bottle.scan", game.name, picked.shortName)
+        if performanceChanged {
+            message += " " + L10n.string("launch.smart_bottle.bottle_wide", bottleName)
+        }
+        return message + " " + L10n.string("launch.smart_bottle.change_it")
+    }
+
+    /// The one-time heads-up for a DirectX game's first launch: D3DMetal
+    /// compiles its shaders then, and the game can sit on a black or loading
+    /// screen for minutes — long enough that people press Stop. nil when it
+    /// doesn't apply (played before, not D3DMetal, or Steam itself).
+    nonisolated static func firstLaunchNotice(game: Game, backend: GraphicsBackend, playedBefore: Bool) -> String? {
+        let exe = (game.executablePath as NSString).lastPathComponent.lowercased()
+        guard !playedBefore, backend.usesD3DMetal, exe != "steam.exe" else { return nil }
+        return L10n.string("launch.first_launch_shaders", game.name)
     }
 
     /// Readies a game that runs on Sikarugir's Wine 11 engine: fetches the
@@ -586,10 +669,7 @@ final class GameLauncher: ObservableObject {
             environment: plan.environment,
             currentDirectory: plan.workingDirectory,
             redirectingOutputTo: plan.logFile,
-            logHeader: plan.refusedEnvironmentKeys.isEmpty ? nil
-                : "fable: ignored per-game environment variables "
-                    + "(could load native code or aren't valid names): "
-                    + plan.refusedEnvironmentKeys.joined(separator: ", ") + "\n",
+            logHeader: plan.launchDetails,
             // Claim the performance cores — the game is the foreground workload.
             qualityOfService: Stability.gameQoS
         )

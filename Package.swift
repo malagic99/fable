@@ -18,6 +18,8 @@ let package = Package(
             path: "Sources/Fable",
             resources: [
                 .copy("Resources/versions.json"),
+                .copy("Resources/areweanticheatyet.json"),
+                .copy("Resources/areweanticheatyet-LICENSE.txt"),
                 .process("Resources/en.lproj"),
                 .process("Resources/es.lproj"),
                 .process("Resources/pt.lproj"),

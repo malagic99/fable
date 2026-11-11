@@ -163,6 +163,35 @@ enum WineEnv {
         return existing + ";" + override
     }
 
+    /// Layers a user's WINEDLLOVERRIDES onto the one Fable composed, instead
+    /// of replacing it. Replacing used to drop every override the backend
+    /// needs — D3DMetal's builtins, the Mono/Gecko dialog skip — whenever a
+    /// game set even one DLL. DLLs the user names are taken out of the base
+    /// first, so their setting wins (Wine doesn't define which of two entries
+    /// for the same DLL applies).
+    static func mergingDLLOverrides(_ user: String, into base: String?) -> String {
+        func entries(_ value: String) -> [(dlls: [String], mode: String)] {
+            value.split(separator: ";").compactMap { item in
+                // Keep an empty name part ("=n"), so a mode is never read as a DLL.
+                let parts = item.split(separator: "=", maxSplits: 1, omittingEmptySubsequences: false)
+                let dlls = parts[0].split(separator: ",")
+                    .map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+                guard !dlls.isEmpty else { return nil }
+                let mode = parts.count > 1 ? parts[1].trimmingCharacters(in: .whitespaces) : ""
+                return (dlls, mode)
+            }
+        }
+        let userEntries = entries(user)
+        let named = Set(userEntries.flatMap(\.dlls).map { $0.lowercased() })
+        let kept = entries(base ?? "").compactMap { entry -> (dlls: [String], mode: String)? in
+            let dlls = entry.dlls.filter { !named.contains($0.lowercased()) }
+            return dlls.isEmpty ? nil : (dlls, entry.mode)
+        }
+        return (kept + userEntries)
+            .map { $0.dlls.joined(separator: ",") + "=" + $0.mode }
+            .joined(separator: ";")
+    }
+
     // MARK: - Per-game overrides
 
     /// Names a per-game override may not set. A game's settings can arrive

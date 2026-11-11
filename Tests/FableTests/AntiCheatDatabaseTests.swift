@@ -30,7 +30,8 @@ import Testing
         #expect(AntiCheatDatabase.severity(for: "Denied") == .knownBlocker)
         #expect(AntiCheatDatabase.severity(for: "broken") == .knownBlocker)
         #expect(AntiCheatDatabase.severity(for: "Configuration") == .caveat)
-        #expect(AntiCheatDatabase.severity(for: "Supported") == .info)
+        #expect(AntiCheatDatabase.severity(for: "Supported") == .caveat)   // Linux-only support
+        #expect(AntiCheatDatabase.severity(for: "Running") == .info)
         #expect(AntiCheatDatabase.severity(for: "Unknown") == nil)   // no actionable signal
     }
 

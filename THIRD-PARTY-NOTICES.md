@@ -16,6 +16,7 @@ a Homebrew dependency:
 | **ICU** (icudata, icui18n, icuuc) | Unicode/ICU License | innoextract dependency |
 | **liblzma** | 0BSD | innoextract dependency |
 | **libzstd** | BSD-3-Clause | innoextract dependency |
+| **AreWeAntiCheatYet** data (`areweanticheatyet.json`) | MIT | © 2021 Starz0r, Curve — <https://github.com/AreWeAntiCheatYet/AreWeAntiCheatYet>, snapshot of `games.json` at commit 6c26305 trimmed to name, status and anti-cheat; licence text bundled as `areweanticheatyet-LICENSE.txt` |
 
 zlib license (innoextract): *This software is provided 'as-is', without any
 express or implied warranty. In no event will the authors be held liable for

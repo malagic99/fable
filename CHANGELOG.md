@@ -1,5 +1,36 @@
 # Changelog
 
+## Unreleased
+
+**Fewer surprises — from a (simulated) user panel's sharpest notes.**
+
+- **The anti-cheat warning now works for everyone.** Fable checks a game
+  against AreWeAntiCheatYet's list before you download it, but nothing ever
+  downloaded that list, so the warning only appeared on Macs that happened to
+  have Heroic. Fable now ships a snapshot of it (1,167 games, MIT-licensed).
+  Its verdicts are also corrected for Macs: "Supported" on that list means
+  the developer enabled anti-cheat for Linux, which a Mac can't use, so
+  Fable now says online play is unlikely instead of calling it good news.
+- **Easy Anti-Cheat isn't a dead end any more in Doctor.** It used to say
+  every EAC game "can't run". On Wine EAC usually falls back to an offline
+  mode, so single-player works (Ace Combat 8 does). Kernel anti-cheats —
+  Vanguard, BattlEye, FACEIT, Ricochet — keep the blunt verdict.
+- **Per-game DLL overrides no longer wipe out Fable's.** Setting one DLL in a
+  game's environment used to replace the whole list, dropping the ones the
+  graphics backend needs. Now your entries are added, and win over Fable's
+  for the DLLs you name.
+- **Every game log starts with what was launched:** the Wine build, the
+  command, the working folder and the Wine and renderer variables.
+- **No more silent changes or silent waits.** When Smart Bottle picks a
+  backend for a game (or applies bottle-wide performance defaults), a notice
+  says what it did and where to change it. A DirectX game's first launch
+  gets a heads-up that shader compiling can keep it on a black screen for a
+  few minutes.
+- **Copy that matches reality.** The Steam bottle is described as Sikarugir,
+  not DXMT; setup "takes a few minutes", not "under a minute"; and Settings
+  no longer claims "fully offline" — the update check now has its own
+  switch (Settings → About).
+
 ## v1.1.0 — 2026-11-11
 
 **Newer Wine where it counts: Denuvo-era games and installers that work.**

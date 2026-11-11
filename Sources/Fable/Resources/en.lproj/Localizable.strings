@@ -35,7 +35,7 @@
 
 // MARK: Onboarding wizard
 "onboarding.welcome.title"    = "Welcome to Fable";
-"onboarding.welcome.subtitle" = "A Wine bottle launcher for Windows games on macOS. Let's set up your first bottle — it takes under a minute.";
+"onboarding.welcome.subtitle" = "A Wine bottle launcher for Windows games on macOS. Let's set up your first bottle — it takes a few minutes.";
 "onboarding.get_started"      = "Get Started";
 "onboarding.skip"             = "Skip Setup";
 "onboarding.back"             = "Back";
@@ -52,7 +52,7 @@
 "onboarding.source.manual.subtitle" = "Start with an empty bottle and add Windows installers yourself.";
 
 "onboarding.first_bottle.title" = "Create your first bottle";
-"onboarding.first_bottle.subtitle.steam"  = "We'll create a Steam-Ready bottle: DXMT graphics, Visual C++, and the Steam client pre-installed.";
+"onboarding.first_bottle.subtitle.steam"  = "We'll create a Steam-Ready bottle: Sikarugir graphics (DirectX 12 → Metal), Visual C++, and the Steam client pre-installed.";
 "onboarding.first_bottle.subtitle.heroic" = "We'll create a Modern Games bottle with DXMT for DirectX 11 + Visual C++.";
 "onboarding.first_bottle.subtitle.manual" = "We'll create a vanilla bottle. Add dependencies and games from its detail page.";
 "onboarding.create_bottle"    = "Create Bottle…";
@@ -177,3 +177,10 @@
 /* Native Steam bridge */
 "steambridge.added"             = "Added “%@”. Press Play while your Mac Steam app is running.";
 "steambridge.download_failed"   = "steamcmd didn't finish the download. Check the Terminal window, then try again.";
+
+/* Launch notices (2026-11-11) */
+"launch.smart_bottle.recipe" = "Smart Bottle set “%@” to %@ from its known setup.";
+"launch.smart_bottle.scan" = "Smart Bottle set “%@” to %@ based on what's in its folder.";
+"launch.smart_bottle.bottle_wide" = "It also applied steady-frame-rate defaults to the whole “%@” bottle.";
+"launch.smart_bottle.change_it" = "Change it in the game's settings.";
+"launch.first_launch_shaders" = "First launch of “%@”: it compiles its shaders now, so it may sit on a black or loading screen for a few minutes. That's normal — later launches are much faster.";

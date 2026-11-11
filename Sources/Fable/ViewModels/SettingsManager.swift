@@ -93,6 +93,11 @@ struct AppSettings: Codable, Equatable, Sendable {
     /// before the first swap.
     var sikarugirUsesGPTK4D3DMetal: Bool = false
 
+    /// Ask GitHub for a newer Fable release when the app starts (at most once
+    /// an hour). The only network call Fable makes on its own; off keeps it
+    /// silent until you press Check for Updates.
+    var checkForUpdatesAutomatically: Bool = true
+
     init() {}
 
     init(from decoder: Decoder) throws {
@@ -123,6 +128,8 @@ struct AppSettings: Codable, Equatable, Sendable {
         // tested pairing rather than silently enabling an experiment.
         sikarugirUsesGPTK4D3DMetal = try container
             .decodeIfPresent(Bool.self, forKey: .sikarugirUsesGPTK4D3DMetal) ?? false
+        checkForUpdatesAutomatically = try container
+            .decodeIfPresent(Bool.self, forKey: .checkForUpdatesAutomatically) ?? true
     }
 }
 
