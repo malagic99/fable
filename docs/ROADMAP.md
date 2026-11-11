@@ -144,6 +144,69 @@ out-automate. **Target: ~12 recipes by month end.** Never fake a "Tested:".
   x86_64. Prerequisite for adopting an ARM64-native Wine if one ships; plan and
   triggers in [FEX-MIGRATION.md](FEX-MIGRATION.md).
 
+## 🧭 Long-term direction — Runtime Integrity & Compatibility Lab (FRICL)
+
+*Adopted 2026-11-11 as a north star, not a sprint plan.* Built from the proposal
+"Fable Runtime Integrity & Compatibility Lab".
+
+Fable should **know** which runtime each bottle uses, **prove** that runtime is
+intact, and **say how sure it is** that a setup works. "Installed" is not
+"working", and a version string is not proof of compatibility. A bottle
+manager that only pairs a prefix with whatever Wine is installed can't do
+this. That is the gap this direction closes.
+
+Four capabilities, in this order:
+
+1. **Runtime identity and pinning.** Each bottle records which engine and
+   renderer it uses (with a schema version) and a policy: pinned, follow the
+   default, or managed. **There is a gap here today.** `Bottle` stores only
+   `graphicsBackend`, and Sikarugir's `installedDirectory()` resolves to the
+   newest engine, so an engine update silently moves every bottle, including
+   ones that worked.
+2. **Integrity manifests.** Record hashes and layout for each installed engine
+   and renderer, checked before launch. Build them from what already exists:
+   SHA-pinned downloads in `versions.json`, staged and atomic installs in
+   `ComponentManager`, and the assembly markers.
+3. **Compatibility canaries.** Run in disposable prefixes (APFS clones) and
+   climb a validation ladder:
+   - starts
+   - `wineboot`
+   - DLL resolution
+   - device creation
+   - frame present
+   - a real game
+
+   Results are Passed / Failed / Skipped / Unsupported / Inconclusive.
+   **Skipped is never Passed.** **Test D3D12 through D3DMetal first and D3D11
+   second.** That is where Fable's real failures have been: the `dxgi` ABI
+   break on Wine 11 and the renderer libraries that had to stay symlinks. The
+   mingw toolchain from the installer work can build the canary executables.
+4. **Targeted recovery.** Repair or roll back one component as a transaction.
+   This comes last, once there is run history showing what actually needs
+   recovering.
+
+The Lab UI and a CLI come after all four.
+
+**Ground rules**
+- **A failed canary blocks an engine *update*, never a game that already works.**
+  The lab exists to remove friction, not add it.
+- **The top of the ladder is people, not CI.** Frame-present and real-game
+  evidence can't run on hosted Mac runners. It comes from real Macs: yours,
+  friends', and later community recipes. A canary result never claims "Tested:".
+- **Confidence labels:** known-good, validated runtime, plausible, experimental,
+  unsupported. Smart Bottle and the Doctor read them through the compatibility
+  database.
+
+**How it rides the existing pipeline:** it is not a separate track. Each release
+carries a slice:
+- **v1.2** — runtime identity and pinning. It lands before the Homebrew-free
+  engine work starts switching engines.
+- **v1.3** — manifests and the first canary, with canary evidence stored in the
+  versioned compatibility database next to performance capture.
+- **v1.4** — undo for "no-magic mode", which is a lightweight form of recovery.
+- **Later** — community recipes become real-game evidence, and the Lab UI and
+  CLI are built when run history justifies them.
+
 ## 🅿️ Parked (with reasons — don't chase)
 
 - **#82 newer Apple GPTK** (the EFT-launcher finish): blocked *externally* —
