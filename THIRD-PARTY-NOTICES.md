@@ -1,6 +1,7 @@
 # Third-party notices
 
-Fable's own source is MIT (see [LICENSE](LICENSE)). It stands on other
+Fable's own source is licensed under GPL-3.0-only (see [LICENSE](LICENSE));
+releases up to v1.1.0 were published under MIT. It stands on other
 people's work in two different ways, with different obligations:
 
 ## Redistributed inside Fable.app
