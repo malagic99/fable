@@ -1,51 +1,60 @@
 import Foundation
 
-/// A CrossOver-lineage Wine (wine32on64, predating WoW64) used to run
-/// 32-bit installers that crash mainline Wine's WoW64 layer. Fable
-/// never downloads one — CodeWeavers stopped publishing redistributable
-/// sources — but several apps ship one we can discover locally.
+/// The Wine that runs 32-bit installers, which Fable's main Wine 11 handles
+/// badly under Rosetta (see ``InstallerEngineManager`` for the measurements).
+///
+/// First choice is Fable's own installer engine. The rest are fallbacks for
+/// when it isn't downloaded: CrossOver-lineage Wines other apps left on disk.
 struct CompatibilityRuntime: Sendable {
     let name: String
     let wineBinary: URL
+    /// Variables this runtime needs on top of the prefix environment — also
+    /// when its wineserver is run on its own.
+    var environment: [String: String] = [:]
 
     var wineserverBinary: URL {
         wineBinary.deletingLastPathComponent().appending(path: "wineserver")
     }
 
-    /// Search known locations for a Wine with macOS-specific WoW64
-    /// patches — the prerequisite for running 32-bit custom-packed
-    /// installers (ISDone, FreeArc) that crash stock Wine + Apple GPTK
-    /// at `err:seh:NtRaiseException Exception frame is not in stack limits`.
+    /// Finds the runtime for 32-bit installers.
     ///
-    /// Order matters: CrossOver's proprietary patches handle this
-    /// installer class better than any open-source Wine on macOS, so
-    /// it goes first when present. Apple GPTK (wine 7.7 base, no
-    /// CrossOver patches) is the fallback — better than nothing for
-    /// some 32-bit installers, useless for the WoW64-crashers.
-    static func discover(componentsDirectory: URL = AppPaths.components) -> CompatibilityRuntime? {
-        let home = FileManager.default.homeDirectoryForCurrentUser
+    /// Order matters. Fable's installer engine first: it's the one that was
+    /// measured, and Fable controls its version. Then an installed CrossOver
+    /// (its proprietary patches handle custom unpackers like ISDone best),
+    /// then Fable's own GPTK component, and only then Wines borrowed from
+    /// other apps. Those used to come first, which is how a leftover Whisky
+    /// library (Wine 7.7, unmaintained) ended up running installers on a Mac
+    /// that had Fable's own runtime — and left one orphaned overnight.
+    static func discover(
+        componentsDirectory: URL = AppPaths.components,
+        home: URL = FileManager.default.homeDirectoryForCurrentUser,
+        applications: URL = URL(filePath: "/Applications")
+    ) -> CompatibilityRuntime? {
+        if let engine = InstallerEngineManager.installedRuntime(componentsDirectory: componentsDirectory) {
+            return engine
+        }
 
         var candidates: [(String, URL)] = []
 
         // CrossOver — has the WoW64 stack patches the others lack.
         candidates.append((
             "CrossOver",
-            URL(filePath: "/Applications/CrossOver.app/Contents/SharedSupport/CrossOver")
+            applications.appending(path: "CrossOver.app/Contents/SharedSupport/CrossOver")
         ))
-        // Whisky's WhiskyWine (CrossOver-derived).
+        // Fable's own imported GPTK component.
         candidates.append((
-            "WhiskyWine",
-            home.appending(path: "Library/Application Support/com.isaacmarovitz.Whisky/Libraries")
+            "Game Porting Toolkit",
+            componentsDirectory.appending(path: "gptk", directoryHint: .isDirectory)
         ))
         // Heroic's GPTK toolkit.
         candidates.append((
             "Heroic Game Porting Toolkit",
             home.appending(path: "Library/Application Support/heroic/tools/game-porting-toolkit")
         ))
-        // Fable's own imported GPTK component.
+        // Whisky's WhiskyWine (CrossOver-derived, no longer maintained).
         candidates.append((
-            "Game Porting Toolkit",
-            componentsDirectory.appending(path: "gptk", directoryHint: .isDirectory)
+            "WhiskyWine",
+            home.appending(path: "Library/Application Support/com.isaacmarovitz.Whisky/Libraries")
         ))
 
         for (name, root) in candidates {

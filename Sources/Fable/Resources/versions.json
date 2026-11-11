@@ -35,6 +35,12 @@
             "version": "1.0.27",
             "url": "https://github.com/Sikarugir-App/Template/releases/download/v1.0/Template-1.0.27.tar.xz",
             "sha256": "dd0778f7b553d63df9b0f4e2cda3f3c6c005aabb75588c84d604afe80cdedbb9"
+        },
+        "installer-engine": {
+            "name": "Installer engine (CrossOver 24 source build)",
+            "version": "24.0.7_7",
+            "url": "https://github.com/Sikarugir-App/Engines/releases/download/v1.0/WS12WineCX24.0.7_7.tar.xz",
+            "sha256": "203f9e9fd6c2cc77e6525d798a434ced326145db34a356355e05659d3445fd1c"
         }
     }
 }

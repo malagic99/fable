@@ -506,6 +506,15 @@ final class GameLauncher: ObservableObject {
         if runtimeFamily(of: runtime) != "crossover" { foreign.append(contentsOf: [try? deps.crossOverManager.wineserverBinary()].compactMap { $0 }) }
         if runtimeFamily(of: runtime) != "sikarugir" { foreign.append(contentsOf: [try? deps.sikarugirManager.wineserverBinary()].compactMap { $0 }) }
         if runtimeFamily(of: runtime) != "sikarugir11" { foreign.append(contentsOf: [try? deps.sikarugir11Manager.wineserverBinary()].compactMap { $0 }) }
+        // The installer runtime is never a game's runtime (unless discovery
+        // fell back to GPTK/CrossOver, already listed above when foreign) —
+        // a server it left behind would fail the next launch with 'version
+        // mismatch'.
+        if let installerServer = CompatibilityRuntime.discover()?.wineserverBinary,
+           let own = ManagerRuntimeResolver(deps: deps).wineserverBinary(for: runtime) ?? (try? deps.wineManager.wineserverBinary()),
+           installerServer != own, !foreign.contains(installerServer) {
+            foreign.append(installerServer)
+        }
 
         try await PrefixRuntimeGate.ensureExclusive(
             prefix: deps.bottleManager.prefixDirectory(for: bottle),

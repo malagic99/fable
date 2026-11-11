@@ -4,6 +4,7 @@ enum GameInstallError: LocalizedError {
     case notAnExecutable(String)
     case outsideBottle(String)
     case copyFailed(String)
+    case sixteenBitInstaller(String)
 
     var errorDescription: String? {
         switch self {
@@ -13,6 +14,8 @@ enum GameInstallError: LocalizedError {
             "\(name) isn't inside this bottle's C: drive."
         case .copyFailed(let detail):
             "Couldn't copy the game into the bottle: \(detail)"
+        case .sixteenBitInstaller(let name):
+            "\(name) is a 16-bit Windows program (Windows 3.x era), which can't run on Apple Silicon — it would hang without ever showing a window. Look on the disc for a 32-bit installer instead (often SETUP32.EXE, or a setup.exe in a subfolder)."
         }
     }
 }
@@ -33,6 +36,13 @@ final class GameInstaller: ObservableObject {
     /// How the last run's installer was classified, so the sheet can explain
     /// an MSI failure in Windows Installer's own terms.
     @Published private(set) var installerKind: InstallerKind?
+    /// True while the installer engine downloads before a first 32-bit install.
+    @Published private(set) var isPreparingEngine = false
+    /// The runtime and prefix of the run in progress, for Cancel.
+    private var activeCompat: (CompatibilityRuntime, URL)?
+    /// Set by Stop; checked before the wizard starts, so a Stop pressed while
+    /// the engine downloads isn't forgotten.
+    private var cancelRequested = false
 
     /// How to bring an executable from outside the bottle into it.
     enum ImportMode {
@@ -55,27 +65,61 @@ final class GameInstaller: ObservableObject {
     /// through Wine's built-in `msiexec` — running it directly fails the way
     /// executing a `.zip` would. See ``InstallerKind``.
     ///
-    /// 32-bit installers are routed through a discovered CrossOver-based
-    /// compatibility runtime when available — several InnoSetup-era
-    /// unpackers crash mainline Wine's WoW64 layer.
+    /// 32-bit installers run on Fable's installer engine (downloaded on
+    /// first use), because the main Wine 11 breaks InstallShield's engine and
+    /// other 32-bit setups under Rosetta — see ``InstallerEngineManager``.
+    /// Without it, a compatibility runtime found on disk is the fallback.
     func runInstaller(
         _ installerExe: URL,
         arguments: [String] = [],
         bottle: Bottle,
         bottleManager: BottleManager,
-        wineManager: WineManager
+        wineManager: WineManager,
+        installerEngine: InstallerEngineManager? = nil
     ) async throws -> Int32 {
         let prefix = bottleManager.prefixDirectory(for: bottle)
-        let environment = WineEnv.withDiagnosticDebug(wineManager.environment(forPrefix: prefix))
+        var environment = WineEnv.withDiagnosticDebug(wineManager.environment(forPrefix: prefix))
 
         let kind = InstallerKind.detect(installerExe)
+        // Refuse before Wine starts: a 16-bit setup never shows a window.
+        if kind == .executable, PEInfo.isSixteenBit(installerExe) {
+            throw GameInstallError.sixteenBitInstaller(installerExe.lastPathComponent)
+        }
         // The 32-bit compat runtime only applies to PE installers; an MSI is a
         // database, so PEInfo reports nothing for it either way.
-        let compat: CompatibilityRuntime? =
-            kind == .executable && PEInfo.architecture(of: installerExe) == .pe32
-                ? CompatibilityRuntime.discover()
-                : nil
+        var compat: CompatibilityRuntime?
+        cancelRequested = false
+        if kind == .executable, PEInfo.architecture(of: installerExe) == .pe32 {
+            // Anything a previous run on the installer runtime left behind (a
+            // stuck InstallShield IDriver.exe is the usual one) makes the next
+            // install fail with error 1607/1608/1628. Done first, while the
+            // caller's "bottle is idle" check still holds — not after a
+            // download that can take minutes.
+            if let stale = CompatibilityRuntime.discover() {
+                await Self.stopServer(of: stale, prefix: prefix)
+            }
+            installerEngine?.refresh()
+            if let installerEngine, !installerEngine.isInstalled {
+                // Best effort: a failed download falls back to whatever
+                // runtime is on disk rather than blocking the install.
+                isPreparingEngine = true
+                defer { isPreparingEngine = false }
+                do {
+                    try await installerEngine.ensureInstalled()
+                } catch is CancellationError {
+                    throw CancellationError()
+                } catch {}
+            }
+            // Stop pressed during the download: don't start the wizard.
+            if cancelRequested || Task.isCancelled { throw CancellationError() }
+            compat = CompatibilityRuntime.discover()
+        }
         let wine = try compat?.wineBinary ?? wineManager.wineBinary()
+        if let compat {
+            environment.merge(compat.environment) { _, new in new }
+        }
+        activeCompat = compat.map { ($0, prefix) }
+        defer { activeCompat = nil }
         compatibilityRuntimeName = compat?.name
         installerKind = kind
 
@@ -96,13 +140,51 @@ final class GameInstaller: ObservableObject {
         // our main Wine touches it again (version-mismatched wineservers
         // can't share a prefix).
         if let compat {
-            _ = try? await ProcessRunner.run(
-                compat.wineserverBinary,
-                arguments: ["-w"],
-                environment: ["WINEPREFIX": prefix.path]
-            )
+            await Self.releasePrefix(from: compat, prefix: prefix)
         }
         return exitCode
+    }
+
+    /// How long a runtime's leftover processes get to finish after the
+    /// installer exits. Setup programs often hand off to a second process and
+    /// exit early, so some wait is right — but InstallShield's helpers
+    /// (IDriver.exe, IKernel.exe) can linger forever, and an unbounded wait
+    /// held the bottle hostage.
+    nonisolated static let serverDrainTimeout: Duration = .seconds(90)
+
+    /// Waits for the runtime's wineserver to go idle, then stops whatever is
+    /// still there once the timeout passes.
+    nonisolated static func releasePrefix(
+        from compat: CompatibilityRuntime, prefix: URL, timeout: Duration = serverDrainTimeout
+    ) async {
+        var environment = compat.environment
+        environment["WINEPREFIX"] = prefix.path
+        let drained = await withTaskGroup(of: Bool.self) { group in
+            group.addTask { [environment] in
+                _ = try? await ProcessRunner.run(
+                    compat.wineserverBinary, arguments: ["-w"], environment: environment)
+                return true
+            }
+            group.addTask {
+                try? await Task.sleep(for: timeout)
+                return false
+            }
+            let first = await group.next() ?? false
+            group.cancelAll()
+            // Stop the server HERE, not after the group: the group can't
+            // return until the `-w` child exits, and only `-k` makes it exit.
+            if !first { await stopServer(of: compat, prefix: prefix) }
+            return first
+        }
+        _ = drained
+    }
+
+    /// Ends every process the runtime has on this prefix (`wineserver -k`).
+    /// No-op when it has none.
+    nonisolated static func stopServer(of compat: CompatibilityRuntime, prefix: URL) async {
+        var environment = compat.environment
+        environment["WINEPREFIX"] = prefix.path
+        _ = try? await ProcessRunner.run(compat.wineserverBinary, arguments: ["-k"], environment: environment)
     }
 
     /// The Wine command line for an installer.
@@ -124,8 +206,15 @@ final class GameInstaller: ObservableObject {
         }
     }
 
+    /// Stops the installer — and everything it started. Terminating only the
+    /// launching process leaves the wizard's own processes running on the
+    /// compatibility runtime.
     func cancelInstaller() {
+        cancelRequested = true
         installerProcess?.terminate()
+        if let (compat, prefix) = activeCompat {
+            Task { await Self.stopServer(of: compat, prefix: prefix) }
+        }
     }
 
     // MARK: GOG / Inno Setup direct extraction

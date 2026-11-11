@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+- **Installers: a Wine that actually installs things.** 32-bit Windows
+  installers now run on a dedicated installer engine — a free build of
+  CrossOver 24's published source — which Fable downloads the first time you
+  run one (about 270 MB with its support libraries, pinned by SHA-256). In
+  testing with five InstallShield installers of different generations it
+  installed all five; Fable's main Wine 11 managed two, and the old Wine 7.7
+  runtimes Fable used to borrow from other apps finished none unattended.
+  Fable also stops preferring Whisky's or Heroic's leftovers over its own
+  runtime, clears stuck installer helpers before an install, stops waiting
+  forever once the wizard has closed, makes Cancel end the whole installer,
+  and refuses 16-bit setup programs up front — they can't run on Apple
+  Silicon and used to hang without a window. Not yet re-tested on this
+  engine: old Inno Setup and repack unpackers.
+
 - **New backend: Sikarugir 11.** Sikarugir's Wine 11 engine with the D3DMetal
   renderer built for it, for games Wine 10 can't start. The first one is
   **Ace Combat 8**: on Wine 10 its Denuvo crashes before the game runs a line
