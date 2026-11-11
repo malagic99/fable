@@ -161,7 +161,14 @@ import Testing
                         environment: ["WINEDLLOVERRIDES": "msvcp140=b"])
         let plan = try plan(game: game, bottle: Bottle(name: "B", graphicsBackend: .sikarugir),
                             prefix: prefix, driveC: driveC)
-        #expect(plan.environment["WINEDLLOVERRIDES"] == "msvcp140=b")
+        let overrides = plan.environment["WINEDLLOVERRIDES"] ?? ""
+        // The game's choice for msvcp140 wins…
+        #expect(overrides.hasSuffix(";msvcp140=b"))
+        #expect(!overrides.contains("msvcp140,") && !overrides.contains(",msvcp140="))
+        // …without wiping Fable's own: D3DMetal's builtins and the rest of
+        // the Visual C++ set stay.
+        #expect(overrides.contains("d3d12"))
+        #expect(overrides.contains("msvcp140_2"))
     }
 
     @Test

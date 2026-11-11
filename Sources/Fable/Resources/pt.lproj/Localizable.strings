@@ -31,7 +31,7 @@
 
 // MARK: Onboarding
 "onboarding.welcome.title"    = "Bem-vindo ao Fable";
-"onboarding.welcome.subtitle" = "Um lançador de garrafas Wine para jogos de Windows no macOS. Vamos configurar a sua primeira garrafa — leva menos de um minuto.";
+"onboarding.welcome.subtitle" = "Um lançador de garrafas Wine para jogos de Windows no macOS. Vamos configurar a sua primeira garrafa — leva alguns minutos.";
 "onboarding.get_started"      = "Começar";
 "onboarding.skip"             = "Pular configuração";
 "onboarding.back"             = "Voltar";
@@ -48,7 +48,7 @@
 "onboarding.source.manual.subtitle" = "Comece com uma garrafa vazia e adicione instaladores de Windows você mesmo.";
 
 "onboarding.first_bottle.title" = "Crie a sua primeira garrafa";
-"onboarding.first_bottle.subtitle.steam"  = "Criaremos uma garrafa Steam-Ready: gráficos DXMT, Visual C++ e o cliente Steam pré-instalados.";
+"onboarding.first_bottle.subtitle.steam"  = "Criaremos uma garrafa Steam-Ready: gráficos Sikarugir (DirectX 12 → Metal), Visual C++ e o cliente Steam pré-instalados.";
 "onboarding.first_bottle.subtitle.heroic" = "Criaremos uma garrafa de Jogos Modernos com DXMT para DirectX 11 + Visual C++.";
 "onboarding.first_bottle.subtitle.manual" = "Criaremos uma garrafa básica. Adicione dependências e jogos na página de detalhes.";
 "onboarding.create_bottle"    = "Criar garrafa…";
@@ -232,7 +232,6 @@
 "Continue" = "Continuar";
 "Continue without it" = "Continuar sem ele";
 "Copying into bottle…" = "Copiando para a garrafa…";
-"Covers come from Steam's public CDN, cached after one fetch. Add a free SteamGridDB key for titles Steam doesn't carry. Off keeps Fable fully offline." = "As capas vêm do CDN público da Steam e ficam em cache após a primeira busca. Adicione uma chave gratuita do SteamGridDB para títulos que a Steam não tem. Desligado mantém o Fable totalmente offline.";
 "Create" = "Criar";
 "Create Desktop Shortcut" = "Criar atalho na Mesa";
 "Create a bottle first" = "Crie uma garrafa primeiro";
@@ -307,7 +306,6 @@
 "Nothing is sent by Fable. Review on GitHub opens a pre-filled issue in your browser — you post it (or don't) from there, and only what you see here is in it." = "O Fable não envia nada. “Revisar no GitHub” abre uma issue pré-preenchida no seu navegador — você a publica (ou não) por lá, e ela contém apenas o que você vê aqui.";
 "Now playing — jump to the wall" = "Jogando agora — ir ao mural";
 "OK" = "OK";
-"Off by default. When on, Fable sends a game's Steam app ID to ProtonDB for its community rating. The offline anti-cheat database always works regardless." = "Desligado por padrão. Quando ligado, o Fable envia o ID Steam do jogo ao ProtonDB para a avaliação da comunidade. O banco de dados anti-cheat offline funciona sempre.";
 "Offloaded To" = "Movido para";
 "One KEY=VALUE per line. Applied on top of the bottle's launch environment." = "Um KEY=VALUE por linha. Aplicados sobre o ambiente de execução da garrafa.";
 "One click for a steady frame rate: 60 fps cap + MetalFX where supported. Best for long sessions that slowly slip." = "Um clique para uma taxa de quadros estável: limite de 60 fps + MetalFX onde houver suporte. Ideal para sessões longas que decaem aos poucos.";
@@ -519,3 +517,17 @@
 "Download in Terminal…" = "Baixar no Terminal…";
 "steambridge.added"             = "“%@” adicionado. Aperte Jogar com o app Steam do Mac aberto.";
 "steambridge.download_failed"   = "O steamcmd não concluiu o download. Confira a janela do Terminal e tente de novo.";
+
+
+/* Settings: network switches (2026-11-11) */
+"Off by default. When on, Fable sends a game's Steam app ID to ProtonDB for its community rating. The built-in anti-cheat list (from AreWeAntiCheatYet) works offline either way." = "Desativado por padrão. Quando ativado, o Fable envia o ID Steam de um jogo ao ProtonDB para obter a avaliação da comunidade. A lista integrada de anti-cheats (do AreWeAntiCheatYet) funciona offline em qualquer caso.";
+"Covers come from Steam's public CDN, cached after one fetch. Add a free SteamGridDB key for titles Steam doesn't carry. Off stops cover downloads; the update check in About has its own switch." = "As capas vêm da CDN pública da Steam e ficam guardadas após a primeira transferência. Adicione uma chave gratuita do SteamGridDB para títulos que a Steam não tem. Desativado interrompe a transferência de capas; a verificação de atualizações em Sobre tem o seu próprio interruptor.";
+"Check for Updates Automatically" = "Verificar atualizações automaticamente";
+"When on, Fable asks GitHub for a newer release when it starts, at most once an hour." = "Quando ativado, o Fable pergunta ao GitHub se há uma versão nova ao iniciar, no máximo uma vez por hora.";
+
+/* Launch notices (2026-11-11) */
+"launch.smart_bottle.recipe" = "O Smart Bottle configurou “%@” com %@ a partir da configuração conhecida.";
+"launch.smart_bottle.scan" = "O Smart Bottle configurou “%@” com %@ com base no que está na pasta.";
+"launch.smart_bottle.bottle_wide" = "Também aplicou predefinições de taxa de quadros estável a toda a garrafa “%@”.";
+"launch.smart_bottle.change_it" = "Pode alterar isto nas definições do jogo.";
+"launch.first_launch_shaders" = "Primeiro arranque de “%@”: está a compilar os shaders agora, por isso pode ficar alguns minutos num ecrã preto ou de carregamento. É normal — os arranques seguintes são muito mais rápidos.";

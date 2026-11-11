@@ -169,3 +169,95 @@ import Testing
         #expect(finding?.id == "doctor-wow64-callback-exception-storm")
     }
 }
+
+@Suite struct BundledAntiCheatTests {
+    @Test
+    func snapshotShipsAndLoadsWithoutHeroic() throws {
+        let url = try #require(AntiCheatDatabase.bundledSnapshot)
+        let db = try #require(AntiCheatDatabase.load(from: url))
+        #expect(db.count > 1000)
+        // A home with no Heroic still gets a database.
+        let empty = FileManager.default.temporaryDirectory.appending(path: "no-heroic-\(UUID().uuidString)")
+        #expect(AntiCheatDatabase.loadFromDefaultLocations(home: empty) != nil)
+    }
+
+    @Test
+    func linuxOnlySupportIsACaveatOnMac() {
+        // "Supported" means Proton's Linux anti-cheat runtime — not a Mac thing.
+        #expect(AntiCheatDatabase.severity(for: "Supported") == .caveat)
+        #expect(AntiCheatDatabase.severity(for: "Running") == .info)
+        #expect(AntiCheatDatabase.severity(for: "Denied") == .knownBlocker)
+        let db = AntiCheatDatabase(entries: [.init(name: "Elden Ring", status: "Supported", anticheats: ["Easy Anti-Cheat"])])
+        let finding = db.finding(forGameNamed: "ELDEN RING™")
+        #expect(finding?.title.contains("not on Mac") == true)
+    }
+}
+
+@Suite struct LaunchTransparencyTests {
+    @Test
+    func gameDLLOverridesAddToFablesInsteadOfReplacingThem() {
+        let base = "mscoree,mshtml=;winemenubuilder.exe=d;d3d11,d3d12,dxgi,nvapi64=b"
+        let merged = WineEnv.mergingDLLOverrides("dxgi=n;xinput1_3=n,b", into: base)
+        // Fable's entries survive…
+        #expect(merged.contains("mscoree,mshtml="))
+        #expect(merged.contains("winemenubuilder.exe=d"))
+        #expect(merged.contains("d3d11,d3d12,nvapi64=b"))
+        // …and the game's choice for dxgi replaces Fable's rather than competing with it.
+        #expect(merged.contains("dxgi=n"))
+        #expect(!merged.contains("dxgi,") && !merged.contains(",dxgi="))
+        #expect(merged.hasSuffix("dxgi=n;xinput1_3=n,b"))
+        #expect(WineEnv.mergingDLLOverrides("a=n", into: nil) == "a=n")
+        #expect(WineEnv.mergingDLLOverrides("A=n", into: "a,b=b") == "b=b;A=n")
+        // A stray "=mode" entry isn't a DLL, and modes are trimmed.
+        #expect(WineEnv.mergingDLLOverrides("=n; d3d11 = n ", into: nil) == "d3d11=n")
+    }
+
+    @Test
+    func doctorIgnoresTheLaunchHeader() {
+        let header = """
+        fable: launch 2026-11-11T17:00:00Z
+        fable: environment (Wine and renderer variables):
+        fable:   WINEDLLOVERRIDES=mscoree,mshtml=;d3d12=b
+        fable:   VKD3D_CONFIG=dxr
+        fable: ---- Wine output ----
+        0024:fixme:keyboard:NtUserActivateKeyboardLayout Changing user locale is not supported
+        """
+        #expect(GameDoctor.diagnose(log: header).isEmpty)
+        // Read from partway through the header: the first line no longer
+        // starts with "fable:", but it's still before the end marker.
+        let tail = String(header.drop(while: { $0 != "W" }))
+        #expect(GameDoctor.diagnose(log: tail).isEmpty)
+        #expect(!GameDoctor.diagnose(log: header + "\nerr:module:import_dll Library mscoree.dll not found").isEmpty)
+    }
+}
+
+@Suite struct LaunchNoticeTests {
+    private let steamGame = Game(name: "STALKER 2", executablePath:
+        "Program Files (x86)/Steam/steamapps/common/S.T.A.L.K.E.R. 2/Stalker2.exe")
+
+    @Test
+    func firstD3DMetalLaunchGetsTheShaderNoticeOnce() {
+        #expect(GameLauncher.firstLaunchNotice(game: steamGame, backend: .sikarugir, playedBefore: false)?
+            .contains("compiles its shaders") == true)
+        #expect(GameLauncher.firstLaunchNotice(game: steamGame, backend: .sikarugir, playedBefore: true) == nil)
+        #expect(GameLauncher.firstLaunchNotice(game: steamGame, backend: .dxmt, playedBefore: false) == nil)
+        let steam = Game(name: "Steam", executablePath: "Program Files (x86)/Steam/steam.exe")
+        #expect(GameLauncher.firstLaunchNotice(game: steam, backend: .sikarugir, playedBefore: false) == nil)
+    }
+
+    @Test
+    func smartBottleSaysWhatItChanged() {
+        var picked = steamGame
+        picked.graphicsBackend = .sikarugir
+        let notice = GameLauncher.smartBottleNotice(
+            game: steamGame, prepared: picked, performanceChanged: true, bottleName: "Steam Ready")
+        #expect(notice?.contains("Sikarugir") == true)
+        #expect(notice?.contains("known setup") == true)       // STALKER 2 has a recipe
+        #expect(notice?.contains("whole “Steam Ready” bottle") == true)
+        // Nothing changed, or the user had already chosen: no toast.
+        #expect(GameLauncher.smartBottleNotice(game: steamGame, prepared: steamGame,
+                                               performanceChanged: false, bottleName: "B") == nil)
+        #expect(GameLauncher.smartBottleNotice(game: picked, prepared: picked,
+                                               performanceChanged: false, bottleName: "B") == nil)
+    }
+}

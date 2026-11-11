@@ -103,6 +103,10 @@ struct FableApp: App {
                     // records/clears the run's signature for its backend, so
                     // "same crash on two backends" can be diagnosed instead
                     // of suggesting more backend roulette.
+                    gameLauncher.hasPlayedBefore = { [weak gameStatsStore] id in
+                        guard let stats = gameStatsStore?.stats[id] else { return false }
+                        return stats.totalSeconds > 0 || stats.lastPlayedAt != nil
+                    }
                     gameLauncher.onCrashSignature = { [weak gameStatsStore] id, backend, signature in
                         gameStatsStore?.recordCrash(id, backend: backend.rawValue, signature: signature)
                     }
@@ -162,7 +166,9 @@ struct FableApp: App {
                         guard let gameLauncher, !gameLauncher.running.isEmpty else { return }
                         toastCenter?.error(L10n.string("nudge.memory_pressure"))
                     }
-                    Task { await appUpdateChecker.checkIfDue() }
+                    if settingsManager.settings.checkForUpdatesAutomatically {
+                        Task { await appUpdateChecker.checkIfDue() }
+                    }
                     // Restore warmed shaders if macOS purged the volatile darwin
                     // cache since last run (e.g. across a reboot) — once at start.
                     Task { await shaderCacheStore.restoreLiveIfPurged() }

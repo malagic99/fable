@@ -238,7 +238,7 @@ private struct LibrarySettingsTab: View {
             } header: {
                 Text("Compatibility")
             } footer: {
-                Text("Off by default. When on, Fable sends a game's Steam app ID to ProtonDB for its community rating. The offline anti-cheat database always works regardless.")
+                Text("Off by default. When on, Fable sends a game's Steam app ID to ProtonDB for its community rating. The built-in anti-cheat list (from AreWeAntiCheatYet) works offline either way.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -250,7 +250,7 @@ private struct LibrarySettingsTab: View {
             } header: {
                 Text("Artwork")
             } footer: {
-                Text("Covers come from Steam's public CDN, cached after one fetch. Add a free SteamGridDB key for titles Steam doesn't carry. Off keeps Fable fully offline.")
+                Text("Covers come from Steam's public CDN, cached after one fetch. Add a free SteamGridDB key for titles Steam doesn't carry. Off stops cover downloads; the update check in About has its own switch.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -439,6 +439,7 @@ private struct AdvancedSettingsTab: View {
 
 private struct AboutTab: View {
     @EnvironmentObject private var appUpdateChecker: AppUpdateChecker
+    @EnvironmentObject private var settingsManager: SettingsManager
     @EnvironmentObject private var appState: AppState
     @State private var showingFeedback = false
 
@@ -461,6 +462,8 @@ private struct AboutTab: View {
                         .controlSize(.small)
                     }
                 }
+                Toggle("Check for Updates Automatically", isOn: $settingsManager.settings.checkForUpdatesAutomatically)
+                    .help("When on, Fable asks GitHub for a newer release when it starts, at most once an hour.")
                 if let release = appUpdateChecker.available {
                     HStack {
                         Label("Fable \(release.version) is available", systemImage: "arrow.up.circle")
