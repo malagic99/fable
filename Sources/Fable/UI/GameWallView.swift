@@ -59,8 +59,9 @@ struct GameWallView: View {
     }
 
     private func confidence(_ entry: LibraryEntry) -> GameConfidence {
-        .assess(entry.game, recipes: userRecipeStore, quirks: quirkService,
-                stats: gameStats.stats[entry.game.id])
+        GameConfidence.assessment(
+            entry.game, in: entry.bottle, recipes: userRecipeStore, quirks: quirkService,
+            stats: gameStats.stats[entry.game.id]).confidence
     }
 
     /// The wall sliced by the active grouping (pure logic in LibraryGrouping).
@@ -255,8 +256,9 @@ private struct GameCoverCard: View {
 
     var body: some View {
         let stats = gameStats.stats[entry.game.id]
-        let confidence = GameConfidence.assess(entry.game, recipes: userRecipeStore, quirks: quirkService,
-                                               stats: stats)
+        let confidence = GameConfidence.assessment(
+            entry.game, in: entry.bottle, recipes: userRecipeStore, quirks: quirkService,
+            stats: stats).confidence
         let health = Health.resolve(
             confidence: confidence,
             crashedLastRun: !(stats?.crashSignatures ?? [:]).isEmpty)
@@ -305,9 +307,16 @@ private struct GameInspector: View {
     @EnvironmentObject private var gameStats: GameStatsStore
     @State private var isShowingTune = false
 
-    private var confidence: GameConfidence {
-        .assess(entry.game, recipes: userRecipeStore, quirks: quirkService)
+    /// The same assessment the cover badge uses, stats included — this
+    /// used to leave them out, so a game could read "Played on this Mac" on
+    /// its cover and "untested" here.
+    private var assessment: GameConfidence.Assessment {
+        GameConfidence.assessment(
+            entry.game, in: entry.bottle, recipes: userRecipeStore, quirks: quirkService,
+            stats: gameStats.stats[entry.game.id])
     }
+
+    private var confidence: GameConfidence { assessment.confidence }
 
     private var triggers: TriggerProfile {
         entry.game.effectiveTriggerProfile(bottleDefault: entry.bottle.triggerProfile)
@@ -348,6 +357,12 @@ private struct GameInspector: View {
                         Text(confidence.label).foregroundStyle(confidence.tint)
                     }
                 }
+                // The reason for the verdict, so it can be checked rather
+                // than taken on trust.
+                Text(assessment.evidence.text)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
                 fact("Backend") { BackendBadge(backend: entry.effectiveBackend) }
                 fact("Frame cap") {
                     Text(entry.bottle.performance.frameRateCap.map { "\($0) fps" } ?? "Uncapped")

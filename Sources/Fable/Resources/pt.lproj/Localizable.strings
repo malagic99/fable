@@ -558,3 +558,13 @@
 /* Graphics engine setup (Homebrew-free) */
 "Download Engine" = "Transferir motor";
 "engine.setup.downloading" = "A transferir e configurar o motor… cerca de 270 MB.";
+
+/* Why a confidence label says what it says */
+"evidence.recipe" = "Existe uma configuração testada para este jogo e esta garrafa usa-a (%@).";
+"evidence.recipe_other_backend" = "A configuração testada usa %@. Esta garrafa usa %@, que não foi testado com este jogo.";
+"evidence.played" = "Jogado %@ neste Mac sem falhas registadas. Problemas visuais não foram verificados.";
+"evidence.played_on" = "Jogado %@ neste Mac com %@, sem falhas registadas. Problemas visuais não foram verificados.";
+"evidence.played_other_engine" = "Jogado %@ com outro motor. Ainda não foi jogado com o que esta garrafa usa agora.";
+"evidence.little_play" = "Apenas %@ de jogo aqui até agora — muito pouco para avaliar.";
+"evidence.crashed" = "Falhou da última vez que foi executado aqui.";
+"evidence.none" = "Ainda não há configuração testada nem tempo de jogo neste Mac.";

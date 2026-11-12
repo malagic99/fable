@@ -19,6 +19,19 @@ final class GameStatsStore: ObservableObject {
         /// decode unchanged. Feeds the cross-backend "it's the game, not the
         /// backend" verdict — see GameDoctor.crossBackendFinding.
         var crashSignatures: [String: String]?
+        /// Play time per engine (``BottleRuntime/engineKey(for:)`` → seconds).
+        /// "Played on this Mac" is evidence about one engine: a bottle moved
+        /// to a newer engine hasn't been played there yet. Optional so older
+        /// stats files decode unchanged; nil means "not attributed yet".
+        var secondsByEngine: [String: Double]?
+
+        /// Seconds of play that count as evidence for `engineKey`: the time on
+        /// that engine when play is attributed, else everything (CrossOver and
+        /// other backends with no managed engine have nothing to attribute to).
+        func evidenceSeconds(onEngine engineKey: String?) -> Double {
+            guard let engineKey, let secondsByEngine else { return totalSeconds }
+            return secondsByEngine[engineKey] ?? 0
+        }
     }
 
     @Published private(set) var stats: [UUID: Stats] = [:]
@@ -58,12 +71,32 @@ final class GameStatsStore: ObservableObject {
     }
 
     /// It exited — fold the session into the total.
-    func sessionEnded(_ id: UUID, at date: Date = .now) {
+    /// `engineKey` is the engine the session ran on, when Fable manages one.
+    func sessionEnded(_ id: UUID, engineKey: String? = nil, at date: Date = .now) {
         guard let started = activeSessions.removeValue(forKey: id) else { return }
         let seconds = max(0, date.timeIntervalSince(started))
         stats[id, default: Stats()].totalSeconds += seconds
+        if let engineKey {
+            stats[id]?.secondsByEngine = (stats[id]?.secondsByEngine ?? [:])
+                .merging([engineKey: seconds], uniquingKeysWith: +)
+        }
         stats[id]?.lastPlayedAt = date
         save()
+    }
+
+    /// Files play time from before per-engine tracking under the engine each
+    /// game's bottle uses today — the same assumption engine pinning made when
+    /// it stamped existing bottles. Runs once per game: only stats with play
+    /// time and nothing attributed are touched.
+    func attributeLegacyPlaytime(engineKeys: [UUID: String]) {
+        var changed = false
+        for (id, key) in engineKeys {
+            guard let existing = stats[id], existing.secondsByEngine == nil,
+                  existing.totalSeconds > 0 else { continue }
+            stats[id]?.secondsByEngine = [key: existing.totalSeconds]
+            changed = true
+        }
+        if changed { save() }
     }
 
     /// Marks "played now" without a duration — native launches hand off to

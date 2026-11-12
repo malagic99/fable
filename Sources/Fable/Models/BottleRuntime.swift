@@ -69,6 +69,29 @@ struct BottleRuntime: Codable, Hashable, Sendable {
         policy == .pinned ? pins : [:]
     }
 
+    /// The engine a game on `backend` runs on in this bottle, as one stable
+    /// string ("sikarugir=WS12WineSikarugir10.0_4") — what play evidence is
+    /// filed under, so time on one engine isn't quoted as proof for another.
+    /// A pin wins over the last launch (it is what the next launch uses); the
+    /// renderer template is left out, as it is from pins. Nil when nothing is
+    /// recorded yet, or the backend has no engine Fable manages (CrossOver).
+    func engineKey(for backend: GraphicsBackend) -> String? {
+        let parts: [String] = backend.engineComponentIDs.sorted().compactMap { id in
+            guard let version = activePins[id] ?? lastLaunch?.versions[id] else { return nil }
+            return "\(id)=\(version)"
+        }
+        return parts.isEmpty ? nil : parts.joined(separator: ",")
+    }
+
+    /// "Sikarugir (Wine 10) 10.0_4" for an ``engineKey(for:)``.
+    static func displayName(forEngineKey key: String) -> String {
+        key.split(separator: ",").map { part -> String in
+            let pair = part.split(separator: "=", maxSplits: 1).map(String.init)
+            guard pair.count == 2 else { return String(part) }
+            return "\(BottleEngineSection.displayName(for: pair[0])) \(BottleEngineSection.displayVersion(pair[1], for: pair[0]))"
+        }.joined(separator: " + ")
+    }
+
     /// The record after a launch that resolved `versions` on `backend`.
     /// Pins the versions a pinned bottle hadn't pinned yet (its first launch,
     /// or the first on a newly chosen backend) and never moves an existing
@@ -122,6 +145,24 @@ extension Bottle {
     /// one that follows the newest engines.
     var enginePins: [String: String] {
         runtime?.activePins ?? [:]
+    }
+}
+
+extension Bottle {
+    /// The engine each game runs on (game id → ``BottleRuntime/engineKey(for:)``),
+    /// honoring a game's own backend override. Games with no recorded or
+    /// managed engine are left out.
+    static func engineKeys(in bottles: [Bottle]) -> [UUID: String] {
+        var keys: [UUID: String] = [:]
+        for bottle in bottles {
+            guard let runtime = bottle.runtime else { continue }
+            for game in bottle.games {
+                if let key = runtime.engineKey(for: game.graphicsBackend ?? bottle.graphicsBackend) {
+                    keys[game.id] = key
+                }
+            }
+        }
+        return keys
     }
 }
 
