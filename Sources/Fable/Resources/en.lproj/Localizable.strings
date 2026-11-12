@@ -234,7 +234,7 @@
 "integrity.error.unreadable_manifest" = "This engine’s record is damaged and can’t be read.";
 
 /* Engine canary */
-"canary.running" = "Testing the engine in a throwaway bottle… up to a minute.";
+"canary.running" = "Testing the engine in a throwaway bottle… a few seconds, or a minute or two the first time on Wine 11.";
 "canary.summary.passed" = "The engine passed all %@ checks on this Mac (%@). This shows the engine works here — not that any particular game does.";
 "canary.summary.failed" = "The engine failed a check on this Mac (%@): %@.";
 "canary.summary.incomplete" = "The engine test did not finish every check (%@). First one without a result: %@.";
@@ -250,3 +250,18 @@
 "canary.status.skipped" = "not reached";
 "canary.status.unsupported" = "can’t be tested";
 "canary.status.inconclusive" = "no clear result";
+
+/* Engine benchmark */
+"bench.running" = "Timing a test scene in a throwaway bottle… about 20 seconds. A small window will open.";
+"bench.phase.draws" = "Draw calls: %@ ms per frame for 20,000 draws (slowest 1%%: %@ ms). This is the engine translating DirectX 12 on the processor.";
+"bench.phase.shade" = "Shading: %@ ms per frame (slowest 1%%: %@ ms). This is the graphics chip, and should be much the same on any engine.";
+"bench.presented" = "A frame was drawn and shown in a window.";
+"bench.failed" = "The benchmark stopped: %@.";
+"bench.unsupported" = "Fable can’t benchmark the %@ engine this way yet.";
+"bench.caveat" = "Measured %@. A fixed test scene, good for comparing engines on this Mac. It does not say how any game will run.";
+"bench.phase_name.draws" = "draw calls";
+"bench.phase_name.shade" = "shading";
+"bench.compare.same" = "%@ about the same";
+"bench.compare.faster" = "%@ %@%% faster";
+"bench.compare.slower" = "%@ %@%% slower";
+"bench.compare.line" = "Compared with %@: %@.";

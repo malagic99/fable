@@ -20,6 +20,9 @@ struct BottleEngineSection: View {
     @State private var isTesting = false
     /// The latest engine test for this bottle's engine: run now, or stored.
     @State private var canary: CanaryResult?
+    @State private var isBenchmarking = false
+    /// The latest benchmark of this bottle's engine: run now, or stored.
+    @State private var benchmark: BenchmarkResult?
 
     private var runtime: BottleRuntime? { bottle.runtime }
     private var updates: [EngineInventory.Update] {
@@ -77,7 +80,7 @@ struct BottleEngineSection: View {
             }
             HStack {
                 Button("Test Engine") { test() }
-                    .disabled(isTesting || isChecking)
+                    .disabled(isTesting || isChecking || isBenchmarking)
                     .help("Runs a small test program on this bottle's engine in a throwaway bottle of its own. Your bottle is not touched.")
                 if isTesting {
                     ProgressView().controlSize(.small)
@@ -85,20 +88,19 @@ struct BottleEngineSection: View {
                 }
             }
             if let canary {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(canary.summaryText)
-                        .foregroundStyle(canary.hasFailure ? .orange : .primary)
-                    ForEach(canary.rungs, id: \.self) { rung in
-                        Label {
-                            Text(rung.lineText)
-                        } icon: {
-                            Image(systemName: rung.status.symbol)
-                                .foregroundStyle(rung.status.tint)
-                        }
-                        .font(.caption)
-                    }
+                CanaryResultView(result: canary)
+            }
+            HStack {
+                Button("Benchmark Engine") { runBenchmark() }
+                    .disabled(isBenchmarking || isTesting || isChecking)
+                    .help("Times a fixed test scene on this bottle's engine in a throwaway bottle of its own. A small window opens for a few seconds. Your bottle is not touched.")
+                if isBenchmarking {
+                    ProgressView().controlSize(.small)
+                    Text(L10n.string("bench.running")).font(.caption).foregroundStyle(.secondary)
                 }
-                .font(.callout)
+            }
+            if let benchmark {
+                BenchmarkResultView(result: benchmark)
             }
             if let checkResults {
                 ForEach(checkResults, id: \.self) { line in
@@ -123,9 +125,9 @@ struct BottleEngineSection: View {
                 .foregroundStyle(.secondary)
         }
         .task(id: bottle.runtime?.engineKey(for: bottle.graphicsBackend)) {
-            canary = CanaryStore.latest(
-                backend: bottle.graphicsBackend,
-                engineKey: bottle.runtime?.engineKey(for: bottle.graphicsBackend))
+            let engineKey = bottle.runtime?.engineKey(for: bottle.graphicsBackend)
+            canary = CanaryStore.latest(backend: bottle.graphicsBackend, engineKey: engineKey)
+            benchmark = BenchmarkStore.latest(backend: bottle.graphicsBackend, engineKey: engineKey)
         }
         .confirmationDialog(
             L10n.string("engine.move.title", bottle.name),
@@ -147,6 +149,14 @@ struct BottleEngineSection: View {
         Task {
             canary = await gameLauncher.runCanary(backend: bottle.graphicsBackend, pins: bottle.enginePins)
             isTesting = false
+        }
+    }
+
+    private func runBenchmark() {
+        isBenchmarking = true
+        Task {
+            benchmark = await gameLauncher.runBenchmark(backend: bottle.graphicsBackend, pins: bottle.enginePins)
+            isBenchmarking = false
         }
     }
 
@@ -215,6 +225,58 @@ struct BottleEngineSection: View {
 
     static func displayVersion(_ raw: String, for componentID: String) -> String {
         BottleRuntime.displayVersion(raw, forComponent: componentID)
+    }
+}
+
+/// The engine test's summary and its rungs.
+private struct CanaryResultView: View {
+    let result: CanaryResult
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(result.summaryText)
+                .foregroundStyle(result.hasFailure ? Color.orange : Color.primary)
+            ForEach(result.rungs, id: \.self) { rung in
+                Label {
+                    Text(rung.lineText)
+                } icon: {
+                    Image(systemName: rung.status.symbol)
+                        .foregroundStyle(rung.status.tint)
+                }
+                .font(.caption)
+            }
+        }
+        .font(.callout)
+    }
+}
+
+/// The benchmark's numbers, how they compare with other engines measured on
+/// this Mac, and what they don't say.
+private struct BenchmarkResultView: View {
+    let result: BenchmarkResult
+
+    private var comparisons: [String] {
+        result.comparisonLines(with: BenchmarkStore.others(than: result))
+    }
+
+    private var caveat: String {
+        L10n.string("bench.caveat", result.date.formatted(date: .abbreviated, time: .shortened))
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            ForEach(result.displayLines, id: \.self) { line in
+                Text(line)
+                    .foregroundStyle(result.failure == nil ? Color.primary : Color.orange)
+            }
+            ForEach(comparisons, id: \.self) { line in
+                Text(line)
+            }
+            Text(caveat)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .font(.callout)
     }
 }
 

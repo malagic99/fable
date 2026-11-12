@@ -95,9 +95,22 @@ throwaway prefix. It climbs five rungs — a Windows program runs, the
 Direct3D libraries load, a D3D12 device and queue are created cold, an
 adapter is reported, a D3D11 device is created — in about 7 seconds on the
 Wine 10 engine. Supported: Sikarugir Wine 10 and 11, GPTK. Not yet: DXMT and
-DXVK (their Direct3D lives in the bottle), CrossOver, frame presentation,
-the 32-bit installer-engine rung, and the label level between "untested" and
-"played". The developer-tools gap below was fixed in v1.2.1.
+DXVK (their Direct3D lives in the bottle), CrossOver, the 32-bit
+installer-engine rung, and the label level between "untested" and "played".
+The developer-tools gap below was fixed in v1.2.1. Both shipped in v1.3.0.
+
+**Engine benchmark (built after v1.3.0):** `canary/fable-bench.c`, a fixed
+D3D12 scene run the same way. It presents a frame to a real window (rung 6)
+and times two phases off-screen — 20,000 draw calls (the engine translating
+D3D12 on the CPU) and a heavy full-screen shader (the GPU). Timed frames are
+drawn off-screen because frames drawn to the window measured only the
+display's refresh rate. On an M4 Pro: Wine 10 engine 8.3 ms draws / 3.8 ms
+shade; Wine 11 engine 6.7 / 3.8. Shading repeats within 1%, draws within
+about 10%, so differences inside 5% and 15% are reported as "about the
+same". Results compare only engines of the same backend, on the same Mac,
+on the same scene. Run on the real GPTK engine, the canary and benchmark
+both failed at "d3d12.dll did not load" — the known mismatch between its
+Wine 7.7 and a newer renderer, found without being told.
 
 ### Fixed in v1.2.1: engine assembly needed Apple's developer tools
 

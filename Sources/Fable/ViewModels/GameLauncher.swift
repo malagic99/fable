@@ -420,14 +420,29 @@ final class GameLauncher: ObservableObject {
         }
     }
 
-    // MARK: Engine canary
+    // MARK: Engine canary and benchmark
 
-    /// Runs the engine canary for `backend` under `pins` in a throwaway
-    /// prefix, exactly as a game would be launched — the plan comes from
-    /// ``composeLaunchPlan``, so the canary can't test a different
-    /// configuration than the one Fable runs. Never touches a user's bottle.
-    /// The result is stored (``CanaryStore``) and returned.
-    func runCanary(backend: GraphicsBackend, pins: [String: String]) async -> CanaryResult {
+    /// What running one of Fable's test programs on an engine produced.
+    struct ProbeRun {
+        var engineKey: String?
+        var manifestID: String?
+        var started: Date
+        var exit: EngineCanary.Exit
+        var output: String
+        var errorTail: String
+        /// False when the backend can't be exercised this way at all.
+        var supported = true
+    }
+
+    /// Runs one of Fable's test programs for `backend` under `pins` in a
+    /// throwaway prefix, exactly as a game would be launched — the plan comes
+    /// from ``composeLaunchPlan``, so a probe can't test a different
+    /// configuration than the one Fable runs. Never touches a user's bottle;
+    /// the prefix's wineserver is stopped and the prefix removed afterwards.
+    private func runProbe(
+        program: URL?, programName: String, backend: GraphicsBackend, pins: [String: String],
+        timeout: Double
+    ) async -> ProbeRun {
         let started = Date()
         var probe = Bottle(name: "Fable engine check")
         probe.graphicsBackend = backend
@@ -437,11 +452,13 @@ final class GameLauncher: ObservableObject {
                 .filter { !BottleRuntime.informationalComponentIDs.contains($0.key) })
                 .engineKey(for: backend)
         }
+        var run = ProbeRun(
+            engineKey: engineKey, manifestID: nil, started: started,
+            exit: .couldNotStart(""), output: "", errorTail: "")
 
-        guard let deps, EngineCanary.supports(backend), let program = EngineCanary.program else {
-            let result = EngineCanary.unsupportedResult(backend: backend, engineKey: engineKey)
-            CanaryStore.save(result)
-            return result
+        guard let deps, EngineCanary.supports(backend), let program else {
+            run.supported = false
+            return run
         }
 
         // Laid out like a real bottle (`<root>/bottle.json`, `<root>/prefix`),
@@ -455,24 +472,18 @@ final class GameLauncher: ObservableObject {
         let programDirectory = driveC.appending(path: "fable-canary", directoryHint: .isDirectory)
         defer { try? fm.removeItem(at: root) }
 
-        func stopped(_ reason: String) -> CanaryResult {
-            let result = CanaryResult(
-                backend: backend, engineKey: engineKey, manifestID: nil, date: started,
-                durationSeconds: Date().timeIntervalSince(started),
-                rungs: EngineCanary.rungs(output: "", exit: .couldNotStart(reason), errorTail: ""),
-                fableVersion: EngineCanary.appVersion)
-            CanaryStore.save(result)
-            return result
-        }
-
         do {
             try fm.createDirectory(at: programDirectory, withIntermediateDirectories: true)
-            try fm.copyItem(at: program, to: programDirectory.appending(path: EngineCanary.programName))
+            try fm.copyItem(at: program, to: programDirectory.appending(path: programName))
             try JSONEncoder().encode(probe).write(to: root.appending(path: "bottle.json"))
         } catch {
-            return stopped(error.localizedDescription)
+            run.exit = .couldNotStart(error.localizedDescription)
+            return run
         }
-        guard Rosetta.isInstalled() else { return stopped(L10n.string("rosetta.missing_at_launch")) }
+        guard Rosetta.isInstalled() else {
+            run.exit = .couldNotStart(L10n.string("rosetta.missing_at_launch"))
+            return run
+        }
 
         let baseEnvironment = deps.wineManager.environment(forPrefix: prefix)
         if backend == .sikarugir11 {
@@ -487,7 +498,7 @@ final class GameLauncher: ObservableObject {
                 try Self.composeLaunchPlan(
                     game: Game(
                         name: "fable-canary",
-                        executablePath: "fable-canary/\(EngineCanary.programName)",
+                        executablePath: "fable-canary/\(programName)",
                         arguments: EngineCanary.resultName),
                     bottle: probe, prefix: prefix, driveC: driveC,
                     baseEnvironment: baseEnvironment,
@@ -495,23 +506,55 @@ final class GameLauncher: ObservableObject {
                     runtime: ManagerRuntimeResolver(deps: deps))
             }
         } catch {
-            return stopped(error.localizedDescription)
+            run.exit = .couldNotStart(error.localizedDescription)
+            return run
         }
 
         let engineRoot = plan.wine.deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
-        let manifestID = (try? RuntimeIntegrity.load(root: engineRoot))?.id
-        let run = await EngineCanary.execute(EngineCanary.Invocation(
+        run.manifestID = (try? RuntimeIntegrity.load(root: engineRoot))?.id
+        let outcome = await EngineCanary.execute(EngineCanary.Invocation(
             wine: plan.wine, arguments: plan.wineArguments, environment: plan.environment,
             workingDirectory: plan.workingDirectory,
             resultFile: programDirectory.appending(path: EngineCanary.resultName),
-            wineserver: plan.wine.deletingLastPathComponent().appending(path: "wineserver")))
+            wineserver: plan.wine.deletingLastPathComponent().appending(path: "wineserver")),
+            timeout: timeout)
+        run.exit = outcome.exit
+        run.output = outcome.output
+        run.errorTail = outcome.errorTail
+        return run
+    }
 
-        let result = CanaryResult(
-            backend: backend, engineKey: engineKey, manifestID: manifestID, date: started,
-            durationSeconds: Date().timeIntervalSince(started),
-            rungs: EngineCanary.rungs(output: run.output, exit: run.exit, errorTail: run.errorTail),
-            fableVersion: EngineCanary.appVersion)
+    /// Runs the engine canary. The result is stored (``CanaryStore``) and
+    /// returned.
+    func runCanary(backend: GraphicsBackend, pins: [String: String]) async -> CanaryResult {
+        let run = await runProbe(
+            program: EngineCanary.program, programName: EngineCanary.programName,
+            backend: backend, pins: pins, timeout: EngineCanary.timeoutSeconds)
+        let result: CanaryResult
+        if run.supported {
+            result = CanaryResult(
+                backend: backend, engineKey: run.engineKey, manifestID: run.manifestID, date: run.started,
+                durationSeconds: Date().timeIntervalSince(run.started),
+                rungs: EngineCanary.rungs(output: run.output, exit: run.exit, errorTail: run.errorTail),
+                fableVersion: EngineCanary.appVersion)
+        } else {
+            result = EngineCanary.unsupportedResult(backend: backend, engineKey: run.engineKey)
+        }
         CanaryStore.save(result)
+        return result
+    }
+
+    /// Runs the engine benchmark: a fixed D3D12 scene, timed. The result is
+    /// stored (``BenchmarkStore``) and returned.
+    func runBenchmark(backend: GraphicsBackend, pins: [String: String]) async -> BenchmarkResult {
+        let run = await runProbe(
+            program: EngineBenchmark.program, programName: EngineBenchmark.programName,
+            backend: backend, pins: pins, timeout: EngineBenchmark.timeoutSeconds)
+        let result = EngineBenchmark.result(
+            backend: backend, engineKey: run.engineKey, manifestID: run.manifestID,
+            date: run.started, durationSeconds: Date().timeIntervalSince(run.started),
+            supported: run.supported, output: run.output, exit: run.exit, errorTail: run.errorTail)
+        BenchmarkStore.save(result)
         return result
     }
 
