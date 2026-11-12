@@ -89,16 +89,33 @@ One slice per release. Each one must leave working bottles alone.
 
 **Status (2026-11-12):** manifests are built — recorded at install, adopted
 for engines already on disk, checked from the bottle page and before a move.
-The developer-tools gap below was fixed in v1.2.1.
+The first canary is built: a 29 KB Windows program (`canary/`, built with
+mingw, committed with its checksums) run through the real launch plan in a
+throwaway prefix. It climbs five rungs — a Windows program runs, the
+Direct3D libraries load, a D3D12 device and queue are created cold, an
+adapter is reported, a D3D11 device is created — in about 7 seconds on the
+Wine 10 engine. Supported: Sikarugir Wine 10 and 11, GPTK. Not yet: DXMT and
+DXVK (their Direct3D lives in the bottle), CrossOver, frame presentation,
+the 32-bit installer-engine rung, and the label level between "untested" and
+"played". The developer-tools gap below was fixed in v1.2.1.
 
 ### Fixed in v1.2.1: engine assembly needed Apple's developer tools
 
 Assembling an engine called `otool` and `install_name_tool`, which are stubs
-on a Mac without Xcode's Command Line Tools. The Wine 10 path ignored the
-failure, leaving an engine that installed and couldn't create a D3D12 device.
+on a Mac without Xcode's Command Line Tools. The Wine 11 and installer
+engines failed to assemble; the Wine 10 path ignored the failure.
 `MachORpath` now does it in Swift, byte-identical to Apple's tool on the real
-engine files. Never reproduced on a Mac without the tools — and exactly the
-fault the device-creation canary exists to catch.
+engine files. Never reproduced on a Mac without the tools.
+
+**What the canary then showed:** run on a copy of the Wine 10 engine with the
+rpath left out, it created D3D12 and D3D11 devices anyway. With the current
+engine and Template 1.0.10 that rpath is not needed for device creation, so
+the first write-up ("couldn't create a D3D12 device") was a guess that the
+first real test contradicted. The rpath patch dates from v0.23.3 and an
+older pairing; whether it is still needed at all is open. With the renderer
+framework actually removed, the canary does fail: the engine asserts
+"Failed to dlopen D3DMetal" and hangs, which the timeout turns into a failed
+"libraries load" rung.
 
 ### How the parked items fit
 

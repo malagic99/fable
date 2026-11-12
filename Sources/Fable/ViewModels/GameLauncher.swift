@@ -420,6 +420,101 @@ final class GameLauncher: ObservableObject {
         }
     }
 
+    // MARK: Engine canary
+
+    /// Runs the engine canary for `backend` under `pins` in a throwaway
+    /// prefix, exactly as a game would be launched — the plan comes from
+    /// ``composeLaunchPlan``, so the canary can't test a different
+    /// configuration than the one Fable runs. Never touches a user's bottle.
+    /// The result is stored (``CanaryStore``) and returned.
+    func runCanary(backend: GraphicsBackend, pins: [String: String]) async -> CanaryResult {
+        let started = Date()
+        var probe = Bottle(name: "Fable engine check")
+        probe.graphicsBackend = backend
+        probe.runtime = BottleRuntime(pins: pins)
+        let engineKey = EnginePins.$current.withValue(pins) {
+            BottleRuntime(pins: resolvedEngineVersions(for: backend)
+                .filter { !BottleRuntime.informationalComponentIDs.contains($0.key) })
+                .engineKey(for: backend)
+        }
+
+        guard let deps, EngineCanary.supports(backend), let program = EngineCanary.program else {
+            let result = EngineCanary.unsupportedResult(backend: backend, engineKey: engineKey)
+            CanaryStore.save(result)
+            return result
+        }
+
+        // Laid out like a real bottle (`<root>/bottle.json`, `<root>/prefix`),
+        // so every helper that reads a prefix's pins finds this one's.
+        let fm = FileManager.default
+        let root = AppPaths.applicationSupport
+            .appending(path: "Canary", directoryHint: .isDirectory)
+            .appending(path: UUID().uuidString, directoryHint: .isDirectory)
+        let prefix = root.appending(path: "prefix", directoryHint: .isDirectory)
+        let driveC = prefix.appending(path: "drive_c", directoryHint: .isDirectory)
+        let programDirectory = driveC.appending(path: "fable-canary", directoryHint: .isDirectory)
+        defer { try? fm.removeItem(at: root) }
+
+        func stopped(_ reason: String) -> CanaryResult {
+            let result = CanaryResult(
+                backend: backend, engineKey: engineKey, manifestID: nil, date: started,
+                durationSeconds: Date().timeIntervalSince(started),
+                rungs: EngineCanary.rungs(output: "", exit: .couldNotStart(reason), errorTail: ""),
+                fableVersion: EngineCanary.appVersion)
+            CanaryStore.save(result)
+            return result
+        }
+
+        do {
+            try fm.createDirectory(at: programDirectory, withIntermediateDirectories: true)
+            try fm.copyItem(at: program, to: programDirectory.appending(path: EngineCanary.programName))
+            try JSONEncoder().encode(probe).write(to: root.appending(path: "bottle.json"))
+        } catch {
+            return stopped(error.localizedDescription)
+        }
+        guard Rosetta.isInstalled() else { return stopped(L10n.string("rosetta.missing_at_launch")) }
+
+        let baseEnvironment = deps.wineManager.environment(forPrefix: prefix)
+        if backend == .sikarugir11 {
+            // The Wine 11 path forces its D3D builtins through the prefix
+            // registry, as a real launch does.
+            await deps.sikarugir11Manager.ensureRegistryOverrides(prefix: prefix, baseEnvironment: baseEnvironment)
+        }
+
+        let plan: LaunchPlan
+        do {
+            plan = try EnginePins.$current.withValue(pins) {
+                try Self.composeLaunchPlan(
+                    game: Game(
+                        name: "fable-canary",
+                        executablePath: "fable-canary/\(EngineCanary.programName)",
+                        arguments: EngineCanary.resultName),
+                    bottle: probe, prefix: prefix, driveC: driveC,
+                    baseEnvironment: baseEnvironment,
+                    logFile: root.appending(path: "canary.log"),
+                    runtime: ManagerRuntimeResolver(deps: deps))
+            }
+        } catch {
+            return stopped(error.localizedDescription)
+        }
+
+        let engineRoot = plan.wine.deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        let manifestID = (try? RuntimeIntegrity.load(root: engineRoot))?.id
+        let run = await EngineCanary.execute(EngineCanary.Invocation(
+            wine: plan.wine, arguments: plan.wineArguments, environment: plan.environment,
+            workingDirectory: plan.workingDirectory,
+            resultFile: programDirectory.appending(path: EngineCanary.resultName),
+            wineserver: plan.wine.deletingLastPathComponent().appending(path: "wineserver")))
+
+        let result = CanaryResult(
+            backend: backend, engineKey: engineKey, manifestID: manifestID, date: started,
+            durationSeconds: Date().timeIntervalSince(started),
+            rungs: EngineCanary.rungs(output: run.output, exit: run.exit, errorTail: run.errorTail),
+            fableVersion: EngineCanary.appVersion)
+        CanaryStore.save(result)
+        return result
+    }
+
     // MARK: Engine pinning
 
     /// The component versions a launch on `backend` resolves under the pins

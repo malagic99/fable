@@ -39,6 +39,9 @@ Friend-Kit-*
 
 # Downloaded Windows installers (user support artifacts — never commit)
 *.exe
+# The engine canary is a Windows program Fable ships; it is built by
+# scripts/build-canary.sh and pinned by canary/SHA256SUMS.
+!Sources/Fable/Resources/canary/*.exe
 BsgLauncher*.exe
 NDP*.exe
 
