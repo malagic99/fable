@@ -16,6 +16,7 @@ a Homebrew dependency:
 | **ICU** (icudata, icui18n, icuuc) | Unicode/ICU License | innoextract dependency |
 | **liblzma** | 0BSD | innoextract dependency |
 | **libzstd** | BSD-3-Clause | innoextract dependency |
+| **cabextract** | GPL-3.0-or-later | © Stuart Caie — <https://www.cabextract.org.uk/>; includes libmspack (LGPL-2.1). Run by winetricks to unpack fonts and runtimes; source at the link |
 | **AreWeAntiCheatYet** data (`areweanticheatyet.json`) | MIT | © 2021 Starz0r, Curve — <https://github.com/AreWeAntiCheatYet/AreWeAntiCheatYet>, snapshot of `games.json` at commit 6c26305 trimmed to name, status and anti-cheat; licence text bundled as `areweanticheatyet-LICENSE.txt` |
 
 zlib license (innoextract): *This software is provided 'as-is', without any
@@ -36,11 +37,12 @@ copy directly:
 - **DXMT** (zlib) — 3Shain
 - **DXVK / vkd3d** (zlib / LGPL), **MoltenVK** (Apache-2.0)
 - **winetricks** (LGPL-2.1)
-- **Sikarugir** (GPL) — user-installed; Fable copies its Wine engine and
-  renderer files locally at your direction
-- **D3DMetal** (Apple, proprietary, **not redistributable**) — Fable never
-  bundles or downloads it; it is sourced from a Game Porting Toolkit or
-  Sikarugir install already on your machine
+- **Sikarugir** (GPL) — its Wine engines and wrapper template, downloaded
+  from Sikarugir's own GitHub releases (the same files the Sikarugir app
+  fetches); Fable assembles the engine and renderer locally
+- **D3DMetal** (Apple, proprietary) — Fable never bundles or hosts it. It
+  arrives inside Sikarugir's template, downloaded from Sikarugir's releases,
+  or from a Game Porting Toolkit install already on your machine
 - **CrossOver** (commercial) — optional backend that drives your own
   licensed installation
 

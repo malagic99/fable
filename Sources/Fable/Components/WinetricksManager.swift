@@ -101,6 +101,24 @@ final class WinetricksManager: ObservableObject {
 
     /// Runs `winetricks --unattended <slug>` against a bottle's prefix.
     /// On success, the verb is recorded as installed on the bottle.
+    /// The PATH winetricks runs with. It shells out to cabextract (which stock
+    /// macOS doesn't have), so the copy bundled beside Fable's executable
+    /// comes first; Homebrew's directories follow for anything else a verb
+    /// wants and a user happens to have.
+    nonisolated static func toolSearchPath(
+        base: String,
+        bundledTools: URL? = Bundle.main.executableURL?.deletingLastPathComponent()
+    ) -> String {
+        var parts: [String] = []
+        if let bundledTools,
+           FileManager.default.isExecutableFile(
+               atPath: bundledTools.appending(path: "cabextract").path) {
+            parts.append(bundledTools.path)
+        }
+        parts += ["/opt/homebrew/bin", "/usr/local/bin", base]
+        return parts.joined(separator: ":")
+    }
+
     func install(
         verb: WinetricksVerb,
         in bottle: Bottle,
@@ -116,10 +134,8 @@ final class WinetricksManager: ObservableObject {
         env["WINE"] = wine.path
         env["WINESERVER"] = wine.deletingLastPathComponent()
             .appending(path: "wineserver").path
-        // winetricks shells out to sha256sum/cabextract/etc.; ensure
-        // Homebrew paths are visible too.
         let basePath = env["PATH"] ?? ProcessInfo.processInfo.environment["PATH"] ?? "/usr/bin:/bin"
-        env["PATH"] = "/opt/homebrew/bin:/usr/local/bin:\(basePath)"
+        env["PATH"] = Self.toolSearchPath(base: basePath)
         // Make wget fail fast on a stalled mirror instead of hanging on its
         // 15-min default read-timeout (the "stuck on corefonts" symptom) —
         // short timeout + a few retries so it rolls past a dead SourceForge

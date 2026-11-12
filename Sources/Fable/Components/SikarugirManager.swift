@@ -10,7 +10,7 @@ enum SikarugirError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .notInstalled:
-            "This backend needs Sikarugir, a separate free app. Install it, open it once so it downloads its graphics engine, and Fable takes it from there — Settings → About → rerun the setup wizard walks you through it."
+            "This backend needs the Wine 10 graphics engine, which Fable hasn't downloaded yet. Pick the backend again on the bottle page, or rerun the setup wizard from Settings → About, and Fable downloads it."
         case .engineTarballMissing(let path):
             "Sikarugir is installed but its Wine engine tarball wasn't found under \(path)."
         case .rendererMissing(let path):
@@ -30,15 +30,29 @@ enum SikarugirError: LocalizedError {
 /// modern MSVC C++ exceptions (the 007 First Light int3 wall).
 ///
 /// Fable doesn't ship any of this (D3DMetal.framework is Apple's). It
-/// discovers Sikarugir on disk, extracts the GPL wine engine into its
-/// own component dir, and overlays Sikarugir's d3dmetal renderer onto
-/// it. Both engine and renderer dispatch are GPL Wine code; only the
-/// framework is Apple's, sourced from the user's existing install.
+/// downloads the engine and the template that carries the renderer from
+/// Sikarugir's own GitHub releases, pinned by SHA-256 in versions.json — the
+/// same files the Sikarugir app fetches for itself — extracts the GPL wine
+/// engine into its own component dir, and overlays the d3dmetal renderer
+/// onto it. Until v1.2 both came from the user's Sikarugir install, which
+/// exists only as a Homebrew cask: a Terminal wall before the first game.
+/// That install is still read as a fallback when the catalog has no entry.
 @MainActor
 final class SikarugirManager: ObservableObject {
     let componentManager: ComponentManager
+    /// Where the engine and its template are downloaded from. Nil only in
+    /// tests and old call sites — then the user's Sikarugir install is the
+    /// only source, as it was before v1.2.
+    let catalog: VersionCatalog?
 
     nonisolated static let componentID = "sikarugir"
+    /// The template whose renderer is built for Wine 10. A renderer is tied
+    /// to one Wine generation, so this is not the Wine 11 path's template.
+    nonisolated static let templateComponentID = "sikarugir-template-wine10"
+
+    /// The install in flight, shared by every caller, so two triggers can't
+    /// run two downloads into one archive.
+    private var installTask: Task<Void, Error>?
 
     /// D3D DLLs D3DMetal provides as Wine builtins. Forced builtin at
     /// launch so any native DLLs in the prefix don't shadow them.
@@ -57,13 +71,25 @@ final class SikarugirManager: ObservableObject {
     /// store. Defaults to the tested pairing.
     var preferredD3DMetalSource: D3DMetalSource = .sikarugir
 
-    init(componentManager: ComponentManager) {
+    init(componentManager: ComponentManager, catalog: VersionCatalog? = nil) {
         self.componentManager = componentManager
+        self.catalog = catalog
         refresh()
     }
 
+    /// The engine and template entries, when the catalog can supply both.
+    nonisolated var catalogPair: (engine: VersionCatalog.Component, template: VersionCatalog.Component)? {
+        guard let engine = catalog?.components[Self.componentID],
+              let template = catalog?.components[Self.templateComponentID]
+        else { return nil }
+        return (engine, template)
+    }
+
+    /// True when Fable has somewhere to get the engine from: its own catalog,
+    /// or a Sikarugir install on this Mac.
     func refresh() {
-        isDiscovered = (try? engineTarball()) != nil && (try? d3dMetalRenderer()) != nil
+        isDiscovered = catalogPair != nil
+            || ((try? engineTarball()) != nil && (try? d3dMetalRenderer()) != nil)
     }
 
     var isInstalled: Bool {
@@ -113,9 +139,11 @@ final class SikarugirManager: ObservableObject {
             || FileManager.default.fileExists(atPath: supportDirectory.path)
     }
 
-    /// The D3DMetal version Sikarugir has on disk (from its engine tarball name).
+    /// The engine version Fable can install: the catalog's, else whatever a
+    /// Sikarugir install has on disk (from its engine tarball name).
     nonisolated func availableVersion() -> String? {
-        (try? engineTarball()).map {
+        if let pair = catalogPair { return pair.engine.version }
+        return (try? engineTarball()).map {
             $0.deletingPathExtension().deletingPathExtension().lastPathComponent
         }
     }
@@ -145,11 +173,20 @@ final class SikarugirManager: ObservableObject {
     }
 
     func d3dMetalStatus() -> D3DMetalStatus {
-        Self.status(
+        let installed = installedVersion()
+        return Self.status(
             discovered: isDiscovered,
-            available: availableVersion(),
-            installed: installedVersion(),
+            available: Self.versionToOffer(available: availableVersion(), installed: installed),
+            installed: installed,
             sikarugirPresent: Self.isPresentOnMac)
+    }
+
+    /// The version worth offering against what's installed. An engine newer
+    /// than the catalog's (extracted from a newer Sikarugir install, before
+    /// v1.2) is not out of date — never offer to "update" it downward.
+    nonisolated static func versionToOffer(available: String?, installed: String?) -> String? {
+        guard let installed, let available else { return available }
+        return VersionCompare.newest([installed, available]) == installed ? installed : available
     }
 
     /// Human-friendly version label, e.g. "WS12WineSikarugir10.0_4" → "10.0_4".
@@ -181,6 +218,7 @@ final class SikarugirManager: ObservableObject {
     /// The d3dmetal renderer directory inside Sikarugir's Template app.
     /// Holds wine/x86_64-{windows,unix} dispatch + external/framework.
     nonisolated func d3dMetalRenderer() throws -> URL {
+        if let downloaded = Self.downloadedRenderer() { return downloaded }
         let templateRoot = Self.supportDirectory.appending(path: "Template", directoryHint: .isDirectory)
         let templates = (try? FileManager.default.contentsOfDirectory(
             at: templateRoot, includingPropertiesForKeys: nil
@@ -195,47 +233,93 @@ final class SikarugirManager: ObservableObject {
         throw SikarugirError.rendererMissing(templateRoot.path)
     }
 
+    /// The renderer inside the template Fable downloaded, newest first.
+    nonisolated static func downloadedRenderer(
+        componentsRoot: URL = AppPaths.components
+    ) -> URL? {
+        let root = componentsRoot.appending(path: templateComponentID, directoryHint: .isDirectory)
+        let names = ((try? FileManager.default.contentsOfDirectory(atPath: root.path)) ?? [])
+            .filter { !$0.hasPrefix(".") }
+        var remaining = names
+        while let newest = VersionCompare.newest(remaining) {
+            remaining.removeAll { $0 == newest }
+            let versionRoot = root.appending(path: newest, directoryHint: .isDirectory)
+            if let app = Sikarugir11Manager.templateApp(in: versionRoot),
+               let renderer = Sikarugir11Manager.renderer(in: app) {
+                return renderer
+            }
+        }
+        return nil
+    }
+
     // MARK: Install (extract engine + overlay d3dmetal)
 
-    /// Extracts Sikarugir's wine 10.0 engine into Fable's components and
-    /// overlays the d3dmetal renderer. Idempotent — skips if the engine
-    /// is already extracted with the renderer present.
+    /// Downloads (or, without a catalog, extracts from a Sikarugir install)
+    /// the wine 10.0 engine into Fable's components and overlays the d3dmetal
+    /// renderer. Idempotent — skips if the engine is already there, finished.
     func ensureInstalled() async throws {
-        guard isDiscovered else { throw SikarugirError.notInstalled }
+        if let installTask { return try await installTask.value }
+        let task = Task { try await self.install() }
+        installTask = task
+        defer { installTask = nil }
+        try await task.value
+    }
 
-        let tarball = try engineTarball()
-        let renderer = try d3dMetalRenderer()
-        // Version label from the tarball name (WS12WineSikarugir10.0_4).
-        let version = tarball.deletingPathExtension().deletingPathExtension().lastPathComponent
+    /// The marker written last, once the renderer is overlaid. An engine
+    /// directory without it was interrupted part-way and is assembled again.
+    nonisolated static let assembledMarker = ".d3dmetal-version"
 
-        // Already on this exact version: just self-heal support libs (the
-        // engine's lib can be missing the TLS/font dylibs — libfreetype = blank
-        // Steam text, libgnutls = no QR/online) without a full reinstall.
-        if isInstalled, installedVersion() == version {
+    private func install() async throws {
+        guard isDiscovered, let version = availableVersion() else {
+            throw SikarugirError.notInstalled
+        }
+
+        // Already on this version, or on a newer one extracted from a newer
+        // Sikarugir install: just self-heal support libs (the engine's lib can
+        // be missing the TLS/font dylibs — libfreetype = blank Steam text,
+        // libgnutls = no QR/online) without a full reinstall.
+        if isInstalled, let installed = installedVersion(),
+           VersionCompare.newest([installed, version]) == installed,
+           let existing = componentManager.newestInstalledDirectory(for: Self.componentID),
+           FileManager.default.fileExists(
+               atPath: existing.appending(path: Self.assembledMarker).path) {
             try? backfillSupportLibs()
-            let existingLib = componentManager.newestInstalledDirectory(for: Self.componentID)!
-                .appending(path: "wswine.bundle/lib", directoryHint: .isDirectory)
+            let existingLib = existing.appending(path: "wswine.bundle/lib", directoryHint: .isDirectory)
             try? await Self.patchD3DMetalRpath(lib: existingLib)
             return
         }
-        // Otherwise this is a fresh install OR an update to a newer Sikarugir —
-        // extract into its own version dir. Bottles pinned to the old version
+        // Otherwise this is a fresh install OR an update to a newer engine —
+        // it goes into its own version dir. Bottles pinned to the old version
         // stay on it (BottleRuntime); new and unpinned bottles get this one.
 
-        let installRoot = AppPaths.components
-            .appending(path: Self.componentID, directoryHint: .isDirectory)
-            .appending(path: version, directoryHint: .isDirectory)
+        let installRoot: URL
+        let renderer: URL
+        if let pair = catalogPair {
+            // 1. Download both, checksum-pinned. The engine archive unpacks to
+            //    wswine.bundle/… at the root of its version directory.
+            installRoot = try await componentManager.install(id: Self.componentID, component: pair.engine)
+            let templateRoot = try await componentManager.install(
+                id: Self.templateComponentID, component: pair.template)
+            guard let app = Sikarugir11Manager.templateApp(in: templateRoot),
+                  let found = Sikarugir11Manager.renderer(in: app)
+            else { throw SikarugirError.rendererMissing(templateRoot.path) }
+            renderer = found
+        } else {
+            let tarball = try engineTarball()
+            renderer = try d3dMetalRenderer()
+            installRoot = AppPaths.components
+                .appending(path: Self.componentID, directoryHint: .isDirectory)
+                .appending(path: version, directoryHint: .isDirectory)
+            try FileManager.default.createDirectory(at: installRoot, withIntermediateDirectories: true)
 
-        let fm = FileManager.default
-        try fm.createDirectory(at: installRoot, withIntermediateDirectories: true)
-
-        // 1. Extract the engine (wswine.bundle/…) into the component dir.
-        let extract = try await ProcessRunner.run(
-            URL(filePath: "/usr/bin/tar"),
-            arguments: ["-xJf", tarball.path, "-C", installRoot.path]
-        )
-        guard extract.succeeded else {
-            throw ComponentError.extractionFailed(extract.standardError)
+            // 1. Extract the engine (wswine.bundle/…) into the component dir.
+            let extract = try await ProcessRunner.run(
+                URL(filePath: "/usr/bin/tar"),
+                arguments: ["-xJf", tarball.path, "-C", installRoot.path]
+            )
+            guard extract.succeeded else {
+                throw ComponentError.extractionFailed(extract.standardError)
+            }
         }
 
         // 2. Overlay the d3dmetal renderer onto the engine's lib tree.
@@ -267,7 +351,7 @@ final class SikarugirManager: ObservableObject {
         )
 
         try? Data("Sikarugir D3DMetal (\(version))".utf8)
-            .write(to: installRoot.appending(path: ".d3dmetal-version"))
+            .write(to: installRoot.appending(path: Self.assembledMarker))
 
         refresh()
         // A fresh extract lays down Sikarugir's own framework, so an opted-in

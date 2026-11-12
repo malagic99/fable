@@ -197,3 +197,6 @@
 "engine.unused.confirm" = "Remove %ld unused engine versions? This can't be undone.";
 "engine.unused.removed" = "Removed %ld unused engine versions.";
 "engine.unused.failed" = "Some engine versions couldn't be removed: %@";
+
+/* Graphics engine setup (Homebrew-free) */
+"engine.setup.downloading" = "Downloading and setting up the engine… about 270 MB.";
