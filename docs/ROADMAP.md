@@ -1,97 +1,208 @@
 # Fable — Roadmap
 
-> **Status: living document, last updated 2026-09-22 (v0.23.3).**
+> **Status: living document, last updated 2026-11-12 (v1.2.0).**
 > A themed plan, not a burndown. Real-game debugging *will* interrupt it —
 > that's fine, it has found every important bug so far.
-> Supersedes the post-Friend-Kit menu (history in git).
+> Earlier versions of this page (the three "rocks" up to 1.0) are in git.
 
-## The governing goal (unchanged)
+## The governing goal
 
-Fable is a **polished personal tool I share with friends — not a published
-product.** No launch, no growth target. **"Done" = boringly reliable in real
-use.** **1.0 = a friend is playing on it.** Everything below serves that or is
-honestly parked.
+Until 1.0 the goal was *a polished personal tool shared with friends*, and
+**1.0 = a friend is playing on it**. That happened on 2026-09-22.
 
-## Where we are (v0.23.3, 457 tests, CI green on every PR)
+The goal now: **be the honest Mac game layer, and launch it publicly.**
+Fable should know which runtime each bottle uses, prove that runtime is
+intact, and say how sure it is that a setup works — and never claim more than
+that. "Done" still means boringly reliable in real use. The road there is the
+Runtime Integrity & Compatibility Lab (FRICL), one slice per release.
 
-- **Six backends**, flagship Sikarugir (modern Wine + matched D3DMetal): free
-  Steam CEF renders, installs self-heal, AAA D3D12 plays. Why:
-  [ARCHITECTURE.md](ARCHITECTURE.md). Fix map: [wine-quirks.md](wine-quirks.md).
-- **One library** (Wine + native Mac), themes, DualSense raw-HID triggers,
-  playtime/notes/health, hardware-aware perf, en/es/pt with a build-breaking
-  coverage gate.
-- **Fable Doctor**: 28 log signatures incl. the cross-backend "it's the game,
-  stream it" verdict, named missing DLLs, and the .NET-Framework / WPF /
-  wineserver-collision rules from real debugging. Rules can veto themselves on
-  contrary evidence, after one keyed on a Vulkan banner that Wine prints on
-  every launch and told healthy D3DMetal bottles to switch backends.
-- **Sharing**: `.fablerecipe`, `.fableskin`, `.fbottle` (donor export strips
-  games + login, streams with progress + disk preflight), `friend-kit.sh`,
-  Send Feedback + Share This Setup (zero-backend GitHub pipes).
-- **.NET**: Core (6/7/8) apps run (VotV/YeetPatch verified); the destructive
-  `dotnet4x` footgun is guarded; real .NET Framework 4.8 installs on the GPTK
-  backend (32-on-64) — see [DOTNET-FRAMEWORK-LAUNCHERS.md](DOTNET-FRAMEWORK-LAUNCHERS.md).
+*This goal was inferred from the launch and FRICL conversations of November
+2026, not written by the owner. Correct it here if it's wrong.*
+
+## Where we are (v1.2.0, 620 tests, CI green on every PR)
+
+- **Seven backends.** Flagship Sikarugir (Wine 10 + matched D3DMetal): Steam's
+  client renders, AAA D3D12 plays. Sikarugir 11 (Wine 11) for newer Denuvo
+  games, recipe-only until more games are confirmed. A dedicated installer
+  engine for 32-bit installers. Why: [ARCHITECTURE.md](ARCHITECTURE.md). Fix
+  map: [wine-quirks.md](wine-quirks.md).
+- **Setup needs no Terminal.** Engines are checksum-pinned downloads, Rosetta
+  is installed from the wizard, `cabextract` and `innoextract` ship in the
+  app. Not yet proven on a Mac that never had Homebrew or Rosetta.
+- **Runtime identity.** Each bottle records and keeps its engine version
+  (`BottleRuntime`), with a backed-up, explicit move to a newer one.
+- **Evidence-based labels.** Verified only on the backend a recipe was tested
+  on; play time counts per engine; the reason is shown beside the label.
+- **Provenance.** Each build records its source commit; each release ships
+  its checksum and build record.
+- **Native Steam bridge** (experimental, since v1.0.3): Windows games in a
+  Sikarugir bottle talking to the Mac Steam client. Built on the user's Mac,
+  which still needs Homebrew. Plan: [NATIVE-STEAM-BRIDGE.md](NATIVE-STEAM-BRIDGE.md).
+- **One library** (Wine + native Mac), themes, DualSense triggers,
+  playtime/notes/health, hardware-aware performance, en/es/pt with a
+  build-breaking coverage gate.
+- **Fable Doctor** log signatures, the anti-cheat list, and sharing formats
+  (`.fablerecipe`, `.fableskin`, `.fbottle`).
+- **Licence:** GPL-3.0-only since v1.1.1.
 
 ---
 
-## 🪨 Rock 1 — Memory Diet — **shipped (v0.23.0–v0.23.1)**
+## 🧭 The road to FRICL
 
-The STALKER 2 / TLOU2 unified-memory bleed: AAA ports budget against separate
-RAM+VRAM pools, but on a 24 GB Mac that's one pool D3DMetal double-counts, so
-streaming caches grow toward a budget that doesn't physically exist → wired-
-memory crash. Two Fable-shaped pieces:
+One slice per release. Each one must leave working bottles alone.
 
-1. ~~**Engine.ini streaming-pool cap writer**~~ — shipped v0.23.0 as a
-   reversible per-game toggle.
-2. ~~**Memory-pressure nudge**~~ — shipped v0.23.0 (`MemoryPressureMonitor`),
-   plus DXVK VRAM honesty in v0.23.1.
-3. **Recipes from it** — S.T.A.L.K.E.R. 2 minted (v0.23.2); TLOU2 still
-   unverified. Getting S.T.A.L.K.E.R. 2 rendering took a separate fix: only
-   Sikarugir's `d3d12.so` was missing the rpath that lets it reach
-   D3DMetal.framework, so D3D12 titles died at adapter creation while D3D11
-   ones were fine (v0.23.3).
+| Release | Slice | State |
+|---|---|---|
+| **v1.2** | Runtime identity and pinning; no-Terminal setup; evidence-based labels; provenance | **Shipped 2026-11-12** |
+| **v1.3** | Integrity manifests; the first canaries (D3D12 through D3DMetal first) | **Next** |
+| **v1.4** | Undo and recovery for bottle and engine changes | Planned |
+| **Later** | Community recipes as real-game evidence; Lab screen; command-line tool | When run history justifies them |
 
-## 🪨 Rock 2 — Ship 1.0 (stop deferring the finish line)
+### v1.3 — prove the runtime
 
-1. ~~**Cold-start dry-run**~~ — **done (2026-09-22).** It found a real one:
-   onboarding recorded completion in UserDefaults, which outlives deleting both
-   Fable.app and Application Support, so a clean install read back "already
-   onboarded" and skipped first-run setup entirely. Completion now lives beside
-   the app's own data. Fixed in v0.23.3.
-2. ~~**Real donor export**~~ — **parked.** Deliberately skipped rather than
-   pretended: the 56 GB streaming/strip path stays unit-tested only. Revisit if
-   a friend actually needs a donor bottle.
-3. ~~**Hand a friend the kit → fix what they hit → tag 1.0.**~~ — **done
-   (2026-09-22).** Fable installed and ran on a second Mac with no hand-holding:
-   Sikarugir installed through Fable's own setup, a Steam-Ready bottle came up
-   on the Sikarugir backend, and Steam's client rendered and updated. Nothing
-   needed fixing afterwards, which is the first time that's been true.
+1. **Integrity manifests.** When an engine is installed and assembled, record
+   every file's hash, every symlink's target, and what it was assembled from.
+   Verify on demand and before a move to a newer engine. The catalog
+   (`versions.json`) stays the list of what can be downloaded; a manifest
+   describes what is actually on disk.
+2. **Canaries.** Small test programs run in a throwaway prefix, never in a
+   user's bottle, climbing the validation ladder: Wine starts → a Windows
+   program runs → the intended renderer DLLs load → a D3D device is created.
+   Results are Passed / Failed / Skipped / Unsupported / Inconclusive, and
+   **Skipped is never Passed.**
+3. **Where the results show.** "Move to Newer Engine…" runs the canary on the
+   new engine first. Labels gain a level between "untested" and "played":
+   the runtime is validated, the game isn't.
 
-   Getting there took six releases in a day, and the two worst bugs were both
-   invisible from the build machine: the app had **never** launched on any other
-   Mac (SwiftPM's `Bundle.module` was resolving through the developer's build
-   directory), and the Sikarugir setup step pointed at a Releases tab for a
-   project that publishes no releases. Neither was findable by testing here —
-   both surfaced the moment the app left this machine. **Keep a second Mac in
-   the loop; it is not a pre-release ritual, it is the only honest test.**
+### Known gap from v1.2: engine assembly needs Apple's developer tools
 
-## 🪨 Rock 3 — Native Steam Bridge (proposed, Nov 2026 – Jan 2027)
+Found 2026-11-12, after v1.2.0 shipped. Assembling an engine calls
+`/usr/bin/otool` and `/usr/bin/install_name_tool` (to add the rpath that lets
+`d3d12.so` reach D3DMetal) — in `SikarugirManager`, `Sikarugir11Manager` and
+`InstallerEngineManager`. On a Mac without Xcode's Command Line Tools those
+two are stubs that pop Apple's "install developer tools" dialog and fail.
+The Wine 10 path ignores that failure, so the engine installs and D3D12 games
+then die at adapter creation. Every Mac Fable has been tested on had the
+tools (Homebrew installs them). **Fix before anything else in v1.3**, and it
+is exactly the kind of fault the device-creation canary exists to catch.
 
-Windows games in a Sikarugir bottle talking to the native Mac Steam client —
-no Steam inside Wine — and, as a second layer, installing and launching from
-the Mac Steam app's own Play button. A full NotProton equivalent on the free
-stack, built to break safely when Steam updates. Starts with a one-week
-go/no-go spike; competes with the November sprint plan for the same weeks.
-Plan, timeline and task list: [NATIVE-STEAM-BRIDGE.md](NATIVE-STEAM-BRIDGE.md).
+### How the parked items fit
 
-## 🌱 Ongoing — Grow the moat (recipes)
+They are not side quests; each is a later consumer or a source of evidence.
 
-Only ~5 catalog entries; the intake pipe (Share This Setup) exists but the
-catalog is thin. **Every game tuned this month becomes a recipe** — DEATHLOOP,
-Mafia 3, SS2, VotV, the two memory-diet titles. The one thing CrossOver can't
-out-automate. **Target: ~12 recipes by month end.** Never fake a "Tested:".
+- **Smart Doctor** is FRICL's "Game Doctor reads evidence" step with a model
+  on top. It needs what v1.3 produces: a case file is only as good as the
+  facts in it, and "which engine, is it intact, did the canary pass on it"
+  are the facts a rule or a model can't get from a log. Order: the rule
+  engine reads identity and canary results (v1.3–v1.4); the on-device and
+  cloud tiers come after, in "Later". Its community-fix sharing is the same
+  thing as FRICL's community recipes — real-game evidence, rung 7 of the
+  ladder — so build it once.
+- **Installer follow-ups.** The installer engine is a runtime like the
+  others, and v1.3 should treat it as one: it gets a manifest, and it gets
+  its own canary (a 32-bit program runs — the failure the engine exists to
+  avoid). The untested cases (old Inno Setup, repack unpackers) are
+  real-installer evidence and go in the compatibility record with a result
+  each, not into a "works" claim. The install-coalescing follow-up is done
+  for the Wine 10 and 11 engines; the developer-tools dependence is the gap
+  above.
+- **History handbook.** The written record of how each hard failure was
+  found is the canary backlog. Each entry names a fault a check should catch
+  from now on: the renderer libraries that had to stay symlinks (manifest:
+  symlink targets), the missing `d3d12.so` rpath (canary: device creation),
+  the `dxgi` break on Wine 11 (canary: DLL load), the app that only launched
+  on the build Mac (clean-Mac test). Write it as that list, with the check
+  beside each story, and it stops being a memoir.
 
-## 🧹 Fill-in — polish debts (between the rocks)
+### Ground rules (unchanged)
+
+- **A failed canary blocks an engine *update*, never a game that already works.**
+- **The top of the ladder is people, not CI.** Frame-present and real-game
+  evidence come from real Macs. A canary result never claims "Tested:".
+- **Evidence over verdicts.** Every label can say why.
+
+### Launch track (runs beside the slices, waits on the owner)
+
+- **Name and logo.** The rename can't start until a name is chosen.
+- **Signing and notarization.** Needs a paid Apple Developer account. Until
+  then a download needs the quarantine flag cleared by hand.
+- **D3DMetal sourcing.** Fable never hosts Apple's framework; it arrives
+  inside Sikarugir's template download. Decide whether that is acceptable
+  for a public launch.
+- **Data licence** for recipes and evidence (CC BY-SA was the suggestion).
+- **Clean-Mac test** of setup with no Homebrew and no Rosetta.
+
+## 🌱 Ongoing — grow the recipe catalog
+
+Eight catalog entries. The intake pipe (Share This Setup) exists but the
+catalog is thin. Every game tuned becomes a recipe, on the backend it was
+actually tested on. Never fake a "Tested:".
+
+## 📎 FRICL in full (reference)
+
+*Adopted 2026-11-11 as a north star, not a sprint plan.* Built from the proposal
+"Fable Runtime Integrity & Compatibility Lab".
+
+Fable should **know** which runtime each bottle uses, **prove** that runtime is
+intact, and **say how sure it is** that a setup works. "Installed" is not
+"working", and a version string is not proof of compatibility. A bottle
+manager that only pairs a prefix with whatever Wine is installed can't do
+this. That is the gap this direction closes.
+
+Four capabilities, in this order:
+
+1. **Runtime identity and pinning.** Each bottle records which engine and
+   renderer it uses (with a schema version) and a policy: pinned, follow the
+   default, or managed. **Shipped in v1.2** as `BottleRuntime` (pinned or
+   follow-newest).
+2. **Integrity manifests.** Record hashes and layout for each installed engine
+   and renderer, checked before launch. Build them from what already exists:
+   SHA-pinned downloads in `versions.json`, staged and atomic installs in
+   `ComponentManager`, and the assembly markers.
+3. **Compatibility canaries.** Run in disposable prefixes (APFS clones) and
+   climb a validation ladder:
+   - starts
+   - `wineboot`
+   - DLL resolution
+   - device creation
+   - frame present
+   - a real game
+
+   Results are Passed / Failed / Skipped / Unsupported / Inconclusive.
+   **Skipped is never Passed.** **Test D3D12 through D3DMetal first and D3D11
+   second.** That is where Fable's real failures have been: the `dxgi` ABI
+   break on Wine 11 and the renderer libraries that had to stay symlinks. The
+   mingw toolchain from the installer work can build the canary executables.
+4. **Targeted recovery.** Repair or roll back one component as a transaction.
+   This comes last, once there is run history showing what actually needs
+   recovering.
+
+The Lab UI and a CLI come after all four.
+
+**Ground rules**
+- **A failed canary blocks an engine *update*, never a game that already works.**
+  The lab exists to remove friction, not add it.
+- **The top of the ladder is people, not CI.** Frame-present and real-game
+  evidence can't run on hosted Mac runners. It comes from real Macs: yours,
+  friends', and later community recipes. A canary result never claims "Tested:".
+- **Confidence labels:** known-good, validated runtime, plausible, experimental,
+  unsupported. Smart Bottle and the Doctor read them through the compatibility
+  database.
+
+**How it rides the existing pipeline:** it is not a separate track. Each release
+carries a slice:
+- **v1.2** — runtime identity and pinning. It lands before the Homebrew-free
+  engine work starts switching engines.
+- **v1.3** — manifests and the first canary, with canary evidence stored in the
+  versioned compatibility database next to performance capture.
+- **v1.4** — undo for "no-magic mode", which is a lightweight form of recovery.
+- **Later** — community recipes become real-game evidence, and the Lab UI and
+  CLI are built when run history justifies them.
+
+## 🧹 Fill-in — polish debts
+
+*Carried over from the v0.23.3 roadmap and not re-audited since; some may
+already be done.*
 
 - **Last toolbar wedge** — bottle-page pencil/trash still float into the Gamer
   titlebar (same class fixed for Settings in v0.18.0). Finish the cleanup.
@@ -144,69 +255,6 @@ out-automate. **Target: ~12 recipes by month end.** Never fake a "Tested:".
   x86_64. Prerequisite for adopting an ARM64-native Wine if one ships; plan and
   triggers in [FEX-MIGRATION.md](FEX-MIGRATION.md).
 
-## 🧭 Long-term direction — Runtime Integrity & Compatibility Lab (FRICL)
-
-*Adopted 2026-11-11 as a north star, not a sprint plan.* Built from the proposal
-"Fable Runtime Integrity & Compatibility Lab".
-
-Fable should **know** which runtime each bottle uses, **prove** that runtime is
-intact, and **say how sure it is** that a setup works. "Installed" is not
-"working", and a version string is not proof of compatibility. A bottle
-manager that only pairs a prefix with whatever Wine is installed can't do
-this. That is the gap this direction closes.
-
-Four capabilities, in this order:
-
-1. **Runtime identity and pinning.** Each bottle records which engine and
-   renderer it uses (with a schema version) and a policy: pinned, follow the
-   default, or managed. **There is a gap here today.** `Bottle` stores only
-   `graphicsBackend`, and Sikarugir's `installedDirectory()` resolves to the
-   newest engine, so an engine update silently moves every bottle, including
-   ones that worked.
-2. **Integrity manifests.** Record hashes and layout for each installed engine
-   and renderer, checked before launch. Build them from what already exists:
-   SHA-pinned downloads in `versions.json`, staged and atomic installs in
-   `ComponentManager`, and the assembly markers.
-3. **Compatibility canaries.** Run in disposable prefixes (APFS clones) and
-   climb a validation ladder:
-   - starts
-   - `wineboot`
-   - DLL resolution
-   - device creation
-   - frame present
-   - a real game
-
-   Results are Passed / Failed / Skipped / Unsupported / Inconclusive.
-   **Skipped is never Passed.** **Test D3D12 through D3DMetal first and D3D11
-   second.** That is where Fable's real failures have been: the `dxgi` ABI
-   break on Wine 11 and the renderer libraries that had to stay symlinks. The
-   mingw toolchain from the installer work can build the canary executables.
-4. **Targeted recovery.** Repair or roll back one component as a transaction.
-   This comes last, once there is run history showing what actually needs
-   recovering.
-
-The Lab UI and a CLI come after all four.
-
-**Ground rules**
-- **A failed canary blocks an engine *update*, never a game that already works.**
-  The lab exists to remove friction, not add it.
-- **The top of the ladder is people, not CI.** Frame-present and real-game
-  evidence can't run on hosted Mac runners. It comes from real Macs: yours,
-  friends', and later community recipes. A canary result never claims "Tested:".
-- **Confidence labels:** known-good, validated runtime, plausible, experimental,
-  unsupported. Smart Bottle and the Doctor read them through the compatibility
-  database.
-
-**How it rides the existing pipeline:** it is not a separate track. Each release
-carries a slice:
-- **v1.2** — runtime identity and pinning. It lands before the Homebrew-free
-  engine work starts switching engines.
-- **v1.3** — manifests and the first canary, with canary evidence stored in the
-  versioned compatibility database next to performance capture.
-- **v1.4** — undo for "no-magic mode", which is a lightweight form of recovery.
-- **Later** — community recipes become real-game evidence, and the Lab UI and
-  CLI are built when run history justifies them.
-
 ## 🅿️ Parked (with reasons — don't chase)
 
 - **#82 newer Apple GPTK** (the EFT-launcher finish): blocked *externally* —
@@ -215,8 +263,9 @@ carries a slice:
   2026-08-04:** FEX translates 32-bit x86 and plugs into Wine's WoW64 as
   `libwow64fex.dll`, so a FEX-era backend retires this without Apple shipping
   anything — see [FEX-MIGRATION.md](FEX-MIGRATION.md) Phase 2.
-- **Notarization / auto-update** — 2.0, gated by a paid Developer ID, not
-  effort. Bolts on without rework when the goal changes.
+- **007 First Light recipe**, **Smart Doctor** (an optional local model
+  behind the Doctor), the **installer follow-ups** (old Inno Setup and repack
+  unpackers on the installer engine) — parked by the owner in November 2026.
 - **Absolute Drift / Unity D3DMetal present bug**, **d9vk** — research-grade;
   only if a dull evening wants it.
 - **GOG Galaxy / Lutris importers**, **Steam-launched playtime** — additive.
