@@ -1,10 +1,11 @@
 import SwiftUI
 
-/// Mandatory onboarding step: detect Apple's D3DMetal (sourced from the free
-/// Sikarugir) — the engine behind Fable's flagship backend that renders Steam
-/// and D3D12 games — show its version, and offer set-up / update, or guide
-/// installing Sikarugir. An informed "continue without" escape keeps the app
-/// usable for someone who only wants old D3D9 games (which don't need it).
+/// Mandatory onboarding step: set up the engine behind Fable's flagship
+/// backend — Sikarugir's Wine 10 with Apple's D3DMetal, which renders Steam
+/// and D3D12 games. Fable downloads it itself (checksum-pinned, from
+/// Sikarugir's GitHub releases), so nothing here needs Homebrew, Terminal or
+/// another app. An informed "continue without" escape keeps the app usable
+/// for someone who only wants old D3D9 games (which don't need it).
 struct D3DMetalSetupStep: View {
     @EnvironmentObject private var onboardingState: OnboardingState
     @EnvironmentObject private var sikarugirManager: SikarugirManager
@@ -27,23 +28,9 @@ struct D3DMetalSetupStep: View {
                     .font(.callout).foregroundStyle(.secondary)
                     .multilineTextAlignment(.center).padding(.horizontal, 44)
             }
-            if case .missing = status, SikarugirInstaller.isHomebrewInstalled {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Fable will run:").font(.caption).foregroundStyle(.secondary)
-                    ForEach(installCommands, id: \.self) { command in
-                        Text(verbatim: command)
-                            .font(.system(.caption, design: .monospaced))
-                            .textSelection(.enabled)
-                    }
-                }
-                .padding(12)
-                .frame(maxWidth: 460, alignment: .leading)
-                .background(RoundedRectangle(cornerRadius: 8).fill(.quaternary.opacity(0.4)))
-                .padding(.top, 4)
-            }
             if let installStep {
                 Text(installStep)
-                    .font(.system(.caption, design: .monospaced))
+                    .font(.caption)
                     .foregroundStyle(.secondary)
             }
             if isWorking { ProgressView().controlSize(.small).padding(.top, 4) }
@@ -51,10 +38,8 @@ struct D3DMetalSetupStep: View {
             Spacer()
             footer.padding(24)
         }
-        // Setup happens in another app, so the moment it finishes is invisible
-        // from here. Poll while this step is on screen: the user comes back
-        // from Sikarugir to a step that has already moved on, instead of
-        // staring at a stale message hunting for a re-check button.
+        // The engine can also be set up from a bottle page while this step is
+        // on screen, so poll rather than trusting the state read on appear.
         .task {
             refresh()
             while !Task.isCancelled {
@@ -93,20 +78,12 @@ struct D3DMetalSetupStep: View {
         case .updateAvailable(let installed, let available):
             "D3DMetal \(SikarugirManager.displayVersion(installed)) is set up — a newer \(SikarugirManager.displayVersion(available)) is available."
         case .notInstalled(let available):
-            "Sikarugir \(SikarugirManager.displayVersion(available)) found. Set it up so Fable can render Steam and D3D12 games."
-        case .incomplete:
-            "Sikarugir is installed but hasn't downloaded its graphics engine yet — it does that the first time you open it. Open Sikarugir, wait for it to finish, and this step will continue on its own."
-        case .missing:
-            SikarugirInstaller.isHomebrewInstalled
-                ? "To run Steam and modern games, Fable needs a graphics engine that comes from Sikarugir. Fable can install it for you — it takes a few minutes and Fable handles the rest. Older DirectX 9 games work without it."
-                : "To run Steam and modern games, Fable needs a graphics engine that comes from Sikarugir, which is distributed through Homebrew. Install Homebrew from brew.sh first, then come back and Fable will do the rest. Older DirectX 9 games work without it."
+            "To run Steam and modern games, Fable downloads a graphics engine: Sikarugir's Wine \(SikarugirManager.displayVersion(available)) with Apple's D3DMetal, about 270 MB. It stays inside Fable's own folder. Older DirectX 9 games work without it."
+        case .incomplete, .missing:
+            // Only reachable when the version catalog has no engine entry.
+            "This copy of Fable has no graphics engine to download. Older DirectX 9 games still work; update Fable to run Steam and modern games."
         }
     }
-
-    /// Shown before anything runs. This installs third-party software
-    /// system-wide, so the commands are on screen rather than hidden behind a
-    /// spinner — and they're the same ones Sikarugir's own README gives.
-    private var installCommands: [String] { SikarugirInstaller.commands }
 
     @ViewBuilder
     private var footer: some View {
@@ -119,37 +96,16 @@ struct D3DMetalSetupStep: View {
                     .buttonStyle(.borderedProminent).keyboardShortcut(.defaultAction)
             case .notInstalled:
                 Button("Continue without it") { onboardingState.advance() }
-                Button("Set Up D3DMetal") { setUp() }
+                Button("Download Engine") { setUp() }
                     .buttonStyle(.borderedProminent).disabled(isWorking).keyboardShortcut(.defaultAction)
             case .updateAvailable:
                 Button("Update") { setUp() }.disabled(isWorking)
                 Button("Continue") { onboardingState.advance() }
                     .buttonStyle(.borderedProminent).keyboardShortcut(.defaultAction)
-            case .incomplete:
+            case .incomplete, .missing:
+                Button("Re-check") { refresh() }
                 Button("Continue without it") { onboardingState.advance() }
-                if let app = SikarugirManager.appLocation {
-                    Button("Open Sikarugir") { NSWorkspace.shared.open(app) }
-                        .buttonStyle(.borderedProminent).keyboardShortcut(.defaultAction)
-                } else {
-                    Button("Re-check") { refresh() }
-                        .buttonStyle(.borderedProminent).keyboardShortcut(.defaultAction)
-                }
-            case .missing:
-                Button("Continue without it") { onboardingState.advance() }
-                if SikarugirInstaller.isHomebrewInstalled {
-                    Button("Install Sikarugir") { installSikarugir() }
-                        .buttonStyle(.borderedProminent)
-                        .disabled(isWorking)
-                        .keyboardShortcut(.defaultAction)
-                } else {
-                    // Sikarugir ships only as a Homebrew cask — it publishes no
-                    // releases and no app to download — so without Homebrew
-                    // there is nothing for Fable to install from.
-                    Button("Get Homebrew") {
-                        NSWorkspace.shared.open(URL(string: "https://brew.sh")!)
-                    }
                     .buttonStyle(.borderedProminent).keyboardShortcut(.defaultAction)
-                }
             }
         }
     }
@@ -161,34 +117,15 @@ struct D3DMetalSetupStep: View {
         status = sikarugirManager.d3dMetalStatus()
     }
 
-    /// Runs the cask install, then continues straight into extracting the
-    /// engine — from the user's side this is one action, not two.
-    private func installSikarugir() {
-        isWorking = true
-        errorText = nil
-        Task {
-            defer { isWorking = false; installStep = nil }
-            do {
-                try await SikarugirInstaller.install { installStep = $0 }
-                // Sikarugir fetches its engine on first launch, so opening it
-                // is part of installing it, not a separate chore for the user.
-                if let app = SikarugirManager.appLocation {
-                    NSWorkspace.shared.open(app)
-                }
-            } catch {
-                errorText = error.localizedDescription
-            }
-            refresh()
-        }
-    }
-
     private func setUp() {
         isWorking = true
         errorText = nil
+        installStep = L10n.string("engine.setup.downloading")
         Task {
             do { try await sikarugirManager.ensureInstalled() }
             catch { errorText = error.localizedDescription }
             isWorking = false
+            installStep = nil
             refresh()
         }
     }

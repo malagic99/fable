@@ -85,9 +85,9 @@ Pick per bottle (or per game); Smart Bottle suggests the right one.
 - **Rosetta 2** — Windows games are x86; install with
   `softwareupdate --install-rosetta`
 - A few hundred MB for components, plus your games
-- For the D3DMetal-backed paths (Sikarugir / GPTK), Apple's D3DMetal framework
-  is sourced from a Game Porting Toolkit / Sikarugir install on your machine —
-  it isn't redistributable, so Fable harvests it locally rather than bundling it.
+- For the D3DMetal-backed paths (Sikarugir / GPTK), Fable doesn't bundle
+  Apple's D3DMetal framework. It comes inside Sikarugir's template, which
+  Fable downloads from Sikarugir's own releases — no Homebrew, no Terminal.
 
 ## Installing
 
@@ -115,7 +115,7 @@ cd fable
 `swift run` works for development; `swift test` runs the suite (~400 tests,
 also run in CI on every PR; swift-testing is pulled as a pinned SwiftPM
 dependency because CLT ships neither XCTest nor swift-testing). `make-app.sh`
-embeds `innoextract` if Homebrew's copy is present.
+embeds `innoextract` and `cabextract` if Homebrew's copies are present.
 
 Contributor notes live in `docs/`: [ARCHITECTURE.md](docs/ARCHITECTURE.md)
 (why the stack is shaped this way — read before touching Wine/backend code),
@@ -143,8 +143,8 @@ already-extracted files into place and writing the Steam manifest.
   macOS Wine. Smart Bottle flags these before you waste time.
 - **Very large Steam downloads** (tens of GB, many depots) can be slow, since
   Steam's scheduler can starve the shared redistributables on the WoW64 stack.
-- **D3DMetal sourcing** — the Sikarugir/GPTK backends need Apple's
-  (non-redistributable) D3DMetal, acquired from a local GPTK/Sikarugir install.
+- **D3DMetal sourcing** — the Sikarugir backends get Apple's D3DMetal from
+  Sikarugir's template download; Fable itself never ships it.
 - Ad-hoc signed: a downloaded copy needs the `xattr` step above until notarized.
 
 ## License & credits

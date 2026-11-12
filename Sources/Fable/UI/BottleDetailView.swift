@@ -734,6 +734,9 @@ struct BottleDetailView: View {
                 case .sikarugir:
                     // Extracts Sikarugir's wine-10.0 engine + overlays its
                     // d3dmetal renderer into Fable's components (one-time).
+                    if !sikarugirManager.isInstalled {
+                        toastCenter.success(L10n.string("engine.setup.downloading"))
+                    }
                     try await sikarugirManager.ensureInstalled()
                 case .sikarugir11:
                     // Downloads Sikarugir's Wine 11 engine + template and

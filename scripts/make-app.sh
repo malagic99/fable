@@ -56,6 +56,19 @@ plutil -replace CFBundleLocalizations -json "[${LANGS}]" "$APP/Contents/Info.pli
 # Embed innoextract for GOG installer extraction (no-op if not installed).
 "$(dirname "$0")/bundle-innoextract.sh" "$APP"
 
+# Embed cabextract: winetricks needs it for fonts and runtimes, and stock
+# macOS has none — without it the first Steam bottle fails on a Mac with no
+# Homebrew. Homebrew's build links only system libraries, so it's one file.
+CABEXTRACT="${CABEXTRACT:-/opt/homebrew/bin/cabextract}"
+if [[ -x "$CABEXTRACT" ]] && ! otool -L "$CABEXTRACT" | awk 'NR>1 {print $1}' | grep -qE '^/opt/homebrew|^/usr/local'; then
+    cp "$CABEXTRACT" "$APP/Contents/MacOS/cabextract"
+    chmod 755 "$APP/Contents/MacOS/cabextract"
+    codesign --force --sign - "$APP/Contents/MacOS/cabextract"
+    echo "Bundled cabextract"
+else
+    echo "cabextract not bundled (missing, or it links Homebrew libraries) — winetricks falls back to the user's PATH"
+fi
+
 # Ad-hoc signature so macOS will launch it locally without a developer cert.
 codesign --force --sign - "$APP"
 

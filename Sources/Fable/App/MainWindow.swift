@@ -54,7 +54,8 @@ struct FableApp: App {
             catalog: appState.versionCatalog
         ))
         _sikarugirManager = StateObject(wrappedValue: SikarugirManager(
-            componentManager: componentManager
+            componentManager: componentManager,
+            catalog: appState.versionCatalog
         ))
         _sikarugir11Manager = StateObject(wrappedValue: Sikarugir11Manager(
             componentManager: componentManager,

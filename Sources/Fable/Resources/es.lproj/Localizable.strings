@@ -554,3 +554,7 @@
 "Remove Unused Engines…" = "Eliminar motores sin usar…";
 "Unused Engine Versions" = "Versiones de motor sin usar";
 "Remove" = "Eliminar";
+
+/* Graphics engine setup (Homebrew-free) */
+"Download Engine" = "Descargar motor";
+"engine.setup.downloading" = "Descargando y configurando el motor… unos 270 MB.";

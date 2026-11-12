@@ -24,6 +24,18 @@
             "url": "https://github.com/3Shain/dxmt/releases/download/v0.80/dxmt-v0.80-builtin.tar.gz",
             "sha256": "8f260e36b5739e68f3bad613381441385c4dc7b85b78ba8de653d5a6a264529d"
         },
+        "sikarugir": {
+            "name": "Sikarugir Wine 10 engine",
+            "version": "WS12WineSikarugir10.0_4",
+            "url": "https://github.com/Sikarugir-App/Engines/releases/download/v1.0/WS12WineSikarugir10.0_4.tar.xz",
+            "sha256": "1a8036e5dfc6cd55c5bdbeae5f57cea0bc754f6a91924a269e6f8f7d5d695f60"
+        },
+        "sikarugir-template-wine10": {
+            "name": "Sikarugir template for Wine 10 (D3DMetal renderer)",
+            "version": "1.0.10",
+            "url": "https://github.com/Sikarugir-App/Template/releases/download/v1.0/Template-1.0.10.tar.xz",
+            "sha256": "7eaa983dbe3d670705e594f7910ab5f260ec4c90512b61a80763778395ad6466"
+        },
         "sikarugir11": {
             "name": "Sikarugir Wine 11 engine",
             "version": "11.0_1",

@@ -144,26 +144,4 @@ struct SikarugirSetupStatusTests {
             discovered: true, available: v, installed: v, sikarugirPresent: true)
             == .ready(version: v))
     }
-
-    /// Sikarugir publishes no releases and no downloadable app — it exists
-    /// only as a Homebrew cask behind a `brew trust` for its tap. Pointing a
-    /// non-technical user at its GitHub page lands them on an empty Releases
-    /// tab, which is what shipped in v0.23.5.
-    @Test
-    func installUsesTheHomebrewCaskSikarugirActuallyShips() {
-        let commands = SikarugirInstaller.commands
-        #expect(commands.count == 2)
-        // The tap has to be trusted before its cask will install.
-        #expect(commands[0].contains("trust"))
-        #expect(commands[1].contains("--cask"))
-        #expect(commands.allSatisfy { $0.hasPrefix("brew ") })
-        #expect(commands.contains { $0.contains("Sikarugir-App/sikarugir") })
-    }
-
-    /// Without Homebrew there is nothing to install from, so the flow has to
-    /// say so rather than offering an action that cannot work.
-    @Test
-    func homebrewDetectionDrivesWhatIsOffered() {
-        #expect(SikarugirInstaller.isHomebrewInstalled == (SikarugirInstaller.homebrew != nil))
-    }
 }
