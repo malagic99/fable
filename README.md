@@ -82,8 +82,8 @@ Pick per bottle (or per game); Smart Bottle suggests the right one.
 ## Requirements
 
 - Apple Silicon Mac, macOS 14+
-- **Rosetta 2** — Windows games are x86; install with
-  `softwareupdate --install-rosetta`
+- **Rosetta 2** — Windows games are x86. Fable's setup installs it for you
+  if this Mac doesn't have it yet
 - A few hundred MB for components, plus your games
 - For the D3DMetal-backed paths (Sikarugir / GPTK), Fable doesn't bundle
   Apple's D3DMetal framework. It comes inside Sikarugir's template, which

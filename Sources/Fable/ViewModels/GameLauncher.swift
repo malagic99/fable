@@ -4,6 +4,7 @@ enum GameLaunchError: LocalizedError {
     case executableMissing(String)
     case executableOutsideBottle(String)
     case runtimeConflict(String)
+    case rosettaMissing
     case notConfigured
     case steamBridgeNeedsSikarugir
     case steamBridgeNotReady(String)
@@ -17,6 +18,8 @@ enum GameLaunchError: LocalizedError {
             "The game's executable is missing from the bottle (C:\\\(path.replacingOccurrences(of: "/", with: "\\")))."
         case .executableOutsideBottle(let path):
             "The game's executable path (\(path)) points outside the bottle, so Fable won't launch it. Remove the game and add it again from inside the bottle."
+        case .rosettaMissing:
+            L10n.string("rosetta.missing_at_launch")
         case .runtimeConflict(let bottle):
             "Another game in “\(bottle)” is running on a different Wine runtime. Stop it first — one bottle can't run two Wine versions at once."
         case .notConfigured:
@@ -769,6 +772,11 @@ final class GameLauncher: ObservableObject {
         if conflicting {
             throw GameLaunchError.runtimeConflict(bottle.name)
         }
+
+        // Without Rosetta the engine can't start at all, and the system's
+        // own error ("Bad CPU type in executable") names neither the cause
+        // nor the fix.
+        guard Rosetta.isInstalled() else { throw GameLaunchError.rosettaMissing }
 
         let process = try ProcessRunner.start(
             plan.wine,

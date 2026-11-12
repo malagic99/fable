@@ -451,7 +451,8 @@ private struct AboutTab: View {
         Form {
             Section {
                 HStack {
-                    LabeledContent("Fable", value: appVersion)
+                    LabeledContent("Fable", value: BuildInfo.versionLabel(appVersion))
+                        .help(L10n.string("about.build_source.help"))
                     Spacer()
                     if appUpdateChecker.isChecking {
                         ProgressView().controlSize(.small)
