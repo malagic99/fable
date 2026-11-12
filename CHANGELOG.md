@@ -1,5 +1,65 @@
 # Changelog
 
+## v1.2.0 — 2026-11-12
+
+**No Terminal before your first game, and labels that say only what Fable knows.**
+
+- **Setup needs no Homebrew and no Terminal.** The main engine (Sikarugir's
+  Wine 10 with D3DMetal, the one that runs Steam) used to be copied out of
+  the Sikarugir app, which can only be installed through Homebrew. Fable now
+  downloads the engine and its renderer itself from Sikarugir's GitHub
+  releases (about 270 MB, pinned by SHA-256). A fresh download was compared
+  with a working engine installed the old way: all 4,733 files are identical.
+  Fable also carries its own copy of `cabextract`, which the first Steam
+  bottle needs to install fonts and which macOS doesn't include. If you
+  already have the engine, nothing is downloaded again. Still needing
+  Homebrew: building the optional native Steam bridge.
+
+- **Rosetta is installed for you.** Windows games need Apple's Rosetta, and a
+  Mac that has never run an Intel app doesn't have it. The setup wizard now
+  offers to install it with Apple's own installer (no password; it tells you
+  this accepts Apple's Rosetta licence) instead of sending you to Terminal,
+  and launching a game without it gives a plain message. Not tested on a Mac
+  without Rosetta — the test Mac has it and it can't be removed.
+
+- **A bottle stays on the engine it works with.** Until now an engine update
+  silently moved every bottle to the new version, and Wine upgrades a bottle
+  one way. Each bottle now remembers its engine version and keeps it. The
+  bottle page has an **Engine** section: when a newer engine is installed it
+  offers **Move to Newer Engine…**, which first keeps a copy of the bottle
+  as it was. **Always Use the Newest Engine** brings the old behaviour back
+  per bottle. The Components tab lists engine versions no bottle uses, with
+  their size, and removes them only when you ask. Each game log starts with
+  the engine versions it ran on. Limits: the Wine 11 renderer is recorded
+  but not pinned, CrossOver isn't pinned, and desktop shortcuts made before
+  a move still point at the old engine.
+
+- **Labels tied to their evidence.** Three places a label claimed more than
+  Fable knew:
+  - "Verified" appeared whenever a tested setup existed for a game, whatever
+    backend the bottle was on. Ace Combat 8 is tested on Sikarugir 11 and
+    crashes on Wine 10, yet a Wine 10 bottle showed the green tick. It now
+    reads "works with tweaks" and names the backend the tested setup uses.
+  - "Played on this Mac" counted play time on an engine the bottle had since
+    moved off. Play time is now kept per engine; only time on the engine in
+    use counts. Existing play time is filed under the engine each bottle
+    uses today.
+  - A game could read "Played on this Mac" on its cover and "untested" in
+    the panel beside it. Both now agree, and the panel says why — for
+    example "Played 2h on this Mac with Sikarugir (Wine 10) 10.0_4, no crash
+    recorded. Not checked for visual problems."
+
+- **You can check what you downloaded.** Settings → About and feedback
+  reports show the source commit a copy of Fable was built from. Each
+  release now ships a small record beside the download with its SHA-256 and
+  that commit, and the release notes say how to check it. This is Fable's own
+  record, not a third-party attestation, and the app is still ad-hoc signed.
+
+- **Fixes.** Fable picked the "newest" installed engine by sorting names as
+  text, so 11.9 would have beaten 11.10. It compares numbers now. The notices
+  and README said Fable never downloads Apple's D3DMetal; since v1.1.0 it
+  arrives inside Sikarugir's template download, and they now say so.
+
 ## v1.1.1 — 2026-11-11
 
 **Fewer surprises — from a (simulated) user panel's sharpest notes.**
