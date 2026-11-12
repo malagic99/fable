@@ -74,6 +74,46 @@ One slice per release. Each one must leave working bottles alone.
    new engine first. Labels gain a level between "untested" and "played":
    the runtime is validated, the game isn't.
 
+### Known gap from v1.2: engine assembly needs Apple's developer tools
+
+Found 2026-11-12, after v1.2.0 shipped. Assembling an engine calls
+`/usr/bin/otool` and `/usr/bin/install_name_tool` (to add the rpath that lets
+`d3d12.so` reach D3DMetal) — in `SikarugirManager`, `Sikarugir11Manager` and
+`InstallerEngineManager`. On a Mac without Xcode's Command Line Tools those
+two are stubs that pop Apple's "install developer tools" dialog and fail.
+The Wine 10 path ignores that failure, so the engine installs and D3D12 games
+then die at adapter creation. Every Mac Fable has been tested on had the
+tools (Homebrew installs them). **Fix before anything else in v1.3**, and it
+is exactly the kind of fault the device-creation canary exists to catch.
+
+### How the parked items fit
+
+They are not side quests; each is a later consumer or a source of evidence.
+
+- **Smart Doctor** is FRICL's "Game Doctor reads evidence" step with a model
+  on top. It needs what v1.3 produces: a case file is only as good as the
+  facts in it, and "which engine, is it intact, did the canary pass on it"
+  are the facts a rule or a model can't get from a log. Order: the rule
+  engine reads identity and canary results (v1.3–v1.4); the on-device and
+  cloud tiers come after, in "Later". Its community-fix sharing is the same
+  thing as FRICL's community recipes — real-game evidence, rung 7 of the
+  ladder — so build it once.
+- **Installer follow-ups.** The installer engine is a runtime like the
+  others, and v1.3 should treat it as one: it gets a manifest, and it gets
+  its own canary (a 32-bit program runs — the failure the engine exists to
+  avoid). The untested cases (old Inno Setup, repack unpackers) are
+  real-installer evidence and go in the compatibility record with a result
+  each, not into a "works" claim. The install-coalescing follow-up is done
+  for the Wine 10 and 11 engines; the developer-tools dependence is the gap
+  above.
+- **History handbook.** The written record of how each hard failure was
+  found is the canary backlog. Each entry names a fault a check should catch
+  from now on: the renderer libraries that had to stay symlinks (manifest:
+  symlink targets), the missing `d3d12.so` rpath (canary: device creation),
+  the `dxgi` break on Wine 11 (canary: DLL load), the app that only launched
+  on the build Mac (clean-Mac test). Write it as that list, with the check
+  beside each story, and it stops being a memoir.
+
 ### Ground rules (unchanged)
 
 - **A failed canary blocks an engine *update*, never a game that already works.**
