@@ -88,8 +88,25 @@ struct BottleRuntime: Codable, Hashable, Sendable {
         key.split(separator: ",").map { part -> String in
             let pair = part.split(separator: "=", maxSplits: 1).map(String.init)
             guard pair.count == 2 else { return String(part) }
-            return "\(BottleEngineSection.displayName(for: pair[0])) \(BottleEngineSection.displayVersion(pair[1], for: pair[0]))"
+            return "\(displayName(forComponent: pair[0])) \(displayVersion(pair[1], forComponent: pair[0]))"
         }.joined(separator: " + ")
+    }
+
+    /// What an engine component is called in the interface. Lives with the
+    /// model, not a view, so it can be used off the main actor.
+    static func displayName(forComponent componentID: String) -> String {
+        switch componentID {
+        case WineManager.componentID: "Wine"
+        case GPTKManager.componentID: "Game Porting Toolkit"
+        case SikarugirManager.componentID: "Sikarugir (Wine 10)"
+        case Sikarugir11Manager.engineComponentID: "Sikarugir (Wine 11)"
+        case Sikarugir11Manager.templateComponentID: L10n.string("engine.renderer")
+        default: componentID
+        }
+    }
+
+    static func displayVersion(_ raw: String, forComponent componentID: String) -> String {
+        componentID == SikarugirManager.componentID ? SikarugirManager.displayVersion(raw) : raw
     }
 
     /// The record after a launch that resolved `versions` on `backend`.
