@@ -1,5 +1,48 @@
 # Changelog
 
+## v1.3.0 — 2026-11-12
+
+**Fable can now check an engine and test it, instead of assuming.**
+
+- **Check Engine Files.** Fable keeps a record of every file in each engine:
+  its checksum, and where every link points. The bottle page's **Engine**
+  section has a **Check Engine Files** button that compares the bottle's
+  engine with that record and lists anything missing, changed or added.
+  Engines Fable sets up from now on are recorded the moment they're ready.
+  Engines already on your Mac get a record the first time this version
+  starts (about 18 seconds for five engines, in the background) — and the
+  result says plainly that such a record shows nothing has changed since,
+  not that the engine was right to begin with. Nothing is checked before
+  each launch, and a failed check lists the differences but doesn't repair
+  them yet. The records catch damage and accidents, not someone with access
+  to your Mac who changes both an engine and its record.
+
+- **Test Engine.** A small Windows test program, run on the bottle's engine
+  inside a throwaway bottle of its own — yours is never touched. It checks
+  five things in order: Wine starts and runs a Windows program, the
+  Direct3D libraries load, a DirectX 12 device is created, a graphics
+  adapter is reported, a DirectX 11 device is created. On the main engine
+  (M4 Pro) all five pass in about 7 seconds. With Apple's renderer removed
+  from a copy of the engine, the engine hangs and the test reports the
+  "libraries load" check as failed. A check that wasn't reached is shown as
+  "not reached", never as passed, and the result always says it shows the
+  engine works on this Mac — not that any particular game does.
+  Works on the Sikarugir (Wine 10 and Wine 11) and GPTK engines; only the
+  Wine 10 engine has been run through the app. DXMT, DXVK and CrossOver
+  can't be tested this way yet and say so. It doesn't draw a frame.
+
+- **A move to a newer engine is checked first.** **Move to Newer Engine…**
+  now checks the new engine's files and runs the test on it before moving
+  the bottle, and refuses to move onto an engine that fails either. A
+  bottle that works where it is is never blocked. Not seen in practice yet:
+  no newer engine was installed on the test Mac.
+
+- **Correction to v1.2.1.** Its notes said DirectX 12 games would fail on
+  the main engine on a Mac without Apple's developer tools. The new engine
+  test, run on exactly that state, created DirectX 12 and 11 devices anyway.
+  The real failures were the Sikarugir 11 and installer engines. The v1.2.1
+  notes carry the correction.
+
 ## v1.2.1 — 2026-11-12
 
 **Engines set up correctly on a Mac with no developer tools.**
