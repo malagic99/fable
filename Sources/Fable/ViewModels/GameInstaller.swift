@@ -114,7 +114,7 @@ final class GameInstaller: ObservableObject {
             if cancelRequested || Task.isCancelled { throw CancellationError() }
             compat = CompatibilityRuntime.discover()
         }
-        let wine = try compat?.wineBinary ?? wineManager.wineBinary()
+        let wine = try compat?.wineBinary ?? wineManager.wineBinary(forPrefix: prefix)
         if let compat {
             environment.merge(compat.environment) { _, new in new }
         }

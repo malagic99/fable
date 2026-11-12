@@ -71,6 +71,8 @@ struct ComponentsView: View {
                 }
             }
 
+            UnusedEnginesSection()
+
             if let error = updateManager.lastError {
                 Section {
                     Text(error)

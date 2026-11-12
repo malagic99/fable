@@ -38,7 +38,7 @@ enum SikarugirError: LocalizedError {
 final class SikarugirManager: ObservableObject {
     let componentManager: ComponentManager
 
-    static let componentID = "sikarugir"
+    nonisolated static let componentID = "sikarugir"
 
     /// D3D DLLs D3DMetal provides as Wine builtins. Forced builtin at
     /// launch so any native DLLs in the prefix don't shadow them.
@@ -120,9 +120,10 @@ final class SikarugirManager: ObservableObject {
         }
     }
 
-    /// The D3DMetal version Fable has extracted (newest installed component dir).
+    /// The engine version Fable has extracted (newest installed component dir,
+    /// whatever any bottle is pinned to).
     func installedVersion() -> String? {
-        componentManager.installedDirectory(for: Self.componentID)?.lastPathComponent
+        componentManager.newestInstalledDirectory(for: Self.componentID)?.lastPathComponent
     }
 
     /// Resolves onboarding status from what's discovered vs. installed. Pure, so
@@ -212,14 +213,14 @@ final class SikarugirManager: ObservableObject {
         // Steam text, libgnutls = no QR/online) without a full reinstall.
         if isInstalled, installedVersion() == version {
             try? backfillSupportLibs()
-            let existingLib = componentManager.installedDirectory(for: Self.componentID)!
+            let existingLib = componentManager.newestInstalledDirectory(for: Self.componentID)!
                 .appending(path: "wswine.bundle/lib", directoryHint: .isDirectory)
             try? await Self.patchD3DMetalRpath(lib: existingLib)
             return
         }
         // Otherwise this is a fresh install OR an update to a newer Sikarugir —
-        // extract into its own version dir; installedDirectory() resolves to the
-        // newest, so an update takes effect on the next launch.
+        // extract into its own version dir. Bottles pinned to the old version
+        // stay on it (BottleRuntime); new and unpinned bottles get this one.
 
         let installRoot = AppPaths.components
             .appending(path: Self.componentID, directoryHint: .isDirectory)

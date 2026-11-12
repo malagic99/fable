@@ -32,7 +32,7 @@ final class UpdateManager: ObservableObject {
 
     /// The version currently on disk for a component, if any.
     func installedVersion(of id: String) -> String? {
-        componentManager.installedDirectory(for: id)?.lastPathComponent
+        componentManager.newestInstalledDirectory(for: id)?.lastPathComponent
     }
 
     // MARK: Checking

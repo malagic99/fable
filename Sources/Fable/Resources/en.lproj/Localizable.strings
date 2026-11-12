@@ -184,3 +184,16 @@
 "launch.smart_bottle.bottle_wide" = "It also applied steady-frame-rate defaults to the whole “%@” bottle.";
 "launch.smart_bottle.change_it" = "Change it in the game's settings.";
 "launch.first_launch_shaders" = "First launch of “%@”: it compiles its shaders now, so it may sit on a black or loading screen for a few minutes. That's normal — later launches are much faster.";
+
+/* Engine pinning */
+"launch.pinned_engine_missing" = "“%1$@” is pinned to an engine that's no longer installed (%2$@), so it launched on the newest one. Its log has the details.";
+"engine.update_available" = "Newer %1$@ installed: %2$@ → %3$@";
+"engine.move.title" = "Move “%@” to the newer engine?";
+"engine.move.message" = "Fable first keeps a copy of this bottle as “%@”. If a game misbehaves on the new engine, play from the copy instead.";
+"engine.backup_name" = "%@ (before engine update)";
+"engine.moved" = "“%1$@” will use the newest engine from its next launch. The old setup is kept as “%2$@”.";
+"engine.renderer" = "D3DMetal renderer";
+"engine.unused.footer" = "No bottle uses these. Removing them frees %@.";
+"engine.unused.confirm" = "Remove %ld unused engine versions? This can't be undone.";
+"engine.unused.removed" = "Removed %ld unused engine versions.";
+"engine.unused.failed" = "Some engine versions couldn't be removed: %@";

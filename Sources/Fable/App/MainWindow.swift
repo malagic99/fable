@@ -87,6 +87,7 @@ struct FableApp: App {
                     // control then runs the same launchSmart/stopSmart flow.
                     gameLauncher.configure(.init(
                         bottleManager: bottleManager,
+                        componentManager: componentManager,
                         wineManager: wineManager,
                         gptkManager: gptkManager,
                         crossOverManager: crossOverManager,
@@ -96,6 +97,9 @@ struct FableApp: App {
                         activityMonitor: activityMonitor,
                         toastCenter: toastCenter
                     ))
+                    // Bottles from before engine pinning keep the engine they
+                    // use today instead of moving at the next engine update.
+                    gameLauncher.stampUnpinnedBottles()
                     gameLauncher.onAbnormalExit = { [weak toastCenter] message in
                         toastCenter?.error(message)
                     }

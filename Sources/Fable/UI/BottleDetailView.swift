@@ -302,6 +302,8 @@ struct BottleDetailView: View {
                 }
             }
 
+            BottleEngineSection(bottle: bottle, isBusy: isAnyGameRunning(in: bottle))
+
             Section {
                 Button("Force Kill Wine Processes…", role: .destructive) {
                     forceKill(bottle)

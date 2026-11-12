@@ -201,6 +201,9 @@ struct Bottle: Codable, Identifiable, Hashable, Sendable {
     /// Default DualSense adaptive-trigger profile for this bottle's games.
     /// A per-game override on `Game` wins over this.
     var triggerProfile: TriggerProfile
+    /// The engine versions this bottle is pinned to. nil until its first
+    /// launch stamps it (bottles from before pinning, new and imported ones).
+    var runtime: BottleRuntime?
 
     init(
         id: UUID = UUID(),
@@ -215,7 +218,8 @@ struct Bottle: Codable, Identifiable, Hashable, Sendable {
         installedWinetricksVerbs: Set<String> = [],
         retinaMode: Bool = false,
         playStationPadsAsXInput: Bool = false,
-        triggerProfile: TriggerProfile = TriggerProfile()
+        triggerProfile: TriggerProfile = TriggerProfile(),
+        runtime: BottleRuntime? = nil
     ) {
         self.id = id
         self.name = name
@@ -230,6 +234,7 @@ struct Bottle: Codable, Identifiable, Hashable, Sendable {
         self.retinaMode = retinaMode
         self.playStationPadsAsXInput = playStationPadsAsXInput
         self.triggerProfile = triggerProfile
+        self.runtime = runtime
     }
 
     private enum LegacyKeys: String, CodingKey {
@@ -270,5 +275,8 @@ struct Bottle: Codable, Identifiable, Hashable, Sendable {
         retinaMode = try container.decodeIfPresent(Bool.self, forKey: .retinaMode) ?? false
         playStationPadsAsXInput = try container.decodeIfPresent(Bool.self, forKey: .playStationPadsAsXInput) ?? false
         triggerProfile = try container.decodeIfPresent(TriggerProfile.self, forKey: .triggerProfile) ?? TriggerProfile()
+        // A record this Fable can't read must not stop the bottle loading;
+        // it gets re-stamped at the next launch.
+        runtime = try? container.decodeIfPresent(BottleRuntime.self, forKey: .runtime)
     }
 }
