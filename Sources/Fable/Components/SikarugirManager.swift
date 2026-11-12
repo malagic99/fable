@@ -283,9 +283,15 @@ final class SikarugirManager: ObservableObject {
            let existing = componentManager.newestInstalledDirectory(for: Self.componentID),
            FileManager.default.fileExists(
                atPath: existing.appending(path: Self.assembledMarker).path) {
-            try? backfillSupportLibs()
+            let backfilled = (try? backfillSupportLibs()) ?? false
             let existingLib = existing.appending(path: "wswine.bundle/lib", directoryHint: .isDirectory)
-            try? await Self.patchD3DMetalRpath(lib: existingLib)
+            let patched = (try? await Self.patchD3DMetalRpath(lib: existingLib)) ?? false
+            if backfilled || patched {
+                // A repair Fable made is not damage: the record follows it.
+                await Task.detached(priority: .utility) {
+                    RuntimeIntegrity.rerecord(root: existing, noting: ["repaired": "support libraries or rpath"])
+                }.value
+            }
             return
         }
         // Otherwise this is a fresh install OR an update to a newer engine —
@@ -352,6 +358,16 @@ final class SikarugirManager: ObservableObject {
 
         try? Data("Sikarugir D3DMetal (\(version))".utf8)
             .write(to: installRoot.appending(path: Self.assembledMarker))
+        // Record what a correct engine looks like, now that it is one.
+        var source = ["renderer": renderer.path.contains("/\(Self.templateComponentID)/") ? "catalog template" : "Sikarugir install"]
+        if let pair = catalogPair {
+            source["engineArchiveSHA256"] = pair.engine.sha256
+            source["templateVersion"] = pair.template.version
+            source["templateArchiveSHA256"] = pair.template.sha256
+        }
+        await RuntimeIntegrity.recordDetached(
+            root: installRoot, componentID: Self.componentID, version: version,
+            origin: .installed, source: source)
 
         refresh()
         // A fresh extract lays down Sikarugir's own framework, so an opted-in
@@ -366,15 +382,17 @@ final class SikarugirManager: ObservableObject {
     /// libgnutls for TLS/online). No-op once present. Lets installs made
     /// before this staging existed pick up the dylibs on next launch
     /// rather than forcing a delete-and-reinstall.
-    func backfillSupportLibs() throws {
-        guard let root = componentManager.installedDirectory(for: Self.componentID) else { return }
+    @discardableResult
+    func backfillSupportLibs() throws -> Bool {
+        guard let root = componentManager.installedDirectory(for: Self.componentID) else { return false }
         let lib = root.appending(path: "wswine.bundle/lib", directoryHint: .isDirectory)
         let freetype = lib.appending(path: "libfreetype.dylib")
         let freetype6 = lib.appending(path: "libfreetype.6.dylib")
         let fm = FileManager.default
-        guard !fm.fileExists(atPath: freetype.path), !fm.fileExists(atPath: freetype6.path) else { return }
-        guard let renderer = try? d3dMetalRenderer() else { return }
+        guard !fm.fileExists(atPath: freetype.path), !fm.fileExists(atPath: freetype6.path) else { return false }
+        guard let renderer = try? d3dMetalRenderer() else { return false }
         try Self.copyBundleSupportLibs(renderer: renderer, intoLib: lib)
+        return true
     }
 
     /// Copies the support dylibs the engine wineserver/wine64 dlopen
@@ -444,11 +462,13 @@ final class SikarugirManager: ObservableObject {
     /// dxgi.so ship with this rpath already; d3d12.so does not — without
     /// it, D3D12 games fail at adapter creation ("D3D12RHI is not
     /// supported"). Idempotent: skips .so files that already have it.
+    @discardableResult
     nonisolated private static func patchD3DMetalRpath(
         lib: URL, layout: WineLayout = .rosetta
-    ) async throws {
+    ) async throws -> Bool {
         let unixDir = lib.appending(path: "wine/\(layout.unixDirectory)", directoryHint: .isDirectory)
         let neededRpath = "@loader_path/../../external"
+        var changed = false
         for name in ["d3d12.so", "d3d11.so", "dxgi.so"] {
             let so = unixDir.appending(path: name)
             guard FileManager.default.fileExists(atPath: so.path) else { continue }
@@ -463,7 +483,9 @@ final class SikarugirManager: ObservableObject {
             guard signed.succeeded else {
                 throw ComponentError.extractionFailed("codesign \(name): \(signed.standardError)")
             }
+            changed = true
         }
+        return changed
     }
 
     // MARK: D3DMetal source (experimental GPTK 4 pairing)
@@ -565,6 +587,12 @@ final class SikarugirManager: ObservableObject {
             URL(filePath: "/usr/bin/codesign"),
             arguments: ["--force", "--sign", "-", installed.path])
         try? Data(source.rawValue.utf8).write(to: root.appending(path: Self.sourceMarkerName))
+        // Fable changed the engine on purpose: the record follows, or the
+        // next check would report the swap as damage.
+        let framework = source.rawValue
+        await Task.detached(priority: .utility) {
+            RuntimeIntegrity.rerecord(root: root, noting: ["d3dMetalFramework": framework])
+        }.value
     }
 
     // MARK: Binaries

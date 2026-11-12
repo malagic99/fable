@@ -103,6 +103,9 @@ struct FableApp: App {
                     gameLauncher.stampUnpinnedBottles()
                     // Play time from before per-engine evidence is filed
                     // under the engine each bottle was just stamped with.
+                    // Engines from before v1.3 get a record of what they are
+                    // now, so changes from here on can be seen.
+                    Task.detached(priority: .utility) { RuntimeIntegrity.adoptUnrecordedEngines() }
                     gameStatsStore.attributeLegacyPlaytime(
                         engineKeys: Bottle.engineKeys(in: bottleManager.bottles))
                     gameLauncher.onAbnormalExit = { [weak toastCenter] message in

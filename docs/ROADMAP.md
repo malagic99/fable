@@ -74,17 +74,31 @@ One slice per release. Each one must leave working bottles alone.
    new engine first. Labels gain a level between "untested" and "played":
    the runtime is validated, the game isn't.
 
-### Known gap from v1.2: engine assembly needs Apple's developer tools
+4. **Benchmark (proposed 2026-11-12).** A canary that draws frames is most
+   of a benchmark: the same throwaway prefix, the same test program, timed.
+   Two different tools share that name, and only the first belongs here:
+   - *Engine benchmark.* One fixed D3D12 scene, run on an engine, reporting
+     frame times. It answers "is the new engine slower than the one I'm on,
+     on this Mac" before a move, and catches a regression across engine or
+     macOS updates. Synthetic, so it never claims a game's performance.
+   - *In-game capture.* Frame times recorded while a real game runs, filed
+     with the engine, chip and settings. This is the per-chip recipe
+     evidence of the old Sprint 2 plan, and it is rung 7 — people, not CI.
+   Build the engine benchmark after the device-creation canary; it needs the
+   frame-present rung, which that canary doesn't reach.
 
-Found 2026-11-12, after v1.2.0 shipped. Assembling an engine calls
-`/usr/bin/otool` and `/usr/bin/install_name_tool` (to add the rpath that lets
-`d3d12.so` reach D3DMetal) — in `SikarugirManager`, `Sikarugir11Manager` and
-`InstallerEngineManager`. On a Mac without Xcode's Command Line Tools those
-two are stubs that pop Apple's "install developer tools" dialog and fail.
-The Wine 10 path ignores that failure, so the engine installs and D3D12 games
-then die at adapter creation. Every Mac Fable has been tested on had the
-tools (Homebrew installs them). **Fix before anything else in v1.3**, and it
-is exactly the kind of fault the device-creation canary exists to catch.
+**Status (2026-11-12):** manifests are built — recorded at install, adopted
+for engines already on disk, checked from the bottle page and before a move.
+The developer-tools gap below was fixed in v1.2.1.
+
+### Fixed in v1.2.1: engine assembly needed Apple's developer tools
+
+Assembling an engine called `otool` and `install_name_tool`, which are stubs
+on a Mac without Xcode's Command Line Tools. The Wine 10 path ignored the
+failure, leaving an engine that installed and couldn't create a D3D12 device.
+`MachORpath` now does it in Swift, byte-identical to Apple's tool on the real
+engine files. Never reproduced on a Mac without the tools — and exactly the
+fault the device-creation canary exists to catch.
 
 ### How the parked items fit
 

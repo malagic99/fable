@@ -109,6 +109,11 @@ final class ComponentManager: ObservableObject {
 
             states[id] = .extracting
             let installed = try await extract(archive, id: id, version: component.version)
+            if RuntimeIntegrity.plainEngineComponentIDs.contains(id) {
+                await RuntimeIntegrity.recordDetached(
+                    root: installed, componentID: id, version: component.version,
+                    origin: .installed, source: ["engineArchiveSHA256": component.sha256])
+            }
             states[id] = .installed
             return installed
         } catch is CancellationError {

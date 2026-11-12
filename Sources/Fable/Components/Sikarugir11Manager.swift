@@ -121,6 +121,11 @@ final class Sikarugir11Manager: ObservableObject {
         }
         try await Self.assemble(engineRoot: engineRoot, templateApp: app)
         try? Data(template.version.utf8).write(to: engineRoot.appending(path: Self.assembledMarker))
+        await RuntimeIntegrity.recordDetached(
+            root: engineRoot, componentID: Self.engineComponentID, version: engine.version,
+            origin: .installed,
+            source: ["engineArchiveSHA256": engine.sha256, "templateVersion": template.version,
+                     "templateArchiveSHA256": template.sha256])
         refresh()
     }
 
