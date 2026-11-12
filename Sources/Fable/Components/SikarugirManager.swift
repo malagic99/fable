@@ -190,7 +190,7 @@ final class SikarugirManager: ObservableObject {
     }
 
     /// Human-friendly version label, e.g. "WS12WineSikarugir10.0_4" → "10.0_4".
-    static func displayVersion(_ raw: String) -> String {
+    nonisolated static func displayVersion(_ raw: String) -> String {
         if let range = raw.range(of: "Sikarugir") {
             let tail = String(raw[range.upperBound...])
             if !tail.isEmpty { return tail }

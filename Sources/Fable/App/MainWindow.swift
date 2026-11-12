@@ -101,6 +101,10 @@ struct FableApp: App {
                     // Bottles from before engine pinning keep the engine they
                     // use today instead of moving at the next engine update.
                     gameLauncher.stampUnpinnedBottles()
+                    // Play time from before per-engine evidence is filed
+                    // under the engine each bottle was just stamped with.
+                    gameStatsStore.attributeLegacyPlaytime(
+                        engineKeys: Bottle.engineKeys(in: bottleManager.bottles))
                     gameLauncher.onAbnormalExit = { [weak toastCenter] message in
                         toastCenter?.error(message)
                     }
@@ -115,13 +119,14 @@ struct FableApp: App {
                     gameLauncher.onCrashSignature = { [weak gameStatsStore] id, backend, signature in
                         gameStatsStore?.recordCrash(id, backend: backend.rawValue, signature: signature)
                     }
-                    gameLauncher.onProcessLifecycle = { [weak metricsStore, weak gameLauncher, weak gameStatsStore] id, pid in
+                    gameLauncher.onProcessLifecycle = { [weak metricsStore, weak gameLauncher, weak gameStatsStore, weak bottleManager] id, pid in
                         if let pid {
                             metricsStore?.startTracking(id, rootPID: pid)
                             gameStatsStore?.sessionStarted(id)
                         } else {
                             metricsStore?.stopTracking(id)
-                            gameStatsStore?.sessionEnded(id)
+                            let key = bottleManager.map { Bottle.engineKeys(in: $0.bottles)[id] } ?? nil
+                            gameStatsStore?.sessionEnded(id, engineKey: key)
                             // Re-match triggers to whatever's still running (a
                             // Steam bottle keeps its profile while other games
                             // run); clears only when the bottle goes idle.

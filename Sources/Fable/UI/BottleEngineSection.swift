@@ -95,18 +95,11 @@ struct BottleEngineSection: View {
     // MARK: Labels
 
     static func displayName(for componentID: String) -> String {
-        switch componentID {
-        case WineManager.componentID: "Wine"
-        case GPTKManager.componentID: "Game Porting Toolkit"
-        case SikarugirManager.componentID: "Sikarugir (Wine 10)"
-        case Sikarugir11Manager.engineComponentID: "Sikarugir (Wine 11)"
-        case Sikarugir11Manager.templateComponentID: L10n.string("engine.renderer")
-        default: componentID
-        }
+        BottleRuntime.displayName(forComponent: componentID)
     }
 
     static func displayVersion(_ raw: String, for componentID: String) -> String {
-        componentID == SikarugirManager.componentID ? SikarugirManager.displayVersion(raw) : raw
+        BottleRuntime.displayVersion(raw, forComponent: componentID)
     }
 }
 

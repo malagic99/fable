@@ -200,3 +200,13 @@
 
 /* Graphics engine setup (Homebrew-free) */
 "engine.setup.downloading" = "Downloading and setting up the engine… about 270 MB.";
+
+/* Why a confidence label says what it says */
+"evidence.recipe" = "A tested setup for this game, and this bottle runs it (%@).";
+"evidence.recipe_other_backend" = "The tested setup uses %@. This bottle uses %@, which has not been tested for this game.";
+"evidence.played" = "Played %@ on this Mac with no crash recorded. Not checked for visual problems.";
+"evidence.played_on" = "Played %@ on this Mac with %@, no crash recorded. Not checked for visual problems.";
+"evidence.played_other_engine" = "Played %@ on a different engine. Not yet played on the one this bottle uses now.";
+"evidence.little_play" = "Only %@ of play here so far — too little to judge.";
+"evidence.crashed" = "It crashed the last time it ran here.";
+"evidence.none" = "No tested setup and no play on this Mac yet.";
