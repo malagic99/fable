@@ -14,8 +14,19 @@ struct D3DMetalSetupStep: View {
     @State private var isWorking = false
     @State private var errorText: String?
     @State private var installStep: String?
+    @State private var rosettaInstalled = Rosetta.isInstalled()
 
     var body: some View {
+        // The engine is an Intel program: without Rosetta, downloading it
+        // gets someone no closer to a game. Ask for that first.
+        if rosettaInstalled {
+            engineBody
+        } else {
+            RosettaSetupStep { rosettaInstalled = true }
+        }
+    }
+
+    private var engineBody: some View {
         VStack(spacing: 20) {
             Spacer()
             Image(systemName: icon)
@@ -127,6 +138,73 @@ struct D3DMetalSetupStep: View {
             isWorking = false
             installStep = nil
             refresh()
+        }
+    }
+}
+
+/// Shown in place of the engine step on a Mac without Rosetta 2. Installs it
+/// with Apple's own installer, so nobody is sent to Terminal for it.
+struct RosettaSetupStep: View {
+    @EnvironmentObject private var onboardingState: OnboardingState
+    let onInstalled: () -> Void
+
+    @State private var isWorking = false
+    @State private var errorText: String?
+
+    var body: some View {
+        VStack(spacing: 20) {
+            Spacer()
+            Image(systemName: "arrow.triangle.2.circlepath.circle.fill")
+                .font(.system(size: 56))
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(Color.accentColor)
+            VStack(spacing: 8) {
+                Text("Rosetta").font(.largeTitle.weight(.semibold))
+                Text(L10n.string("rosetta.setup.headline"))
+                    .font(.callout).foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center).padding(.horizontal, 44)
+                Text(L10n.string("rosetta.setup.license"))
+                    .font(.caption).foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center).padding(.horizontal, 44)
+            }
+            if isWorking {
+                ProgressView().controlSize(.small)
+                Text(L10n.string("rosetta.setup.installing")).font(.caption).foregroundStyle(.secondary)
+            }
+            if let errorText {
+                Text(errorText).font(.caption).foregroundStyle(.red).padding(.horizontal, 40)
+            }
+            Spacer()
+            HStack {
+                Button("Back") { onboardingState.goBack() }
+                Spacer()
+                Button("Continue without it") { onboardingState.advance() }
+                Button("Install Rosetta") { install() }
+                    .buttonStyle(.borderedProminent).disabled(isWorking).keyboardShortcut(.defaultAction)
+            }
+            .padding(24)
+        }
+        // Rosetta can also arrive another way while this is on screen (macOS
+        // offers it when any Intel app is opened).
+        .task {
+            while !Task.isCancelled {
+                if Rosetta.isInstalled() { onInstalled(); break }
+                try? await Task.sleep(for: .seconds(2))
+            }
+        }
+    }
+
+    private func install() {
+        isWorking = true
+        errorText = nil
+        Task {
+            do {
+                try await Rosetta.install()
+                onInstalled()
+            } catch {
+                errorText = error.localizedDescription
+            }
+            isWorking = false
         }
     }
 }

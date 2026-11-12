@@ -86,8 +86,25 @@ publish)
     ZIP="Fable-$VERSION.zip"
     rm -f "$ZIP"
     ditto -c -k --sequesterRsrc --keepParent Fable.app "$ZIP"
-    gh release create "v$VERSION" "$ZIP" --title "Fable v$VERSION — $TITLE" --notes "$NOTES"
-    rm -f "$ZIP"
+
+    # Provenance: what the zip was built from, and its checksum, published
+    # beside it. The tree was verified clean and equal to origin/main above,
+    # so a "dirty" build here means the build itself changed tracked files.
+    PROVENANCE="Fable-$VERSION.provenance.json"
+    ZIP_SHA=$(python3 scripts/build-info.py release Fable.app "$ZIP" "$PROVENANCE")
+    python3 -c 'import json,sys; sys.exit(1 if json.load(open(sys.argv[1])).get("dirty") is not False else 0)' "$PROVENANCE" || {
+        echo "error: the build is not from a clean tree — refusing to publish (see $PROVENANCE)" >&2; exit 1
+    }
+    NOTES="$NOTES
+
+### Verify this download
+
+- Built from commit \`$(git rev-parse HEAD)\` (tag \`v$VERSION\`).
+- SHA-256 of \`$ZIP\`: \`$ZIP_SHA\`
+- Check it with \`shasum -a 256 $ZIP\`. The full build record is \`$PROVENANCE\`."
+
+    gh release create "v$VERSION" "$ZIP" "$PROVENANCE" --title "Fable v$VERSION — $TITLE" --notes "$NOTES"
+    rm -f "$ZIP" "$PROVENANCE"
     open Fable.app
     echo "published v$VERSION"
     ;;

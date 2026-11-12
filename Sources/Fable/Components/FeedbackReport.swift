@@ -93,7 +93,7 @@ struct FeedbackReport: Equatable {
         wineLayout: WineLayout? = nil
     ) -> String {
         var lines = [
-            "Fable \(appVersion)",
+            "Fable \(BuildInfo.versionLabel(appVersion))",
             "macOS \(ProcessInfo.processInfo.operatingSystemVersionString)",
             hardware.summary,
         ]

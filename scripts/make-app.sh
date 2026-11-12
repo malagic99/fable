@@ -69,6 +69,10 @@ else
     echo "cabextract not bundled (missing, or it links Homebrew libraries) — winetricks falls back to the user's PATH"
 fi
 
+# Record what this build came from (commit, compiler, bundled tools). Last
+# before signing, so the record is covered by the signature.
+python3 "$(dirname "$0")/build-info.py" app "$APP"
+
 # Ad-hoc signature so macOS will launch it locally without a developer cert.
 codesign --force --sign - "$APP"
 

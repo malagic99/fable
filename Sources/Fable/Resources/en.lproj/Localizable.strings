@@ -210,3 +210,12 @@
 "evidence.little_play" = "Only %@ of play here so far — too little to judge.";
 "evidence.crashed" = "It crashed the last time it ran here.";
 "evidence.none" = "No tested setup and no play on this Mac yet.";
+
+/* Rosetta setup */
+"rosetta.setup.headline" = "Windows games are built for Intel processors. Rosetta is the part of macOS that lets this Mac run them, and it is not installed yet. It comes from Apple and takes about a minute.";
+"rosetta.setup.license" = "Installing it accepts Apple’s Rosetta licence on your behalf.";
+"rosetta.setup.installing" = "Installing Rosetta from Apple…";
+"rosetta.install_failed" = "Rosetta could not be installed: %@";
+"rosetta.install_failed.no_output" = "Apple’s installer gave no reason.";
+"rosetta.missing_at_launch" = "This Mac doesn’t have Rosetta, which every Windows game needs. Rerun the setup wizard from Settings → About and Fable installs it.";
+"about.build_source.help" = "The source commit this copy of Fable was built from. A + means it was built with uncommitted changes.";
