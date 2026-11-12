@@ -13,6 +13,9 @@ struct BottleEngineSection: View {
     @EnvironmentObject private var toastCenter: ToastCenter
 
     @State private var isConfirmingMove = false
+    @State private var isChecking = false
+    /// One line per engine from the last check, nil before the first.
+    @State private var checkResults: [RuntimeIntegrity.CheckLine]?
 
     private var runtime: BottleRuntime? { bottle.runtime }
     private var updates: [EngineInventory.Update] {
@@ -59,7 +62,29 @@ struct BottleEngineSection: View {
                     .font(.callout)
                 }
                 Button("Move to Newer Engine…") { isConfirmingMove = true }
-                    .disabled(isBusy || bottle.status != .ready)
+                    .disabled(isBusy || bottle.status != .ready || isChecking)
+            }
+
+            HStack {
+                Button("Check Engine Files") { check() }
+                    .disabled(isChecking)
+                    .help("Compares every file of this bottle's engine with the record Fable made when it set the engine up.")
+                if isChecking { ProgressView().controlSize(.small) }
+            }
+            if let checkResults {
+                ForEach(checkResults, id: \.self) { line in
+                    VStack(alignment: .leading, spacing: 3) {
+                        Label(line.summary, systemImage: line.symbol)
+                            .foregroundStyle(line.isProblem ? .orange : .primary)
+                        if let detail = line.detail {
+                            Text(detail)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .textSelection(.enabled)
+                        }
+                    }
+                    .font(.callout)
+                }
             }
         } header: {
             Text("Engine")
@@ -83,12 +108,47 @@ struct BottleEngineSection: View {
         L10n.string("engine.backup_name", bottle.name)
     }
 
+    /// The engine directories this bottle runs on, under its own pins.
+    private func engineRoots() -> [(id: String, root: URL?)] {
+        EnginePins.$current.withValue(bottle.enginePins) {
+            bottle.graphicsBackend.engineComponentIDs.map { ($0, componentManager.installedDirectory(for: $0)) }
+        }
+    }
+
+    private func check() {
+        let targets = engineRoots()
+        isChecking = true
+        Task {
+            let lines = await Task.detached(priority: .userInitiated) {
+                targets.map { RuntimeIntegrity.checkLine(componentID: $0.id, root: $0.root) }
+            }.value
+            checkResults = lines
+            isChecking = false
+        }
+    }
+
+    /// Moves the bottle, after checking that the engines it would move to
+    /// are intact. A damaged engine blocks the move — never a bottle that is
+    /// already working where it is.
     private func move() {
-        do {
-            let backup = try bottleManager.moveToNewestEngines(bottle.id, backupName: backupName)
-            toastCenter.success(L10n.string("engine.moved", bottle.name, backup.name))
-        } catch {
-            toastCenter.error(error.localizedDescription)
+        let targets = updates.map { ($0.componentID, componentManager.newestInstalledDirectory(for: $0.componentID)) }
+        isChecking = true
+        Task {
+            let lines = await Task.detached(priority: .userInitiated) {
+                targets.map { RuntimeIntegrity.checkLine(componentID: $0.0, root: $0.1) }
+            }.value
+            isChecking = false
+            if lines.contains(where: \.isProblem) {
+                checkResults = lines
+                toastCenter.error(L10n.string("integrity.move_blocked"))
+                return
+            }
+            do {
+                let backup = try bottleManager.moveToNewestEngines(bottle.id, backupName: backupName)
+                toastCenter.success(L10n.string("engine.moved", bottle.name, backup.name))
+            } catch {
+                toastCenter.error(error.localizedDescription)
+            }
         }
     }
 

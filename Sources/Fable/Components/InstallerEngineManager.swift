@@ -65,6 +65,11 @@ final class InstallerEngineManager: ObservableObject {
             }
             try await Self.assemble(engineRoot: root, templateApp: app)
             try Data(template.version.utf8).write(to: root.appending(path: Self.assembledMarker))
+            await RuntimeIntegrity.recordDetached(
+                root: root, componentID: Self.componentID, version: engine.version,
+                origin: .installed,
+                source: ["engineArchiveSHA256": engine.sha256, "templateVersion": template.version,
+                         "templateArchiveSHA256": template.sha256])
         }
         refresh()
     }

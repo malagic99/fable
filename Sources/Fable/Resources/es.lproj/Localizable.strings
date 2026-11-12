@@ -579,3 +579,18 @@
 "rosetta.install_failed.no_output" = "El instalador de Apple no indicó el motivo.";
 "rosetta.missing_at_launch" = "Este Mac no tiene Rosetta, que todos los juegos de Windows necesitan. Vuelve a ejecutar el asistente de configuración desde Ajustes → Acerca de y Fable la instalará.";
 "about.build_source.help" = "El commit del código fuente con el que se compiló esta copia de Fable. Un + indica que se compiló con cambios sin confirmar.";
+
+/* Engine integrity manifests */
+"Check Engine Files" = "Comprobar archivos del motor";
+"Compares every file of this bottle's engine with the record Fable made when it set the engine up." = "Compara cada archivo del motor de esta botella con el registro que Fable creó al configurarlo.";
+"integrity.intact" = "%@: los %@ archivos coinciden con el registro que Fable creó al configurar este motor (%@).";
+"integrity.intact_adopted" = "%1$@: los %2$@ archivos coinciden con el registro creado el %3$@. Ese registro se tomó de un motor que ya estaba en este Mac, así que muestra que nada ha cambiado desde entonces, no que el motor fuera correcto desde el principio.";
+"integrity.changed" = "%@: %@ archivos difieren del registro creado el %@ (%@ ausentes, %@ modificados, %@ añadidos).";
+"integrity.more" = "…y %@ más.";
+"integrity.record_id" = "Registro";
+"integrity.no_record" = "%@: aún no hay registro con el que comparar.";
+"integrity.not_installed" = "%@ no está instalado.";
+"integrity.check_failed" = "No se pudo comprobar %@: %@";
+"integrity.move_blocked" = "El motor más reciente no coincide con su registro, así que la botella no se ha movido. Las diferencias aparecen en Motor.";
+"integrity.error.no_manifest" = "Este motor no tiene registro con el que comparar.";
+"integrity.error.unreadable_manifest" = "El registro de este motor está dañado y no se puede leer.";

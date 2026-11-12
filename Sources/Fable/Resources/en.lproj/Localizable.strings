@@ -219,3 +219,16 @@
 "rosetta.install_failed.no_output" = "Apple’s installer gave no reason.";
 "rosetta.missing_at_launch" = "This Mac doesn’t have Rosetta, which every Windows game needs. Rerun the setup wizard from Settings → About and Fable installs it.";
 "about.build_source.help" = "The source commit this copy of Fable was built from. A + means it was built with uncommitted changes.";
+
+/* Engine integrity manifests */
+"integrity.intact" = "%@: all %@ files match the record Fable made when it set this engine up (%@).";
+"integrity.intact_adopted" = "%1$@: all %2$@ files match the record made on %3$@. That record was taken from an engine already on this Mac, so it shows nothing has changed since — not that the engine was right to begin with.";
+"integrity.changed" = "%@: %@ files differ from the record made on %@ (%@ missing, %@ changed, %@ added).";
+"integrity.more" = "…and %@ more.";
+"integrity.record_id" = "Record";
+"integrity.no_record" = "%@: no record to check against yet.";
+"integrity.not_installed" = "%@ is not installed.";
+"integrity.check_failed" = "%@ could not be checked: %@";
+"integrity.move_blocked" = "The newer engine does not match its record, so the bottle was not moved. The differences are listed under Engine.";
+"integrity.error.no_manifest" = "This engine has no record to check against.";
+"integrity.error.unreadable_manifest" = "This engine’s record is damaged and can’t be read.";
