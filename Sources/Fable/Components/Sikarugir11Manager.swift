@@ -15,7 +15,7 @@ enum Sikarugir11Error: LocalizedError {
         case .binaryNotFound(let path):
             "Sikarugir's Wine 11 engine is installed, but no wine binary was found under \(path)."
         case .toolFailed(let detail):
-            "Setting up Sikarugir's Wine 11 engine needs Apple's command line tools (xcode-select --install): \(detail)"
+            "Setting up the engine failed: \(detail)"
         }
     }
 }
@@ -176,12 +176,7 @@ final class Sikarugir11Manager: ObservableObject {
         // being re-assembled. Signing is checked on its own so a run that
         // stopped between the two steps gets repaired.
         let wineserver = bundle.appending(path: "bin/wineserver")
-        if try await !hasLibraryRpath(wineserver) {
-            try await checked("/usr/bin/install_name_tool", ["-add_rpath", "@loader_path/../lib", wineserver.path])
-            guard try await hasLibraryRpath(wineserver) else {
-                throw Sikarugir11Error.toolFailed("the wineserver still has no library path")
-            }
-        }
+        try addLibraryRpath(to: wineserver)
         let verify = try await ProcessRunner.run(
             URL(filePath: "/usr/bin/codesign"), arguments: ["--verify", wineserver.path])
         if !verify.succeeded {
@@ -193,12 +188,21 @@ final class Sikarugir11Manager: ObservableObject {
             URL(filePath: "/usr/bin/xattr"), arguments: ["-dr", "com.apple.quarantine", engineRoot.path])
     }
 
-    nonisolated static func hasLibraryRpath(_ binary: URL) async throws -> Bool {
-        let probe = try await ProcessRunner.run(URL(filePath: "/usr/bin/otool"), arguments: ["-l", binary.path])
-        guard probe.succeeded else {
-            throw Sikarugir11Error.toolFailed("otool: \(probe.standardError.isEmpty ? "exit \(probe.exitCode)" : probe.standardError)")
+    /// Where a wineserver finds the support libraries laid beside it.
+    nonisolated static let libraryRpath = "@loader_path/../lib"
+
+    nonisolated static func hasLibraryRpath(_ binary: URL) throws -> Bool {
+        try MachORpath.rpaths(of: binary).contains(libraryRpath)
+    }
+
+    /// Gives the wineserver its library path. Done in Swift (``MachORpath``):
+    /// the tools that used to do it need Xcode's Command Line Tools.
+    nonisolated static func addLibraryRpath(to wineserver: URL) throws {
+        do {
+            try MachORpath.add(libraryRpath, to: wineserver)
+        } catch {
+            throw Sikarugir11Error.toolFailed("the wineserver could not be given a library path: \(error.localizedDescription)")
         }
-        return probe.standardOutput.contains("@loader_path/../lib")
     }
 
     nonisolated static func checked(_ tool: String, _ arguments: [String]) async throws {
