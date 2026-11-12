@@ -169,6 +169,9 @@ final class BottleManager: ObservableObject {
         imported.name = dedupedName(unpacked.manifest.originalBottleName)
         imported.createdAt = .now
         imported.status = .ready
+        // The donor's pins name engine versions this Mac may not have; stamp
+        // fresh from what's installed here.
+        imported.runtime = nil
 
         let fm = FileManager.default
         try fm.createDirectory(at: directory(for: imported), withIntermediateDirectories: true)
@@ -552,6 +555,30 @@ final class BottleManager: ObservableObject {
         else { return }
         bottles[index].windowsVersion = actual
         try? save(bottles[index])
+    }
+
+    func setRuntime(_ runtime: BottleRuntime?, for id: Bottle.ID) throws {
+        guard let index = bottles.firstIndex(where: { $0.id == id }) else {
+            throw BottleError.notFound
+        }
+        guard bottles[index].runtime != runtime else { return }
+        bottles[index].runtime = runtime
+        try save(bottles[index])
+    }
+
+    /// Moves a pinned bottle onto the newest installed engines, keeping a
+    /// copy of it as it was: Wine upgrades a prefix one way the first time a
+    /// newer build runs it, so the copy is the only way back. Clears the pins;
+    /// the next launch stamps whatever it runs on. Returns the backup bottle.
+    /// Callers must ensure no games are running in the bottle.
+    @discardableResult
+    func moveToNewestEngines(_ id: Bottle.ID, backupName: String) throws -> Bottle {
+        guard let source = bottle(with: id) else { throw BottleError.notFound }
+        let backup = try cloneBottle(id, newName: dedupedName(backupName))
+        var runtime = source.runtime ?? BottleRuntime()
+        runtime.pins = [:]
+        try setRuntime(runtime, for: id)
+        return backup
     }
 
     func setStatus(_ status: BottleStatus, for id: Bottle.ID) throws {

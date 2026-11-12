@@ -107,6 +107,7 @@ final class GameLauncher: ObservableObject {
     /// sites drifts — the per-game-trigger gap came from exactly that).
     struct Dependencies {
         let bottleManager: BottleManager
+        let componentManager: ComponentManager
         let wineManager: WineManager
         let gptkManager: GPTKManager
         let crossOverManager: CrossOverManager
@@ -174,6 +175,12 @@ final class GameLauncher: ObservableObject {
         /// Set for a console program (cmd.exe and the like): its C: path,
         /// run through `wineconsole` so it gets a window and keyboard input.
         var consoleProgram: String?
+        /// Component id → version this launch resolved (see `BottleRuntime`).
+        var engineVersions: [String: String] = [:]
+        /// Whether those versions came from the bottle's pins.
+        var enginesPinned = false
+        /// Pinned versions that weren't on disk, with what was used instead.
+        var missingPins: [String: (pinned: String, used: String)] = [:]
 
         /// The first lines of the game's log: exactly what was launched, so a
         /// bug report (or a curious user) never has to guess. Only the
@@ -191,8 +198,16 @@ final class GameLauncher: ObservableObject {
                 "fable: runtime \(runtimeKey) — \(wine.path)",
                 "fable: command \(wineArguments.joined(separator: " "))",
                 "fable: working directory \(workingDirectory.path)",
-                "fable: environment (Wine and renderer variables):",
-            ] + shown
+            ]
+            for (id, version) in engineVersions.sorted(by: { $0.key < $1.key }) {
+                if let missing = missingPins[id] {
+                    lines.append("fable: engine \(id) \(version) (pinned \(missing.pinned) is not installed — used the newest)")
+                } else {
+                    lines.append("fable: engine \(id) \(version)\(enginesPinned ? " (pinned)" : "")")
+                }
+            }
+            lines.append("fable: environment (Wine and renderer variables):")
+            lines += shown
             if !refusedEnvironmentKeys.isEmpty {
                 lines.append("fable: ignored per-game environment variables "
                     + "(could load native code or aren't valid names): "
@@ -381,15 +396,73 @@ final class GameLauncher: ObservableObject {
             throw GameLaunchError.notConfigured
         }
         let prefix = deps.bottleManager.prefixDirectory(for: bottle)
-        return try Self.composeLaunchPlan(
-            game: game,
-            bottle: bottle,
-            prefix: prefix,
-            driveC: deps.bottleManager.driveCDirectory(for: bottle),
-            baseEnvironment: deps.wineManager.environment(forPrefix: prefix),
-            logFile: AppPaths.logs.appending(path: GameInstaller.logName(bottle.name, game.name)),
-            runtime: ManagerRuntimeResolver(deps: deps)
-        )
+        // Resolve every engine path under the bottle's pins, so a launch (and
+        // a desktop shortcut, which reuses this plan) runs the bottle's own
+        // engine rather than whichever is newest.
+        return try EnginePins.$current.withValue(bottle.enginePins) {
+            var plan = try Self.composeLaunchPlan(
+                game: game,
+                bottle: bottle,
+                prefix: prefix,
+                driveC: deps.bottleManager.driveCDirectory(for: bottle),
+                baseEnvironment: deps.wineManager.environment(forPrefix: prefix),
+                logFile: AppPaths.logs.appending(path: GameInstaller.logName(bottle.name, game.name)),
+                runtime: ManagerRuntimeResolver(deps: deps)
+            )
+            let versions = resolvedEngineVersions(for: game.graphicsBackend ?? bottle.graphicsBackend)
+            plan.engineVersions = versions
+            plan.enginesPinned = !bottle.enginePins.isEmpty
+            plan.missingPins = bottle.runtime?.missingPins(resolved: versions) ?? [:]
+            return plan
+        }
+    }
+
+    // MARK: Engine pinning
+
+    /// The component versions a launch on `backend` resolves under the pins
+    /// currently in effect (`EnginePins.current`). Empty for CrossOver, which
+    /// is the user's own install.
+    func resolvedEngineVersions(for backend: GraphicsBackend) -> [String: String] {
+        guard let deps else { return [:] }
+        if backend == .sikarugir11 {
+            guard let root = try? deps.sikarugir11Manager.engineRoot() else { return [:] }
+            var versions = [Sikarugir11Manager.engineComponentID: root.lastPathComponent]
+            versions[Sikarugir11Manager.templateComponentID] =
+                Sikarugir11Manager.assembledTemplateVersion(engineRoot: root)
+            return versions
+        }
+        var versions: [String: String] = [:]
+        for id in backend.engineComponentIDs {
+            versions[id] = deps.componentManager.installedDirectory(for: id)?.lastPathComponent
+        }
+        return versions
+    }
+
+    /// Stamps every bottle that has no runtime record yet with the engine
+    /// versions it would run on right now — its own backend and any per-game
+    /// override's — so an engine update installed later doesn't move it.
+    /// Bottles with nothing installed for their backend are left for their
+    /// first launch to stamp.
+    func stampUnpinnedBottles() {
+        guard let deps else { return }
+        // Before pinning, "newest" was the last folder name in plain string
+        // order (so 11.9 beat 11.10) — stamp what those bottles really ran.
+        var previousRule: [String: String] = [:]
+        for id in EngineInventory.pinnableComponentIDs {
+            previousRule[id] = deps.componentManager.installedVersions(for: id).max()
+        }
+        for bottle in deps.bottleManager.bottles where bottle.runtime == nil {
+            let backends = Set([bottle.graphicsBackend] + bottle.games.compactMap(\.graphicsBackend))
+            var pins: [String: String] = [:]
+            EnginePins.$current.withValue(previousRule) {
+                for backend in backends {
+                    pins.merge(resolvedEngineVersions(for: backend)) { existing, _ in existing }
+                }
+            }
+            pins = pins.filter { !BottleRuntime.informationalComponentIDs.contains($0.key) }
+            guard !pins.isEmpty else { continue }
+            try? deps.bottleManager.setRuntime(BottleRuntime(pins: pins), for: bottle.id)
+        }
     }
 
     // MARK: The one launch flow
@@ -527,7 +600,12 @@ final class GameLauncher: ObservableObject {
         if Self.needsSteamRunning(game), bottle.graphicsBackend != .sikarugir11 {
             throw GameLaunchError.steamGameNeedsBottleRuntime(game: game.name, backend: backend.shortName)
         }
-        if !deps.sikarugir11Manager.isInstalled {
+        // A bottle pinned to an engine still on disk needs no download, even
+        // when this Fable's catalog has moved on.
+        let pinnedAvailable = EnginePins.$current.withValue(bottle.enginePins) {
+            (try? deps.sikarugir11Manager.wineBinary()) != nil
+        }
+        if !pinnedAvailable {
             deps.toastCenter.success("Downloading Sikarugir's Wine 11 engine for “\(game.name)”… about 260 MB, one time.")
             do {
                 try await deps.sikarugir11Manager.ensureInstalled()
@@ -599,12 +677,41 @@ final class GameLauncher: ObservableObject {
             foreign.append(installerServer)
         }
 
+        // Same family, other version: with engines pinned per bottle, a helper
+        // or an earlier launch may have left an older or newer build's server
+        // here, and that mismatches just like another family's would.
+        let own = EnginePins.$current.withValue(bottle.enginePins) {
+            ManagerRuntimeResolver(deps: deps).wineserverBinary(for: runtime)
+                ?? (try? deps.wineManager.wineserverBinary())
+        }
+        for server in installedWineservers() where server != own && !foreign.contains(server) {
+            foreign.append(server)
+        }
+
         try await PrefixRuntimeGate.ensureExclusive(
             prefix: deps.bottleManager.prefixDirectory(for: bottle),
             bottleName: bottle.name,
             foreignWineservers: foreign,
             hasLiveProcesses: fableLaunched || detected
         )
+    }
+
+    /// The wineserver of every installed version of each Fable-managed engine.
+    private func installedWineservers() -> [URL] {
+        guard let deps else { return [] }
+        var servers: [URL] = []
+        func collect(_ id: String, _ resolve: () -> URL?) {
+            for version in deps.componentManager.installedVersions(for: id) {
+                if let server = EnginePins.$current.withValue([id: version], operation: resolve) {
+                    servers.append(server)
+                }
+            }
+        }
+        collect(WineManager.componentID) { try? deps.wineManager.wineserverBinary() }
+        collect(GPTKManager.componentID) { try? deps.gptkManager.wineserverBinary() }
+        collect(SikarugirManager.componentID) { try? deps.sikarugirManager.wineserverBinary() }
+        collect(Sikarugir11Manager.engineComponentID) { try? deps.sikarugir11Manager.wineserverBinary() }
+        return servers
     }
 
     /// Launch-side variant: drains foreign servers only when the bottle is
@@ -673,6 +780,19 @@ final class GameLauncher: ObservableObject {
             // Claim the performance cores — the game is the foreground workload.
             qualityOfService: Stability.gameQoS
         )
+
+        // Evidence of what actually ran, and the first launch's stamp. A
+        // failed write must not fail a launch that already started.
+        let launchedBackend = game.graphicsBackend ?? bottle.graphicsBackend
+        let current = deps.bottleManager.bottle(with: bottle.id)?.runtime ?? bottle.runtime ?? BottleRuntime()
+        try? deps.bottleManager.setRuntime(
+            current.recordingLaunch(backend: launchedBackend, versions: plan.engineVersions),
+            for: bottle.id
+        )
+        if !plan.missingPins.isEmpty {
+            let names = plan.missingPins.keys.sorted().joined(separator: ", ")
+            deps.toastCenter.error(L10n.string("launch.pinned_engine_missing", bottle.name, names))
+        }
 
         running[game.id] = process
         runningRuntime[game.id] = plan.runtimeKey

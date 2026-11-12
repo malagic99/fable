@@ -81,7 +81,7 @@ final class RedistInstaller: ObservableObject {
     ) async throws {
         let prefix = bottleManager.prefixDirectory(for: bottle)
         let environment = WineEnv.withDiagnosticDebug(wineManager.environment(forPrefix: prefix))
-        let wine = try wineManager.wineBinary()
+        let wine = try wineManager.wineBinary(forPrefix: prefix)
 
         if kind == .directX {
             // Two stages: self-extract the package, then run DXSETUP.

@@ -108,8 +108,8 @@ final class WinetricksManager: ObservableObject {
         wineManager: WineManager
     ) async throws {
         let scriptURL = try script()
-        let wine = try wineManager.wineBinary()
         let prefix = bottleManager.prefixDirectory(for: bottle)
+        let wine = try wineManager.wineBinary(forPrefix: prefix)
 
         var env = wineManager.environment(forPrefix: prefix)
         // The script wraps `wine` itself; tell it which one to use.

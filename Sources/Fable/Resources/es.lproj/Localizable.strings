@@ -531,3 +531,26 @@
 "launch.smart_bottle.bottle_wide" = "También aplicó ajustes de velocidad de fotogramas estable a toda la botella «%@».";
 "launch.smart_bottle.change_it" = "Puedes cambiarlo en los ajustes del juego.";
 "launch.first_launch_shaders" = "Primer inicio de «%@»: ahora compila sus sombreadores, así que puede quedarse unos minutos en una pantalla negra o de carga. Es normal: los siguientes inicios son mucho más rápidos.";
+
+/* Engine pinning */
+"launch.pinned_engine_missing" = "«%1$@» está fijada a un motor que ya no está instalado (%2$@), así que se inició con el más reciente. Su registro tiene los detalles.";
+"engine.update_available" = "%1$@ más reciente instalado: %2$@ → %3$@";
+"engine.move.title" = "¿Pasar «%@» al motor más reciente?";
+"engine.move.message" = "Fable guarda primero una copia de esta botella como «%@». Si un juego falla con el motor nuevo, juega desde la copia.";
+"engine.backup_name" = "%@ (antes de actualizar el motor)";
+"engine.moved" = "«%1$@» usará el motor más reciente desde su próximo inicio. La configuración anterior se guarda como «%2$@».";
+"engine.renderer" = "Renderizador D3DMetal";
+"engine.unused.footer" = "Ninguna botella los usa. Eliminarlos libera %@.";
+"engine.unused.confirm" = "¿Eliminar %ld versiones de motor sin usar? No se puede deshacer.";
+"engine.unused.removed" = "Se eliminaron %ld versiones de motor sin usar.";
+"engine.unused.failed" = "No se pudieron eliminar algunas versiones de motor: %@";
+"Engine" = "Motor";
+"Not recorded yet — the next launch records the engine this bottle runs on." = "Aún sin registrar: el próximo inicio registra el motor con el que funciona esta botella.";
+"Always Use the Newest Engine" = "Usar siempre el motor más reciente";
+"Off keeps this bottle on the engine it was set up with until you move it. On moves it to every engine update automatically — the old behavior." = "Desactivado, la botella se queda en el motor con el que se configuró hasta que la muevas. Activado, pasa automáticamente a cada actualización del motor (el comportamiento anterior).";
+"Move to Newer Engine…" = "Pasar al motor más reciente…";
+"Engine updates don't change a bottle that already works. Moving keeps a copy of the bottle as it was, because Wine upgrades a bottle one way." = "Las actualizaciones del motor no cambian una botella que ya funciona. Al moverla se guarda una copia tal como estaba, porque Wine actualiza una botella sin vuelta atrás.";
+"Move and Keep a Copy" = "Mover y guardar una copia";
+"Remove Unused Engines…" = "Eliminar motores sin usar…";
+"Unused Engine Versions" = "Versiones de motor sin usar";
+"Remove" = "Eliminar";

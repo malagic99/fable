@@ -29,7 +29,7 @@ final class GPTKManager: ObservableObject {
     let componentManager: ComponentManager
     let catalog: VersionCatalog
 
-    static let componentID = "gptk"
+    nonisolated static let componentID = "gptk"
 
     /// D3D DLLs provided by GPTK as Wine builtins. When the GPTK
     /// backend runs a game these are forced builtin so DXMT's native

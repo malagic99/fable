@@ -44,19 +44,38 @@ final class ComponentManager: ObservableObject {
         states[id] ?? (installedDirectory(for: id) != nil ? .installed : .notInstalled)
     }
 
-    /// Directory of the newest installed version of a component, or nil.
+    /// Directory of the version of a component to run: the one pinned in
+    /// `EnginePins.current` when it's on disk, otherwise the newest installed.
     /// A version only exists on disk once extraction fully succeeded.
     func installedDirectory(for id: String) -> URL? {
-        let componentDir = componentsDirectory.appending(path: id, directoryHint: .isDirectory)
+        if let pinned = EnginePins.current[id],
+           let dir = installedDirectory(for: id, version: pinned) {
+            return dir
+        }
+        return newestInstalledDirectory(for: id)
+    }
+
+    /// Directory of the newest installed version, ignoring any pins — for
+    /// installs and update checks, which are about the app, not a bottle.
+    func newestInstalledDirectory(for id: String) -> URL? {
+        VersionCompare.newest(installedVersions(for: id))   // numeric: 11.9 < 11.10
+            .map { componentDirectory(for: id).appending(path: $0, directoryHint: .isDirectory) }
+    }
+
+    /// Every installed version folder of a component, unordered.
+    func installedVersions(for id: String) -> [String] {
         let versions = (try? FileManager.default.contentsOfDirectory(
-            at: componentDir,
-            includingPropertiesForKeys: nil,
+            at: componentDirectory(for: id),
+            includingPropertiesForKeys: [.isDirectoryKey],
             options: .skipsHiddenFiles
         )) ?? []
-        // Numeric, not lexical: "11.9_1" < "11.10_1".
-        return versions.max {
-            VersionCompare.isNewer($1.lastPathComponent, than: $0.lastPathComponent)
-        }
+        return versions
+            .filter { (try? $0.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true }
+            .map(\.lastPathComponent)
+    }
+
+    private func componentDirectory(for id: String) -> URL {
+        componentsDirectory.appending(path: id, directoryHint: .isDirectory)
     }
 
     func installedDirectory(for id: String, version: String) -> URL? {

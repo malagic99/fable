@@ -23,7 +23,7 @@ final class WineManager: ObservableObject {
     let componentManager: ComponentManager
     let catalog: VersionCatalog
 
-    static let componentID = "wine"
+    nonisolated static let componentID = "wine"
 
     init(componentManager: ComponentManager, catalog: VersionCatalog) {
         self.componentManager = componentManager
@@ -64,11 +64,23 @@ final class WineManager: ObservableObject {
         try wineBinary().deletingLastPathComponent().appending(path: "wineserver")
     }
 
+    /// The wine to run on `prefix`: its bottle's pinned version (see
+    /// `EnginePins.forPrefix`), else the newest. Every helper that runs Wine
+    /// on an existing bottle goes through this, so a newer Wine never touches
+    /// — and one-way upgrades — a pinned bottle.
+    func wineBinary(forPrefix prefix: URL) throws -> URL {
+        try EnginePins.$current.withValue(EnginePins.forPrefix(prefix)) { try wineBinary() }
+    }
+
+    func wineserverBinary(forPrefix prefix: URL) throws -> URL {
+        try wineBinary(forPrefix: prefix).deletingLastPathComponent().appending(path: "wineserver")
+    }
+
     /// `wineserver -k` against a prefix: hard-kills every process in
     /// the prefix's session. The escape hatch for hung games.
     func forceKillPrefix(_ prefix: URL) async throws {
         _ = try await ProcessRunner.run(
-            try wineserverBinary(),
+            try wineserverBinary(forPrefix: prefix),
             arguments: ["-k"],
             environment: environment(forPrefix: prefix)
         )
@@ -94,7 +106,7 @@ final class WineManager: ObservableObject {
     func openTool(_ tool: String, inPrefix prefix: URL) throws -> LaunchedProcess {
         let env = WineEnv.withDiagnosticDebug(environment(forPrefix: prefix))
         return try ProcessRunner.start(
-            try wineBinary(),
+            try wineBinary(forPrefix: prefix),
             arguments: [tool],
             environment: env,
             redirectingOutputTo: AppPaths.logs.appending(path: GameInstaller.logName("tool", tool))
@@ -118,7 +130,7 @@ final class WineManager: ObservableObject {
     /// default. `enabled == false` writes `n`/96 to revert cleanly. Takes
     /// effect when the prefix's processes next cold-start. Idempotent.
     func setRetinaMode(_ enabled: Bool, at prefix: URL) async throws {
-        let wine = try wineBinary()
+        let wine = try wineBinary(forPrefix: prefix)
         let env = environment(forPrefix: prefix)
         _ = try await ProcessRunner.run(
             wine,
@@ -166,7 +178,7 @@ final class WineManager: ObservableObject {
     /// when the prefix's processes next cold-start. Idempotent.
     func setPlayStationPadsAsXInput(_ enabled: Bool, at prefix: URL) async throws {
         _ = try await ProcessRunner.run(
-            try wineBinary(),
+            try wineBinary(forPrefix: prefix),
             arguments: ["reg", "add", #"HKLM\System\CurrentControlSet\Services\winebus"#,
                         "/v", "DisableHidraw", "/t", "REG_DWORD", "/d", enabled ? "1" : "0", "/f"],
             environment: environment(forPrefix: prefix)
@@ -202,7 +214,7 @@ final class WineManager: ObservableObject {
 
     /// Initializes a fresh Wine prefix and pins its Windows version.
     func createPrefix(at prefix: URL, windowsVersion: WindowsVersion) async throws {
-        let wine = try wineBinary()
+        let wine = try wineBinary(forPrefix: prefix)
         // Prefix init runs unattended — use the provisioning env, which also
         // suppresses the Mono dialog (launch deliberately does not, so .NET
         // Core apps keep working; see WineEnv.skipGeckoDialog).
@@ -228,7 +240,7 @@ final class WineManager: ObservableObject {
         try await setRetinaMode(false, at: prefix)
 
         // Wait for wineserver to finish flushing the new prefix.
-        _ = try await ProcessRunner.run(try wineserverBinary(), arguments: ["-w"], environment: env)
+        _ = try await ProcessRunner.run(try wineserverBinary(forPrefix: prefix), arguments: ["-w"], environment: env)
 
         // Repair the keyboard layout if the host locale left Wine's invalid
         // 0x1000 placeholder (crashes WPF apps). Safe now: server drained.

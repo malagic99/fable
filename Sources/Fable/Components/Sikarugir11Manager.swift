@@ -125,9 +125,7 @@ final class Sikarugir11Manager: ObservableObject {
     }
 
     nonisolated static func isAssembled(engineRoot: URL, templateVersion: String) -> Bool {
-        let marker = engineRoot.appending(path: assembledMarker)
-        guard let text = try? String(contentsOf: marker, encoding: .utf8) else { return false }
-        return text.trimmingCharacters(in: .whitespacesAndNewlines) == templateVersion
+        assembledTemplateVersion(engineRoot: engineRoot) == templateVersion
     }
 
     /// The `.app` inside an extracted template component.
@@ -247,15 +245,34 @@ final class Sikarugir11Manager: ObservableObject {
 
     // MARK: Binaries
 
+    /// The assembled engine to run: the bottle's pinned engine
+    /// (`EnginePins.current`) when it's still on disk and assembled, otherwise
+    /// the engine + template pair this Fable's catalog names. The template
+    /// isn't pinned — see `BottleRuntime.informationalComponentIDs`.
     func engineRoot() throws -> URL {
         guard let engine = catalog.components[Self.engineComponentID],
-              let root = componentManager.installedDirectory(for: Self.engineComponentID, version: engine.version),
-              let template = catalog.components[Self.templateComponentID],
+              let template = catalog.components[Self.templateComponentID]
+        else {
+            throw ComponentError.notInstalled(Self.engineComponentID)
+        }
+        let pins = EnginePins.current
+        if let pinnedEngine = pins[Self.engineComponentID],
+           let root = componentManager.installedDirectory(for: Self.engineComponentID, version: pinnedEngine),
+           Self.assembledTemplateVersion(engineRoot: root) != nil {
+            return root
+        }
+        guard let root = componentManager.installedDirectory(for: Self.engineComponentID, version: engine.version),
               Self.isAssembled(engineRoot: root, templateVersion: template.version)
         else {
             throw ComponentError.notInstalled(Self.engineComponentID)
         }
         return root
+    }
+
+    /// The template version an engine directory was assembled with.
+    nonisolated static func assembledTemplateVersion(engineRoot: URL) -> String? {
+        (try? String(contentsOf: engineRoot.appending(path: assembledMarker), encoding: .utf8))?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     func wineBinary() throws -> URL {
@@ -337,7 +354,10 @@ final class Sikarugir11Manager: ObservableObject {
     /// own wine so the write lands in the wineserver the launch then uses.
     func ensureRegistryOverrides(prefix: URL, baseEnvironment: [String: String]) async {
         let userReg = (try? String(contentsOf: prefix.appending(path: "user.reg"), encoding: .utf8)) ?? ""
-        guard Self.needsRegistryOverrides(userReg: userReg), let wine = try? wineBinary() else { return }
+        // The bottle's own (pinned) engine: a newer one writing here would
+        // upgrade the prefix and leave a mismatched wineserver behind.
+        let pinnedWine = EnginePins.$current.withValue(EnginePins.forPrefix(prefix)) { try? wineBinary() }
+        guard Self.needsRegistryOverrides(userReg: userReg), let wine = pinnedWine else { return }
         var environment = baseEnvironment
         environment.merge(Self.launchEnvironment(
             baseOverrides: baseEnvironment["WINEDLLOVERRIDES"] ?? "",

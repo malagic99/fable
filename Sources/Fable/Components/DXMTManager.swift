@@ -79,7 +79,8 @@ final class DXMTManager: ObservableObject {
     /// Copies DXMT's DLLs into the bottle and the Metal bridge into the
     /// Wine installation. Idempotent.
     func enable(in bottle: Bottle, bottleManager: BottleManager, wineManager: WineManager) throws {
-        let wineBinary = try wineManager.wineBinary()  // …/wine/bin/wine
+        let wineBinary = try wineManager.wineBinary(  // …/wine/bin/wine
+            forPrefix: bottleManager.prefixDirectory(for: bottle))
         let layout = WineLayout.detect(wineBinary: wineBinary)
 
         guard let pe64 = payloadDirectory(named: layout.peDirectory) else {
