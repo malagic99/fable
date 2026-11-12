@@ -1,5 +1,26 @@
 # Changelog
 
+## v1.2.1 — 2026-11-12
+
+**Engines set up correctly on a Mac with no developer tools.**
+
+- **v1.2.0's "no Terminal" setup had a hole, found the day it shipped.**
+  Setting up an engine used two programs, `otool` and `install_name_tool`,
+  that are not part of macOS: they come with Xcode's Command Line Tools, and
+  without those they only pop up Apple's "install developer tools" dialog
+  and fail. On such a Mac the main engine still installed, because that
+  failure was ignored, but the step that lets DirectX 12 reach Apple's
+  renderer was skipped — so DirectX 12 games would fail to start. The
+  Sikarugir 11 and installer engines failed outright, asking for the tools.
+  Every Mac Fable had run on had them, because Homebrew installs them.
+  Fable now does that step itself. On the engines' real files the result is
+  byte-for-byte what Apple's tool produces, and a fresh engine install still
+  matches a working one in all 4,733 files. If you set up an engine on
+  v1.2.0 on a Mac without the tools, open the bottle and pick its backend
+  again: Fable repairs the engine in place.
+  Not reproduced on a Mac without the tools — none was available — so this
+  is fixed by removing the dependency, not by watching the failure go away.
+
 ## v1.2.0 — 2026-11-12
 
 **No Terminal before your first game, and labels that say only what Fable knows.**

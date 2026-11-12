@@ -452,15 +452,17 @@ final class SikarugirManager: ObservableObject {
         for name in ["d3d12.so", "d3d11.so", "dxgi.so"] {
             let so = unixDir.appending(path: name)
             guard FileManager.default.fileExists(atPath: so.path) else { continue }
-            let probe = try await ProcessRunner.run(
-                URL(filePath: "/usr/bin/otool"), arguments: ["-l", so.path])
-            guard !probe.standardOutput.contains("../../external") else { continue }
-            _ = try? await ProcessRunner.run(
-                URL(filePath: "/usr/bin/install_name_tool"),
-                arguments: ["-add_rpath", neededRpath, so.path])
-            _ = try? await ProcessRunner.run(
+            // In Swift, not with otool/install_name_tool: those need Xcode's
+            // Command Line Tools, which a clean Mac doesn't have, and their
+            // failure used to be ignored here — leaving an engine that
+            // installed fine and couldn't create a D3D12 device.
+            guard try MachORpath.add(neededRpath, to: so) else { continue }
+            let signed = try await ProcessRunner.run(
                 URL(filePath: "/usr/bin/codesign"),
                 arguments: ["--force", "--sign", "-", so.path])
+            guard signed.succeeded else {
+                throw ComponentError.extractionFailed("codesign \(name): \(signed.standardError)")
+            }
         }
     }
 

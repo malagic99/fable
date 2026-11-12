@@ -90,10 +90,7 @@ final class InstallerEngineManager: ObservableObject {
         }
 
         let wineserver = bundle.appending(path: "bin/wineserver")
-        if try await !Sikarugir11Manager.hasLibraryRpath(wineserver) {
-            try await Sikarugir11Manager.checked(
-                "/usr/bin/install_name_tool", ["-add_rpath", "@loader_path/../lib", wineserver.path])
-        }
+        try Sikarugir11Manager.addLibraryRpath(to: wineserver)
         let verify = try await ProcessRunner.run(
             URL(filePath: "/usr/bin/codesign"), arguments: ["--verify", wineserver.path])
         if !verify.succeeded {
