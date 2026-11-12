@@ -191,7 +191,8 @@ struct EngineCanaryTests {
             #expect(try RuntimeIntegrity.sha256(ofFileAt: file.path) == String(parts[0]), "\(parts[1]) changed without SHA256SUMS")
             checked += 1
         }
-        #expect(checked == 2)
+        #expect(checked == 3)
+        #expect(EngineBenchmark.program != nil)
         #expect(EngineCanary.program != nil)
     }
 }

@@ -1,5 +1,5 @@
 #!/bin/zsh
-# Builds Fable's engine canary (canary/fable-canary.c) into the app's
+# Builds Fable's engine canary and benchmark (canary/*.c) into the app's
 # resources. Needs mingw-w64 (`brew install mingw-w64`) — a developer's tool,
 # so the built programs are committed: nobody building or running Fable needs
 # it. Run this after changing the source, then update canary/SHA256SUMS (the
@@ -15,4 +15,7 @@ FLAGS=(-O1 -s -static -Wall -Wextra -Wl,--no-insert-timestamp)
 x86_64-w64-mingw32-gcc "${FLAGS[@]}" -o "$OUT/fable-canary64.exe" canary/fable-canary.c
 i686-w64-mingw32-gcc "${FLAGS[@]}" -o "$OUT/fable-canary32.exe" canary/fable-canary.c
 
-(cd "$OUT" && shasum -a 256 fable-canary64.exe fable-canary32.exe) | tee canary/SHA256SUMS
+# The engine benchmark: 64-bit only, it needs D3D12.
+x86_64-w64-mingw32-gcc "${FLAGS[@]}" -o "$OUT/fable-bench64.exe" canary/fable-bench.c -ldxguid
+
+(cd "$OUT" && shasum -a 256 fable-canary64.exe fable-canary32.exe fable-bench64.exe) | tee canary/SHA256SUMS

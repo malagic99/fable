@@ -598,7 +598,7 @@
 /* Engine canary */
 "Test Engine" = "Probar motor";
 "Runs a small test program on this bottle's engine in a throwaway bottle of its own. Your bottle is not touched." = "Ejecuta un pequeño programa de prueba en el motor de esta botella, dentro de una botella desechable propia. Tu botella no se toca.";
-"canary.running" = "Probando el motor en una botella desechable… hasta un minuto.";
+"canary.running" = "Probando el motor en una botella desechable… unos segundos, o uno o dos minutos la primera vez con Wine 11.";
 "canary.summary.passed" = "El motor superó las %@ comprobaciones en este Mac (%@). Esto muestra que el motor funciona aquí, no que un juego concreto lo haga.";
 "canary.summary.failed" = "El motor falló una comprobación en este Mac (%@): %@.";
 "canary.summary.incomplete" = "La prueba del motor no terminó todas las comprobaciones (%@). La primera sin resultado: %@.";
@@ -614,3 +614,20 @@
 "canary.status.skipped" = "no alcanzado";
 "canary.status.unsupported" = "no se puede probar";
 "canary.status.inconclusive" = "sin resultado claro";
+
+/* Engine benchmark */
+"Benchmark Engine" = "Medir rendimiento del motor";
+"Times a fixed test scene on this bottle's engine in a throwaway bottle of its own. A small window opens for a few seconds. Your bottle is not touched." = "Mide una escena de prueba fija en el motor de esta botella, dentro de una botella desechable propia. Se abre una ventana pequeña unos segundos. Tu botella no se toca.";
+"bench.running" = "Midiendo una escena de prueba en una botella desechable… unos 20 segundos. Se abrirá una ventana pequeña.";
+"bench.phase.draws" = "Llamadas de dibujo: %@ ms por fotograma para 20.000 dibujos (el 1%% más lento: %@ ms). Es el motor traduciendo DirectX 12 en el procesador.";
+"bench.phase.shade" = "Sombreado: %@ ms por fotograma (el 1%% más lento: %@ ms). Es el chip gráfico, y debería ser casi igual en cualquier motor.";
+"bench.presented" = "Se dibujó un fotograma y se mostró en una ventana.";
+"bench.failed" = "La prueba de rendimiento se detuvo: %@.";
+"bench.unsupported" = "Fable aún no puede medir así el motor %@.";
+"bench.caveat" = "Medido el %@. Una escena de prueba fija, útil para comparar motores en este Mac. No indica cómo funcionará ningún juego.";
+"bench.phase_name.draws" = "llamadas de dibujo";
+"bench.phase_name.shade" = "sombreado";
+"bench.compare.same" = "%@ más o menos igual";
+"bench.compare.faster" = "%@ un %@%% más rápido";
+"bench.compare.slower" = "%@ un %@%% más lento";
+"bench.compare.line" = "Comparado con %@: %@.";
