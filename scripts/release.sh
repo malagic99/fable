@@ -12,6 +12,13 @@
 #       zips, and creates the GitHub release with notes extracted from the
 #       CHANGELOG section. Refuses on a dirty tree or wrong branch.
 #
+# EXPERIMENTAL RELEASES:
+#   FABLE_PRERELEASE=1 scripts/release.sh prepare|publish ...
+#       Publishes as a GitHub pre-release. The in-app updater and the website
+#       both skip pre-releases, so nobody is moved onto it: it is there for
+#       people who go and get it. `prepare` then leaves the website's version
+#       alone, since the site must keep naming the stable release.
+#
 # VERSIONING RULE (SemVer, 0.x flavor):
 #   0.MINOR.0  — a new user-facing capability (hardware detection, feedback).
 #   0.M.PATCH  — everything else: fixes, UI polish, localization, refactors,
@@ -50,7 +57,11 @@ prepare)
     # never does (offline, or past GitHub's unauthenticated rate limit). That
     # fallback is only worth having if it isn't stale, and it went stale twice
     # by being left to memory.
-    python3 scripts/set-website-version.py "$VERSION"
+    if [ "${FABLE_PRERELEASE:-0}" = "1" ]; then
+        echo "pre-release: website version left on the stable release"
+    else
+        python3 scripts/set-website-version.py "$VERSION"
+    fi
     swift test 2>&1 | tail -1
     ;;
 publish)
@@ -103,7 +114,13 @@ publish)
 - SHA-256 of \`$ZIP\`: \`$ZIP_SHA\`
 - Check it with \`shasum -a 256 $ZIP\`. The full build record is \`$PROVENANCE\`."
 
-    gh release create "v$VERSION" "$ZIP" "$PROVENANCE" --title "Fable v$VERSION — $TITLE" --notes "$NOTES"
+    RELEASE_FLAGS=()
+    if [ "${FABLE_PRERELEASE:-0}" = "1" ]; then
+        # Not "latest": the updater and the site keep offering the stable one.
+        RELEASE_FLAGS+=(--prerelease --latest=false)
+    fi
+    gh release create "v$VERSION" "$ZIP" "$PROVENANCE" ${RELEASE_FLAGS[@]+"${RELEASE_FLAGS[@]}"} \
+        --title "Fable v$VERSION — $TITLE" --notes "$NOTES"
     rm -f "$ZIP" "$PROVENANCE"
     open Fable.app
     echo "published v$VERSION"

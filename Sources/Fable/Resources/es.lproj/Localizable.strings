@@ -624,7 +624,7 @@
 "bench.presented" = "Se dibujó un fotograma y se mostró en una ventana.";
 "bench.failed" = "La prueba de rendimiento se detuvo: %@.";
 "bench.unsupported" = "Fable aún no puede medir así el motor %@.";
-"bench.caveat" = "Medido el %@. Una escena de prueba fija, útil para comparar motores en este Mac. No indica cómo funcionará ningún juego.";
+"bench.caveat" = "Experimental. Medido el %@. Una escena de prueba fija, útil para comparar motores en este Mac. No indica cómo funcionará ningún juego.";
 "bench.phase_name.draws" = "llamadas de dibujo";
 "bench.phase_name.shade" = "sombreado";
 "bench.compare.same" = "%@ más o menos igual";

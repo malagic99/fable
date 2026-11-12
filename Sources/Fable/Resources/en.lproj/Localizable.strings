@@ -258,7 +258,7 @@
 "bench.presented" = "A frame was drawn and shown in a window.";
 "bench.failed" = "The benchmark stopped: %@.";
 "bench.unsupported" = "Fable can’t benchmark the %@ engine this way yet.";
-"bench.caveat" = "Measured %@. A fixed test scene, good for comparing engines on this Mac. It does not say how any game will run.";
+"bench.caveat" = "Experimental. Measured %@. A fixed test scene, good for comparing engines on this Mac. It does not say how any game will run.";
 "bench.phase_name.draws" = "draw calls";
 "bench.phase_name.shade" = "shading";
 "bench.compare.same" = "%@ about the same";

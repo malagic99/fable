@@ -1,5 +1,40 @@
 # Changelog
 
+## v1.3.1 — 2026-11-13 (experimental)
+
+**An engine benchmark, published as a pre-release.**
+
+*This is an experimental release. Fable's updater does not offer it and the
+website still points at v1.3.0; it is here for anyone who wants to try it.*
+
+- **Benchmark Engine (experimental).** A new button in the bottle page's
+  **Engine** section times a fixed DirectX 12 test scene on the bottle's
+  engine, in a throwaway bottle of its own — yours is not touched. A small
+  window opens for a few seconds. It reports two numbers: milliseconds per
+  frame for 20,000 draw calls (the engine translating DirectX 12 on the
+  processor, where engines differ) and for one heavy full-screen effect (the
+  graphics chip). It also draws a frame and shows it in a window, which the
+  engine test did not do.
+  On an M4 Pro: Sikarugir Wine 10 engine 8.3 ms and 3.8 ms; Sikarugir Wine 11
+  engine 6.7 ms and 3.8 ms. When two versions of the same engine have both
+  been measured on the same Mac, Fable says how they compare — and calls
+  anything under 15% (draw calls) or 5% (shading) "about the same", because
+  repeated runs of one engine vary that much.
+  It is a synthetic scene: it compares engines on your Mac, and does not say
+  how any game will run.
+  Why experimental: the button itself was never pressed in the app before
+  release (the code behind it was run directly on real engines); it isn't
+  known whether the test window takes focus from what you're doing; the
+  comparison between two engines has only been tested with made-up numbers;
+  and the noise margins come from one Mac.
+
+- **The engine test now covers more.** It was run on the Sikarugir Wine 11
+  engine (all five checks pass; the first run takes about a minute, because
+  Wine 11 is slow to create a new bottle) and on the GPTK engine, where it
+  reports that the DirectX 12 library won't load. That last one is a real
+  fault on the test Mac — its GPTK renderer is newer than its Wine can use —
+  and the test found it without being told.
+
 ## v1.3.0 — 2026-11-12
 
 **Fable can now check an engine and test it, instead of assuming.**
