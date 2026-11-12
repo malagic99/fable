@@ -232,3 +232,21 @@
 "integrity.move_blocked" = "The newer engine does not match its record, so the bottle was not moved. The differences are listed under Engine.";
 "integrity.error.no_manifest" = "This engine has no record to check against.";
 "integrity.error.unreadable_manifest" = "This engine’s record is damaged and can’t be read.";
+
+/* Engine canary */
+"canary.running" = "Testing the engine in a throwaway bottle… up to a minute.";
+"canary.summary.passed" = "The engine passed all %@ checks on this Mac (%@). This shows the engine works here — not that any particular game does.";
+"canary.summary.failed" = "The engine failed a check on this Mac (%@): %@.";
+"canary.summary.incomplete" = "The engine test did not finish every check (%@). First one without a result: %@.";
+"canary.summary.unsupported" = "Fable can’t test the %@ engine this way yet, so nothing is claimed about it.";
+"canary.move_blocked" = "The newer engine failed its test on this Mac, so the bottle was not moved. The result is listed under Engine.";
+"canary.rung.windowsProgram" = "Wine starts and runs a Windows program";
+"canary.rung.rendererLoads" = "The Direct3D libraries load";
+"canary.rung.direct3D12" = "A DirectX 12 device is created";
+"canary.rung.adapter" = "A graphics adapter is reported";
+"canary.rung.direct3D11" = "A DirectX 11 device is created";
+"canary.status.passed" = "passed";
+"canary.status.failed" = "failed";
+"canary.status.skipped" = "not reached";
+"canary.status.unsupported" = "can’t be tested";
+"canary.status.inconclusive" = "no clear result";

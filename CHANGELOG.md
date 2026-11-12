@@ -9,9 +9,16 @@
   that are not part of macOS: they come with Xcode's Command Line Tools, and
   without those they only pop up Apple's "install developer tools" dialog
   and fail. On such a Mac the main engine still installed, because that
-  failure was ignored, but the step that lets DirectX 12 reach Apple's
-  renderer was skipped — so DirectX 12 games would fail to start. The
-  Sikarugir 11 and installer engines failed outright, asking for the tools.
+  failure was ignored, but a step that adds a library path to its DirectX
+  files was skipped. The Sikarugir 11 and installer engines failed outright,
+  asking for the tools — so Ace Combat 8's setup and every 32-bit installer
+  were out of reach on such a Mac.
+  *Correction (same day, from the v1.3 engine test):* these notes first said
+  DirectX 12 games would fail to start on the main engine. Run on a copy of
+  that engine with the step left out, the test created DirectX 12 and 11
+  devices anyway — with the current engine and renderer the step is not
+  needed for that. So on the main engine the hole probably did no harm; the
+  real failures were the other two engines.
   Every Mac Fable had run on had them, because Homebrew installs them.
   Fable now does that step itself. On the engines' real files the result is
   byte-for-byte what Apple's tool produces, and a fresh engine install still

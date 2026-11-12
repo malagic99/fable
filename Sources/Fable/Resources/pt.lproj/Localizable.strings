@@ -594,3 +594,23 @@
 "integrity.move_blocked" = "O motor mais recente não corresponde ao seu registo, por isso a garrafa não foi movida. As diferenças estão listadas em Motor.";
 "integrity.error.no_manifest" = "Este motor não tem registo para comparar.";
 "integrity.error.unreadable_manifest" = "O registo deste motor está danificado e não pode ser lido.";
+
+/* Engine canary */
+"Test Engine" = "Testar motor";
+"Runs a small test program on this bottle's engine in a throwaway bottle of its own. Your bottle is not touched." = "Executa um pequeno programa de teste no motor desta garrafa, numa garrafa descartável própria. A sua garrafa não é alterada.";
+"canary.running" = "A testar o motor numa garrafa descartável… até um minuto.";
+"canary.summary.passed" = "O motor passou nas %@ verificações neste Mac (%@). Isto mostra que o motor funciona aqui — não que um jogo em particular funcione.";
+"canary.summary.failed" = "O motor falhou uma verificação neste Mac (%@): %@.";
+"canary.summary.incomplete" = "O teste do motor não terminou todas as verificações (%@). A primeira sem resultado: %@.";
+"canary.summary.unsupported" = "O Fable ainda não consegue testar assim o motor %@, por isso nada é afirmado sobre ele.";
+"canary.move_blocked" = "O motor mais recente falhou o teste neste Mac, por isso a garrafa não foi movida. O resultado está em Motor.";
+"canary.rung.windowsProgram" = "O Wine arranca e executa um programa de Windows";
+"canary.rung.rendererLoads" = "As bibliotecas Direct3D são carregadas";
+"canary.rung.direct3D12" = "É criado um dispositivo DirectX 12";
+"canary.rung.adapter" = "É detetado um adaptador gráfico";
+"canary.rung.direct3D11" = "É criado um dispositivo DirectX 11";
+"canary.status.passed" = "passou";
+"canary.status.failed" = "falhou";
+"canary.status.skipped" = "não alcançado";
+"canary.status.unsupported" = "não pode ser testado";
+"canary.status.inconclusive" = "sem resultado claro";

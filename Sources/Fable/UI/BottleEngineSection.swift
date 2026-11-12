@@ -11,11 +11,15 @@ struct BottleEngineSection: View {
     @EnvironmentObject private var bottleManager: BottleManager
     @EnvironmentObject private var componentManager: ComponentManager
     @EnvironmentObject private var toastCenter: ToastCenter
+    @EnvironmentObject private var gameLauncher: GameLauncher
 
     @State private var isConfirmingMove = false
     @State private var isChecking = false
     /// One line per engine from the last check, nil before the first.
     @State private var checkResults: [RuntimeIntegrity.CheckLine]?
+    @State private var isTesting = false
+    /// The latest engine test for this bottle's engine: run now, or stored.
+    @State private var canary: CanaryResult?
 
     private var runtime: BottleRuntime? { bottle.runtime }
     private var updates: [EngineInventory.Update] {
@@ -71,6 +75,31 @@ struct BottleEngineSection: View {
                     .help("Compares every file of this bottle's engine with the record Fable made when it set the engine up.")
                 if isChecking { ProgressView().controlSize(.small) }
             }
+            HStack {
+                Button("Test Engine") { test() }
+                    .disabled(isTesting || isChecking)
+                    .help("Runs a small test program on this bottle's engine in a throwaway bottle of its own. Your bottle is not touched.")
+                if isTesting {
+                    ProgressView().controlSize(.small)
+                    Text(L10n.string("canary.running")).font(.caption).foregroundStyle(.secondary)
+                }
+            }
+            if let canary {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(canary.summaryText)
+                        .foregroundStyle(canary.hasFailure ? .orange : .primary)
+                    ForEach(canary.rungs, id: \.self) { rung in
+                        Label {
+                            Text(rung.lineText)
+                        } icon: {
+                            Image(systemName: rung.status.symbol)
+                                .foregroundStyle(rung.status.tint)
+                        }
+                        .font(.caption)
+                    }
+                }
+                .font(.callout)
+            }
             if let checkResults {
                 ForEach(checkResults, id: \.self) { line in
                     VStack(alignment: .leading, spacing: 3) {
@@ -93,6 +122,11 @@ struct BottleEngineSection: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
+        .task(id: bottle.runtime?.engineKey(for: bottle.graphicsBackend)) {
+            canary = CanaryStore.latest(
+                backend: bottle.graphicsBackend,
+                engineKey: bottle.runtime?.engineKey(for: bottle.graphicsBackend))
+        }
         .confirmationDialog(
             L10n.string("engine.move.title", bottle.name),
             isPresented: $isConfirmingMove
@@ -106,6 +140,14 @@ struct BottleEngineSection: View {
 
     private var backupName: String {
         L10n.string("engine.backup_name", bottle.name)
+    }
+
+    private func test() {
+        isTesting = true
+        Task {
+            canary = await gameLauncher.runCanary(backend: bottle.graphicsBackend, pins: bottle.enginePins)
+            isTesting = false
+        }
     }
 
     /// The engine directories this bottle runs on, under its own pins.
@@ -141,6 +183,19 @@ struct BottleEngineSection: View {
             if lines.contains(where: \.isProblem) {
                 checkResults = lines
                 toastCenter.error(L10n.string("integrity.move_blocked"))
+                return
+            }
+            // Then prove the newer engine works on this Mac before the bottle
+            // depends on it. Only a failure blocks: an engine that can't be
+            // tested this way is not held back for it.
+            var newestPins = bottle.enginePins
+            for update in updates { newestPins[update.componentID] = update.newest }
+            isTesting = true
+            let trial = await gameLauncher.runCanary(backend: bottle.graphicsBackend, pins: newestPins)
+            isTesting = false
+            if trial.hasFailure {
+                canary = trial
+                toastCenter.error(L10n.string("canary.move_blocked"))
                 return
             }
             do {
