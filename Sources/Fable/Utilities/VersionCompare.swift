@@ -32,6 +32,31 @@ enum VersionCompare {
             .trimmingCharacters(in: CharacterSet(charactersIn: "v"))
             .components(separatedBy: CharacterSet(charactersIn: "._- "))
             .filter { !$0.isEmpty }
+            .flatMap(runs)
             .map { Int($0).map(Part.number) ?? .text($0) }
+    }
+
+    /// Splits "sikarugir10" into "sikarugir", "10" so digits embedded in a
+    /// label compare as numbers ("…Sikarugir10.0_4" vs "…Sikarugir9.0_1").
+    private static func runs(of token: String) -> [String] {
+        var result: [String] = []
+        var current = ""
+        var currentIsDigit: Bool?
+        for ch in token {
+            let isDigit = ch.isASCII && ch.isNumber
+            if let kind = currentIsDigit, kind != isDigit {
+                result.append(current)
+                current = ""
+            }
+            current.append(ch)
+            currentIsDigit = isDigit
+        }
+        if !current.isEmpty { result.append(current) }
+        return result
+    }
+
+    /// Picks the newest of several version labels, or nil when empty.
+    static func newest(_ versions: [String]) -> String? {
+        versions.max { isNewer($1, than: $0) }
     }
 }

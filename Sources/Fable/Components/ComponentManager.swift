@@ -53,7 +53,10 @@ final class ComponentManager: ObservableObject {
             includingPropertiesForKeys: nil,
             options: .skipsHiddenFiles
         )) ?? []
-        return versions.sorted { $0.lastPathComponent < $1.lastPathComponent }.last
+        // Numeric, not lexical: "11.9_1" < "11.10_1".
+        return versions.max {
+            VersionCompare.isNewer($1.lastPathComponent, than: $0.lastPathComponent)
+        }
     }
 
     func installedDirectory(for id: String, version: String) -> URL? {
