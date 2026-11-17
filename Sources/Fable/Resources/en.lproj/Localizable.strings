@@ -265,3 +265,6 @@
 "bench.compare.faster" = "%@ %@%% faster";
 "bench.compare.slower" = "%@ %@%% slower";
 "bench.compare.line" = "Compared with %@: %@.";
+
+/* Steam library sync */
+"steam.auto_added" = "Added from Steam: %@ (in %@).";

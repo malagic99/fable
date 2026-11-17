@@ -26,6 +26,9 @@ enum BottleError: LocalizedError, Equatable {
 @MainActor
 final class BottleManager: ObservableObject {
     @Published private(set) var bottles: [Bottle] = []
+    /// What each bottle's Steam library looked like at its last sync, so an
+    /// unchanged library costs a few file stats and nothing more.
+    private var steamLibraryFingerprints: [Bottle.ID: String] = [:]
 
     let bottlesDirectory: URL
 
@@ -271,6 +274,43 @@ final class BottleManager: ObservableObject {
         let driveC = driveCDirectory(for: bottle)
         return FileManager.default.fileExists(atPath: SteamPaths.uiMarker(inDriveC: driveC).path)
             ? SteamPaths.clientRoot(inDriveC: driveC) : nil
+    }
+
+    /// Adds the games Steam has finished installing in this bottle that
+    /// Fable hasn't seen before, each pointed at the executable Steam's own
+    /// launch data names. Returns the names added. Cheap to call often: it
+    /// does nothing while the Steam library's files are unchanged.
+    func syncSteamLibrary(for id: Bottle.ID) async -> [String] {
+        guard let bottle = bottles.first(where: { $0.id == id }), bottle.status == .ready,
+              let root = steamRoot(for: bottle)
+        else { return [] }
+        let driveC = driveCDirectory(for: bottle)
+
+        let scan = await Task.detached(priority: .utility) { () -> (String, [SteamLibraryGame])? in
+            let fingerprint = SteamLibrarySync.fingerprint(steamRoot: root)
+            return (fingerprint, SteamLibrarySync.discover(steamRoot: root, driveC: driveC))
+        }.value
+        guard let (fingerprint, discovered) = scan, steamLibraryFingerprints[id] != fingerprint else { return [] }
+
+        // The bottle may have changed while the scan ran.
+        guard let index = bottles.firstIndex(where: { $0.id == id }) else { return [] }
+        let known = bottles[index].steamSyncedAppIDs ?? []
+        let fresh = SteamLibrarySync.newGames(discovered, bottle: bottles[index], known: known)
+        let seen = known.union(discovered.map(\.appID))
+        if !fresh.isEmpty || seen != known {
+            for game in fresh {
+                bottles[index].games.append(Game(
+                    name: game.name, executablePath: game.executablePath, arguments: game.arguments))
+            }
+            bottles[index].steamSyncedAppIDs = seen
+            do {
+                try save(bottles[index])
+            } catch {
+                return []   // not recorded: the next pass tries again
+            }
+        }
+        steamLibraryFingerprints[id] = fingerprint
+        return fresh.map(\.name)
     }
 
     /// Finishes any Steam install that downloaded + extracted but stalled on

@@ -182,6 +182,23 @@ struct FableApp: App {
                     if settingsManager.settings.checkForUpdatesAutomatically {
                         Task { await appUpdateChecker.checkIfDue() }
                     }
+                    // Games Steam installs in a bottle appear on the wall by
+                    // themselves. Checked every half minute: an unchanged
+                    // library costs a few file stats.
+                    Task { [weak bottleManager, weak settingsManager, weak toastCenter] in
+                        while !Task.isCancelled {
+                            if let bottleManager, settingsManager?.settings.autoAddSteamGames == true {
+                                for bottle in bottleManager.bottles {
+                                    let added = await bottleManager.syncSteamLibrary(for: bottle.id)
+                                    if !added.isEmpty {
+                                        toastCenter?.success(L10n.string(
+                                            "steam.auto_added", added.joined(separator: ", "), bottle.name))
+                                    }
+                                }
+                            }
+                            try? await Task.sleep(for: .seconds(30))
+                        }
+                    }
                     // Restore warmed shaders if macOS purged the volatile darwin
                     // cache since last run (e.g. across a reboot) — once at start.
                     Task { await shaderCacheStore.restoreLiveIfPurged() }
