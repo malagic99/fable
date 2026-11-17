@@ -97,6 +97,9 @@ struct AppSettings: Codable, Equatable, Sendable {
     /// an hour). The only network call Fable makes on its own; off keeps it
     /// silent until you press Check for Updates.
     var checkForUpdatesAutomatically: Bool = true
+    /// Put games on the wall as Steam finishes installing them in a bottle.
+    /// Reads Steam's own files on this Mac; no network.
+    var autoAddSteamGames: Bool = true
 
     init() {}
 
@@ -130,6 +133,7 @@ struct AppSettings: Codable, Equatable, Sendable {
             .decodeIfPresent(Bool.self, forKey: .sikarugirUsesGPTK4D3DMetal) ?? false
         checkForUpdatesAutomatically = try container
             .decodeIfPresent(Bool.self, forKey: .checkForUpdatesAutomatically) ?? true
+        autoAddSteamGames = try container.decodeIfPresent(Bool.self, forKey: .autoAddSteamGames) ?? true
     }
 }
 

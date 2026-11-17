@@ -244,6 +244,16 @@ private struct LibrarySettingsTab: View {
             }
 
             Section {
+                Toggle("Add Steam Games Automatically", isOn: $settingsManager.settings.autoAddSteamGames)
+            } header: {
+                Text("Steam")
+            } footer: {
+                Text("When Steam finishes installing a game in a bottle, Fable adds it to your games. It reads Steam's own files on this Mac and uses the program Steam itself would start.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Section {
                 Toggle("Fetch Cover Art Online", isOn: $settingsManager.settings.onlineArtwork)
                 TextField("SteamGridDB API Key (optional)", text: $settingsManager.settings.steamGridDBKey)
                     .textFieldStyle(.roundedBorder)

@@ -204,6 +204,10 @@ struct Bottle: Codable, Identifiable, Hashable, Sendable {
     /// The engine versions this bottle is pinned to. nil until its first
     /// launch stamps it (bottles from before pinning, new and imported ones).
     var runtime: BottleRuntime?
+    /// Steam app ids Fable has already considered for this bottle's game
+    /// list. A game is added automatically once; after that it's the user's
+    /// to keep or remove, and removing it must not bring it back.
+    var steamSyncedAppIDs: Set<Int>? = nil
 
     init(
         id: UUID = UUID(),
@@ -278,5 +282,6 @@ struct Bottle: Codable, Identifiable, Hashable, Sendable {
         // A record this Fable can't read must not stop the bottle loading;
         // it gets re-stamped at the next launch.
         runtime = try? container.decodeIfPresent(BottleRuntime.self, forKey: .runtime)
+        steamSyncedAppIDs = try? container.decodeIfPresent(Set<Int>.self, forKey: .steamSyncedAppIDs)
     }
 }
