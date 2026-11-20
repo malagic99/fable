@@ -75,6 +75,8 @@ passed vacuously (a `../` path only resolves through a directory that exists).
 
 ## Still open
 
+*Follow-up: a second scan on 2026-11-20 — [SECURITY-AUDIT-2026-11-20.md](SECURITY-AUDIT-2026-11-20.md) — re-checked these claims and found five more issues, all fixed in v1.3.2 and v1.3.3.*
+
 1. **Windows redistributables are downloaded unverified** — VC++ x64/x86,
    DirectX June 2010, OpenAL (`DependencyCatalog`). HTTPS only. Pinning a hash
    doesn't work for `aka.ms` links, which always serve Microsoft's latest
