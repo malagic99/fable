@@ -108,6 +108,17 @@ struct EngineBenchmarkTests {
         #expect(r.displayLines.count == 1)
     }
 
+    /// Security scan 2026-11-20, finding 8: `Int(frames)` trapped on these.
+    @Test
+    func nonFiniteOrAbsurdNumbersAreRefusedNotCrashedOn() {
+        for frames in ["inf", "nan", "1e300", "-inf"] {
+            #expect(EngineBenchmark.phase(.draws, from: "ok frames=\(frames) avg_ms=1 median_ms=1 p99_ms=1") == nil)
+        }
+        #expect(EngineBenchmark.phase(.draws, from: "ok frames=400 avg_ms=1 median_ms=inf p99_ms=1") == nil)
+        #expect(EngineBenchmark.phase(.draws, from: "ok frames=400 avg_ms=1 median_ms=1 p99_ms=nan") == nil)
+        #expect(EngineBenchmark.phase(.draws, from: "ok frames=400 avg_ms=1 median_ms=1 p99_ms=1") != nil)
+    }
+
     @Test
     func garbageNumbersAreNotAResult() {
         #expect(EngineBenchmark.phase(.draws, from: "ok frames=3 avg_ms=1 median_ms=1 p99_ms=1") == nil)

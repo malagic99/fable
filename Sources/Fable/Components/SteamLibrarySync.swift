@@ -164,6 +164,20 @@ enum SteamLibrarySync {
         }
     }
 
+    /// ``discover(steamRoot:driveC:)``, but only when the library changed
+    /// since `previousFingerprint`: nil means "unchanged, nothing read".
+    /// The fingerprint is taken first and is a few file stats, so an idle
+    /// library costs almost nothing however often this runs. (It used to be
+    /// taken alongside a full scan, so every check paid for the scan —
+    /// security scan 2026-11-20, finding 6.)
+    static func discoverIfChanged(
+        steamRoot: URL, driveC: URL, previousFingerprint: String?
+    ) -> (fingerprint: String, games: [SteamLibraryGame])? {
+        let fingerprint = fingerprint(steamRoot: steamRoot)
+        guard fingerprint != previousFingerprint else { return nil }
+        return (fingerprint, discover(steamRoot: steamRoot, driveC: driveC))
+    }
+
     /// A cheap fingerprint of what ``discover(steamRoot:driveC:)`` reads:
     /// the manifests' names and change times, and the cache's. Unchanged
     /// fingerprint, unchanged answer — so a periodic check can skip the work.

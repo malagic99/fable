@@ -20,6 +20,9 @@ enum SteamAppInfoCache {
     private static let magicWithStringTable: UInt32 = 0x0756_4429
     private static let magicInlineKeys: UInt32 = 0x0756_4428
 
+    /// Largest cache read at all. A big library's cache is tens of MB.
+    static let maxFileBytes = 512 << 20
+
     /// Bytes between an app record's size field and its KeyValues tree:
     /// info state, last updated, PICS token, text SHA-1, change number,
     /// binary SHA-1.
@@ -36,9 +39,11 @@ enum SteamAppInfoCache {
         case magicWithStringTable:
             guard let offset = reader.i64(), offset > 0, offset < Int64(data.count) else { return nil }
             var table = Reader(data: data, position: Int(offset))
-            guard let count = table.u32(), count < 5_000_000 else { return nil }
+            // Every string takes at least its NUL byte, so a count larger than
+            // what's left of the file is a lie — refuse it before allocating.
+            guard let count = table.u32(), Int(count) <= data.count - table.position else { return nil }
             var list: [String] = []
-            list.reserveCapacity(Int(count))
+            list.reserveCapacity(min(Int(count), 1 << 16))
             for _ in 0..<count {
                 guard let string = table.cString() else { return nil }
                 list.append(string)
@@ -71,7 +76,14 @@ enum SteamAppInfoCache {
 
     static func entries(for appIDs: Set<Int>, steamRoot: URL) -> [Int: VDFValue]? {
         let file = steamRoot.appending(path: "appcache/appinfo.vdf")
-        guard let data = try? Data(contentsOf: file, options: .mappedIfSafe) else { return nil }
+        // Read, not memory-mapped: Steam may rewrite this file while Fable
+        // scans it, and a mapped file truncated underneath crashes the reader
+        // (SIGBUS) — bounds checks can't help, the length they check is stale.
+        // Security scan 2026-11-20, finding 7.
+        guard let size = (try? FileManager.default.attributesOfItem(atPath: file.path)[.size] as? NSNumber)??.intValue,
+              size <= maxFileBytes,
+              let data = try? Data(contentsOf: file)
+        else { return nil }
         return entries(for: appIDs, in: data)
     }
 
