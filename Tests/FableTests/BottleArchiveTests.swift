@@ -106,19 +106,57 @@ import Testing
         // Other AppData of that user is not login state and still travels.
         try fm.createDirectory(at: users.appending(path: "donor/AppData/Local/Other"), withIntermediateDirectories: true)
         try Data("keep".utf8).write(to: users.appending(path: "donor/AppData/Local/Other/settings.ini"))
+        // The Steam account name lives in the registry (security scan
+        // 2026-11-20), and games can live outside steamapps.
+        let prefix = manager.prefixDirectory(for: bottle)
+        let registry = #"""
+        WINE REGISTRY Version 2
+
+        [Software\\Valve\\Steam] 1794875685
+        #time=1dd762d0bc63e54
+        "AutoLoginUser"="owneraccount"
+        "Language"="english"
+        "SteamExe"="c:/program files (x86)/steam/steam.exe"
+
+        [Software\\Valve\\Steam\\ActiveProcess] 1794875676
+        "ActiveUser"=dword:0badf00d
+
+        [Software\\Valve\\Steam\\Apps\\3669870] 1794875685
+        "Name"="CONTROL Resonant"
+
+        [Software\\Wine\\DllOverrides] 1794876356
+        "d3d12"="builtin"
+        """#
+        try registry.write(to: prefix.appending(path: "user.reg"), atomically: true, encoding: .utf8)
+        let driveC = prefix.appending(path: "drive_c", directoryHint: .isDirectory)
+        for file in ["SteamBridge/1168880/MOLEKSYNTEZ.exe", "Program Files/Undertale/UNDERTALE.exe",
+                     "windows/system32/cmd.exe"] {
+            try fm.createDirectory(at: driveC.appending(path: file).deletingLastPathComponent(), withIntermediateDirectories: true)
+            try Data("MZ".utf8).write(to: driveC.appending(path: file))
+        }
 
         // Metadata side: the steamapps game entry is stripped, Steam stays.
         var withGames = bottle
         withGames.games = [
             Game(name: "Steam", executablePath: "\(SteamPaths.exeRelative)"),
             Game(name: "Big Game", executablePath: "\(SteamPaths.clientDirRelative)/steamapps/common/Game/game.bin"),
+            Game(name: "MOLEK-SYNTEZ", executablePath: "SteamBridge/1168880/MOLEKSYNTEZ.exe"),
+            Game(name: "UNDERTALE", executablePath: "Program Files/Undertale/UNDERTALE.exe"),
+            Game(name: "cmd", executablePath: "windows/system32/cmd.exe"),
         ]
+        withGames.steamSyncedAppIDs = [3669870]
         let donor = BottleArchive.donorBottle(withGames)
         #expect(donor.games.map(\.name) == ["Steam"])
+        #expect(donor.steamSyncedAppIDs == nil)
 
         let archive = root.appending(path: "Donor.fbottle")
         try await BottleArchive.pack(donor, bottleManager: manager, catalog: catalog,
-                                     to: archive, excluding: BottleArchive.donorExclusions())
+                                     to: archive, excluding: BottleArchive.donorExclusions(for: withGames),
+                                     sanitizeRegistry: true)
+        // The original bottle is untouched, and the export's copy is gone.
+        #expect(try String(contentsOf: prefix.appending(path: "user.reg"), encoding: .utf8).contains("owneraccount"))
+        #expect(try fm.contentsOfDirectory(atPath: manager.directory(for: bottle).path)
+            .allSatisfy { !$0.hasPrefix(".donor-export") })
 
         // Import verifies the checksum — the moment of truth for exclusion
         // symmetry — then the stripped files must be gone, the client not.
@@ -133,8 +171,52 @@ import Testing
         #expect(!fm.fileExists(atPath: outUsers.appending(path: "Steam/local.vdf").path))
         #expect(!fm.fileExists(atPath: outUsers.appending(path: "Steam/htmlcache").path))
         #expect(fm.fileExists(atPath: outUsers.appending(path: "Other/settings.ini").path))
+        // No account name, no installed-app list, the rest of the registry intact.
+        let outRegistry = try String(contentsOf: unpacked.prefixDirectory.appending(path: "user.reg"), encoding: .utf8)
+        #expect(!outRegistry.contains("owneraccount"))
+        #expect(!outRegistry.contains("AutoLoginUser"))
+        #expect(!outRegistry.contains("ActiveProcess"))
+        #expect(!outRegistry.contains("CONTROL Resonant"))
+        #expect(outRegistry.contains(#""Language"="english""#))
+        #expect(outRegistry.contains(#""d3d12"="builtin""#))
+        // Games outside steamapps don't travel; Windows' own programs do.
+        let outDriveC = unpacked.prefixDirectory.appending(path: "drive_c")
+        #expect(!fm.fileExists(atPath: outDriveC.appending(path: "SteamBridge").path))
+        #expect(!fm.fileExists(atPath: outDriveC.appending(path: "Program Files/Undertale").path))
+        #expect(fm.fileExists(atPath: outDriveC.appending(path: "windows/system32/cmd.exe").path))
+        #expect(unpacked.bottle.steamSyncedAppIDs == nil)
         // The keeper from the fixture still travels.
         #expect(fm.fileExists(atPath: unpacked.prefixDirectory.appending(path: "drive_c/marker.txt").path))
+    }
+
+    /// Real bottles never imported: copying drops group-write bits and adds
+    /// extended attributes, so the old raw-stream checksum never matched.
+    @Test
+    func aBottleWithGroupWritableFoldersAndAttributesImports() async throws {
+        let (manager, bottle, catalog, root) = try makeFixture()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let fm = FileManager.default
+        let folder = manager.prefixDirectory(for: bottle).appending(path: "drive_c/Shared", directoryHint: .isDirectory)
+        try fm.createDirectory(at: folder, withIntermediateDirectories: true)
+        try Data("x".utf8).write(to: folder.appending(path: "file.txt"))
+        try fm.setAttributes([.posixPermissions: 0o775], ofItemAtPath: folder.path)
+        _ = try await ProcessRunner.run(
+            URL(filePath: "/usr/bin/xattr"), arguments: ["-w", "user.DOSATTRIB", "0x20", folder.appending(path: "file.txt").path])
+
+        let archive = root.appending(path: "Real.fbottle")
+        try await BottleArchive.pack(bottle, bottleManager: manager, catalog: catalog, to: archive)
+        #expect(try await BottleArchive.inspect(archive).checksumFormat == BottleArchive.ChecksumFormat.normalized.rawValue)
+        let unpacked = try await BottleArchive.unpack(archive)
+        defer { try? fm.removeItem(at: unpacked.workingDirectory) }
+        let mode = try fm.attributesOfItem(atPath: unpacked.prefixDirectory.appending(path: "drive_c/Shared").path)[.posixPermissions] as? NSNumber
+        #expect(mode?.intValue == 0o775)
+    }
+
+    @Test
+    func archivesFromBeforeTheFormatFieldUseTheRawChecksum() throws {
+        let json = #"{"schemaVersion":1,"fableVersion":"1.3.0","exportedAt":"2026-11-01T00:00:00Z","originalBottleID":"102CC732-6BC7-479E-ACD2-771AF7D7912C","originalBottleName":"B","components":{},"prefixChecksum":"sha256:00"}"#
+        let manifest = try JSONDecoder.fable().decode(BottleArchive.Manifest.self, from: Data(json.utf8))
+        #expect(manifest.checksumFormat == nil)
     }
 
     @Test

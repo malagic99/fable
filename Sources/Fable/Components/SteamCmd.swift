@@ -121,7 +121,10 @@ enum SteamCmd {
     // MARK: Download (in Terminal)
 
     /// Where a bridge game's files go inside a bottle (drive_c-relative).
-    static func installFolder(appID: Int) -> String { "SteamBridge/\(appID)" }
+    static func installFolder(appID: Int) -> String { "\(installRoot)/\(appID)" }
+
+    /// The folder every bridge game goes in, relative to drive_c.
+    static let installRoot = "SteamBridge"
 
     /// A `.command` script Terminal runs: asks for the Steam account name,
     /// lets steamcmd ask for the password and Steam Guard code itself,

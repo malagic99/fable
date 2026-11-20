@@ -1,5 +1,28 @@
 # Changelog
 
+## v1.3.3 — 2026-11-20
+
+**Donor exports keep your account, and shared bottles import again.**
+
+- **Fixed: a "Donor for a Friend" export carried your Steam account name.**
+  Steam keeps the name it signs in with in the bottle's Windows registry,
+  which the export copied whole. It's now removed, together with the
+  signed-in account's id and the list of games Steam has installed; everything
+  else in the registry travels as before. Your own bottle isn't changed: the
+  export works on an instant copy-on-write copy that's deleted afterwards.
+- **Fixed: donor exports could include games.** Games installed outside
+  Steam's own folder — Steam-bridge downloads, and games you added by hand,
+  like an installer or a GOG game — now stay home, with their entries on the
+  game wall. Programs that are part of Windows stay in.
+- **Fixed: real bottles couldn't be imported.** Fable checks a bottle's
+  checksum before importing it, but the check counted details that copying
+  between Macs changes (extended file attributes, owner names, group-write
+  permissions), so a real bottle's export never passed it — only the tiny
+  ones in the tests did. The checksum now covers what survives a copy, and
+  archives from older versions are still checked the old way. Verified with a
+  donor export of a real 166 GB Steam bottle (1.3 GB archive, made in about
+  20 seconds), which now imports.
+
 ## v1.3.2 — 2026-11-20
 
 **A security fix: opening a shared bottle could change files outside it.**

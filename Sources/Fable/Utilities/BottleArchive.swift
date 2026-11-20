@@ -45,6 +45,13 @@ enum BottleArchive {
         /// SHA-256 of the uncompressed tar stream of the prefix tree.
         /// Lets the importer detect corruption before path rewriting.
         let prefixChecksum: String
+        /// How `prefixChecksum` was computed. Absent (nil) in archives from
+        /// before v1.3.3, which hashed the raw tar stream — extended
+        /// attributes, owner names and all — and so never verified for a
+        /// real bottle on import (copying adds `com.apple.provenance` and
+        /// drops group-write bits). ``ChecksumFormat/normalized`` leaves
+        /// those out. Older Fable ignores the field.
+        var checksumFormat: Int? = nil
 
         struct Components: Codable, Hashable, Sendable {
             let wine: String?
@@ -77,9 +84,13 @@ enum BottleArchive {
     /// installed games (licensed content that the recipient may not own),
     /// downloads, per-account data, and the owner's login/session state stay
     /// home. The friend logs in as themselves; Steam regenerates config.
-    static func donorExclusions() -> [String] {
+    static func donorExclusions(for bottle: Bottle) -> [String] {
         let steam = "\(prefixEntryName)/drive_c/\(SteamPaths.clientDirRelative)"
-        return [
+        // Games outside steamapps (bridge downloads, games added by hand).
+        let gameFolders = DonorExport.gameFolders(of: bottle).map {
+            "\(prefixEntryName)/drive_c/" + DonorExport.literalPattern($0)
+        }
+        return gameFolders + [
             "\(steam)/steamapps",   // installed games, manifests, downloads
             "\(steam)/userdata",    // per-account cloud/config
             "\(steam)/config",      // loginusers.vdf + session tokens
@@ -98,17 +109,14 @@ enum BottleArchive {
         ]
     }
 
-    /// The bottle metadata that matches `donorExclusions()`: game entries
-    /// living under steamapps are stripped (their files won't travel), the
-    /// Steam client entry itself stays.
+    /// The bottle metadata that matches `donorExclusions(for:)`: only the
+    /// Steam client stays on the wall — every game's files are left out, so
+    /// its entry goes too — and the owner's list of installed Steam apps is
+    /// dropped (it also stopped the friend's own installs being added).
     static func donorBottle(_ bottle: Bottle) -> Bottle {
         var donor = bottle
-        donor.games.removeAll { game in
-            game.executablePath
-                .replacingOccurrences(of: "\\", with: "/")
-                .lowercased()
-                .contains("steamapps/")
-        }
+        donor.games.removeAll { !DonorExport.isSteamClient($0) }
+        donor.steamSyncedAppIDs = nil
         return donor
     }
 
@@ -123,7 +131,7 @@ enum BottleArchive {
     /// two small JSON files are staged.
     ///
     /// `excluding` takes tar patterns relative to the archive root (see
-    /// `donorExclusions()`). The SAME exclusions feed the checksum stream and
+    /// `donorExclusions(for:)`). The SAME exclusions feed the checksum stream and
     /// the archive — they must agree, or the import-side verification would
     /// reject every donor archive.
     @MainActor
@@ -133,11 +141,12 @@ enum BottleArchive {
         bottleManager: BottleManager,
         catalog: VersionCatalog,
         to destination: URL,
-        excluding: [String] = []
+        excluding: [String] = [],
+        sanitizeRegistry: Bool = false
     ) async throws -> URL {
         let fm = FileManager.default
         let source = bottleManager.directory(for: bottle)
-        let prefixSource = bottleManager.prefixDirectory(for: bottle)
+        var prefixSource = bottleManager.prefixDirectory(for: bottle)
         guard fm.fileExists(atPath: source.path) else {
             throw ArchiveError.bottleDirectoryMissing(source.path)
         }
@@ -148,6 +157,51 @@ enum BottleArchive {
         try fm.createDirectory(at: staging, withIntermediateDirectories: true)
         defer { try? fm.removeItem(at: staging) }
 
+        // A donor needs a registry without the owner's Steam account in it.
+        // The prefix is tarred in place, so the change is made in a
+        // copy-on-write clone beside the bottle: seconds and almost no disk
+        // even for a 150 GB Steam bottle. Cloning fails rather than silently
+        // falling back to a full copy, and the clone is always removed.
+        if sanitizeRegistry, fm.fileExists(atPath: prefixSource.path) {
+            let clone = try await cloneForDonor(prefixSource, beside: source)
+            defer { try? fm.removeItem(at: clone.deletingLastPathComponent()) }
+            let registry = clone.appending(path: "user.reg")
+            if let text = try? String(contentsOf: registry, encoding: .utf8) {
+                try DonorExport.sanitizedUserRegistry(text).write(to: registry, atomically: false, encoding: .utf8)
+            }
+            prefixSource = clone
+            return try await packTree(
+                bottle, prefixSource: prefixSource, staging: staging, catalog: catalog,
+                to: destination, excluding: excluding)
+        }
+        return try await packTree(
+            bottle, prefixSource: prefixSource, staging: staging, catalog: catalog,
+            to: destination, excluding: excluding)
+    }
+
+    /// Clones `prefix` with clonefile(2) into a fresh folder inside
+    /// `bottleDirectory` (same volume, so the clone is free). Returns the
+    /// clone's `prefix` folder.
+    @MainActor
+    private static func cloneForDonor(_ prefix: URL, beside bottleDirectory: URL) async throws -> URL {
+        let holder = bottleDirectory.appending(path: ".donor-export-\(UUID().uuidString)", directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(at: holder, withIntermediateDirectories: true)
+        let clone = holder.appending(path: prefixEntryName, directoryHint: .isDirectory)
+        let result = try await ProcessRunner.run(
+            URL(filePath: "/bin/cp"), arguments: ["-c", "-R", prefix.path, clone.path])
+        guard result.succeeded else {
+            try? FileManager.default.removeItem(at: holder)
+            throw ArchiveError.tarFailed("couldn't make a copy-on-write copy of the bottle: \(result.standardError)")
+        }
+        return clone
+    }
+
+    @MainActor
+    private static func packTree(
+        _ bottle: Bottle, prefixSource: URL, staging: URL, catalog: VersionCatalog,
+        to destination: URL, excluding: [String]
+    ) async throws -> URL {
+        let fm = FileManager.default
         // An empty prefix still needs a directory for tar to reference.
         let prefixParent: URL
         if fm.fileExists(atPath: prefixSource.path) {
@@ -166,7 +220,8 @@ enum BottleArchive {
         // before doing anything irreversible.
         let checksum = try await prefixChecksum(
             stagingPrefix: prefixParent.appending(path: prefixEntryName, directoryHint: .isDirectory),
-            excluding: excluding
+            excluding: excluding,
+            format: .normalized
         )
 
         let manifest = Manifest(
@@ -181,7 +236,8 @@ enum BottleArchive {
                 gptk: catalog.components["gptk"]?.version,
                 winetricks: catalog.components["winetricks"]?.version
             ),
-            prefixChecksum: checksum
+            prefixChecksum: checksum,
+            checksumFormat: ChecksumFormat.normalized.rawValue
         )
         let manifestData = try JSONEncoder.fablePretty().encode(manifest)
         try manifestData.write(to: staging.appending(path: manifestEntryName))
@@ -256,7 +312,10 @@ enum BottleArchive {
 
         let result = try await ProcessRunner.run(
             URL(filePath: "/usr/bin/tar"),
-            arguments: ["--zstd", "-xf", archive.path, "-C", workingDir.path]
+            // -p keeps permission bits as archived (without it the umask
+            // drops group-write and the checksum can't match). Ownership is
+            // never restored for a non-root user.
+            arguments: ["--zstd", "-xpf", archive.path, "-C", workingDir.path]
         )
         guard result.succeeded else {
             try? fm.removeItem(at: workingDir)
@@ -292,7 +351,8 @@ enum BottleArchive {
         // manifest travels in the same archive, so whoever repacks a bottle
         // can recompute it. Treat an imported .fbottle as trusted as its sender.
         let prefixDir = workingDir.appending(path: prefixEntryName, directoryHint: .isDirectory)
-        let recomputed = try await prefixChecksum(stagingPrefix: prefixDir)
+        let format = ChecksumFormat(rawValue: manifest.checksumFormat ?? ChecksumFormat.raw.rawValue) ?? .raw
+        let recomputed = try await prefixChecksum(stagingPrefix: prefixDir, format: format)
         guard recomputed == manifest.prefixChecksum else {
             try? fm.removeItem(at: workingDir)
             throw ArchiveError.checksumMismatch(
@@ -314,12 +374,33 @@ enum BottleArchive {
     /// shell pipeline, so a 56 GB prefix never touches a temp file. The
     /// digest is over the uncompressed tar bytes (same invocation as ever,
     /// so archives written by older Fable versions still verify).
-    private static func prefixChecksum(stagingPrefix: URL, excluding: [String] = []) async throws -> String {
+    /// How a prefix checksum is computed.
+    enum ChecksumFormat: Int, Sendable {
+        /// The raw tar stream (archives from before v1.3.3).
+        case raw = 1
+        /// Only what survives copying to another Mac: names, contents,
+        /// permission bits, times, link targets — no extended attributes,
+        /// ACLs, file flags, or owner names.
+        case normalized = 2
+
+        var tarFlags: String {
+            switch self {
+            case .raw: ""
+            case .normalized:
+                "--no-xattrs --no-acls --no-fflags --no-mac-metadata --uid 0 --gid 0 --uname fable --gname fable"
+            }
+        }
+    }
+
+    private static func prefixChecksum(
+        stagingPrefix: URL, excluding: [String] = [], format: ChecksumFormat
+    ) async throws -> String {
         guard FileManager.default.fileExists(atPath: stagingPrefix.path) else { return emptyChecksum }
 
         // Exclusions ride in ${3}… so no pattern ever touches shell parsing
         // (braces: $10 would otherwise parse as ${1}0).
         let excludeArgs = (3..<(3 + excluding.count)).map { #"--exclude="${\#($0)}""# }.joined(separator: " ")
+            + (format.tarFlags.isEmpty ? "" : " " + format.tarFlags)
         let result = try await ProcessRunner.run(
             URL(filePath: "/bin/sh"),
             arguments: [
