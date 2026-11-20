@@ -17,6 +17,26 @@ enum SteamPaths {
     /// Shared "Steamworks Common Redistributables" dir, relative to `drive_c`.
     static let sharedRedistRelative = "\(clientDirRelative)/\(appsCommonRelative)/Steamworks Shared/_CommonRedist"
 
+    // MARK: Values read from Steam's own files
+
+    /// True for a Steam `installdir` that names one folder and nothing more.
+    /// The value comes from `appmanifest_*.acf` inside a bottle — writable by
+    /// any Windows program there, and shipped in shared `.fbottle` files — and
+    /// becomes `steamapps/common/<installdir>`. A `..` or a slash would point
+    /// that path anywhere on the Mac.
+    static func isSafeFolderName(_ name: String) -> Bool {
+        !name.isEmpty && name != "." && name != ".."
+            && !name.contains("/") && !name.contains("\\") && !name.contains("\0")
+    }
+
+    /// True when `url`, with every symlink resolved, is inside `root`
+    /// (also resolved). For paths built from values in Steam's files.
+    static func resolves(_ url: URL, inside root: URL) -> Bool {
+        let resolvedRoot = root.resolvingSymlinksInPath().standardizedFileURL.path
+        let resolved = url.resolvingSymlinksInPath().standardizedFileURL.path
+        return resolved.hasPrefix(resolvedRoot + "/")
+    }
+
     // MARK: URL helpers (from a bottle's drive_c)
 
     static func clientRoot(inDriveC driveC: URL) -> URL {

@@ -1,5 +1,28 @@
 # Changelog
 
+## v1.3.2 — 2026-11-20
+
+**A security fix: opening a shared bottle could change files outside it.**
+
+- **Fixed (high severity): a crafted bottle could replace or delete files in
+  your home folder.** When a bottle's page opens, Fable finishes Steam
+  installs that got stuck. It took the game's folder name from a file inside
+  the bottle without checking it, so a bottle built to do harm — for example a
+  shared `.fbottle` — could make that step overwrite files elsewhere on your
+  Mac, with no game launched. The folder name must now be a single folder
+  inside Steam's own games folder, and links leading out of it are refused.
+  Found by a security scan of the code; there is no sign it was ever used.
+  Only bottles you imported from someone else were a risk: bottles you made
+  yourself contain Steam's own files.
+- **Fixed: a crafted bottle could crash Fable when opened.** Steam's files are
+  now read with a nesting limit, and oversized ones are skipped.
+- **Steam games are added to your games automatically.** When Steam finishes
+  installing a game in a bottle, Fable puts it on the wall, using the program
+  Steam itself starts (Control Resonant lists 25 and the first is a
+  developer build; Fable picks the one that is installed). A game you remove
+  stays removed. Settings → Library → Steam turns it off.
+- **Benchmark Engine** (from v1.3.1) stays marked experimental.
+
 ## v1.3.1 — 2026-11-13 (experimental)
 
 **An engine benchmark, published as a pre-release.**
