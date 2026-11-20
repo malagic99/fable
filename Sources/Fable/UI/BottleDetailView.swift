@@ -437,7 +437,10 @@ struct BottleDetailView: View {
         }
         .confirmationDialog("Export Bottle", isPresented: $isShowingExportChoice) {
             Button("Donor for a Friend (no games, no login)") {
-                exportBottle(BottleArchive.donorBottle(bottle), excluding: BottleArchive.donorExclusions())
+                exportBottle(
+                    BottleArchive.donorBottle(bottle),
+                    excluding: BottleArchive.donorExclusions(for: bottle),
+                    sanitizeRegistry: true)
             }
             Button("Full Backup (everything, for yourself)") { exportBottle(bottle) }
             Button("Cancel", role: .cancel) {}
@@ -565,7 +568,7 @@ struct BottleDetailView: View {
         bottle.games.contains { $0.executablePath.lowercased().hasSuffix("steam.exe") }
     }
 
-    private func exportBottle(_ bottle: Bottle, excluding: [String] = []) {
+    private func exportBottle(_ bottle: Bottle, excluding: [String] = [], sanitizeRegistry: Bool = false) {
         let suffix = excluding.isEmpty ? "" : " (Donor)"
         guard let destination = FilePicker.chooseSaveDestination(
             suggestedName: "\(bottle.name)\(suffix).\(BottleArchive.pathExtension)"
@@ -613,7 +616,8 @@ struct BottleDetailView: View {
                     bottleManager: bottleManager,
                     catalog: appState.versionCatalog,
                     to: destination,
-                    excluding: excluding
+                    excluding: excluding,
+                    sanitizeRegistry: sanitizeRegistry
                 )
                 toastCenter.success(L10n.string("toast.bottle.exported", destination.lastPathComponent))
             } catch {
