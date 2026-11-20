@@ -41,9 +41,9 @@ enum SteamLibrarySync {
         static func parse(_ text: String) -> Manifest? {
             guard let appID = SteamAppManifest.value(of: "appid", in: text).flatMap(Int.init),
                   let name = SteamAppManifest.value(of: "name", in: text), !name.isEmpty,
-                  let installDir = SteamAppManifest.value(of: "installdir", in: text), !installDir.isEmpty,
+                  let installDir = SteamAppManifest.value(of: "installdir", in: text),
                   // The folder name becomes part of a path: nothing that climbs out.
-                  !installDir.contains("/"), !installDir.contains("\\"), installDir != "..", installDir != "."
+                  SteamPaths.isSafeFolderName(installDir)
             else { return nil }
             let flags = SteamAppManifest.value(of: "StateFlags", in: text).flatMap(Int.init) ?? 0
             let beta = SteamAppManifest.value(of: "BetaKey", in: text).flatMap { $0.isEmpty ? nil : $0 }

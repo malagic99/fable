@@ -52,12 +52,19 @@ enum SteamInstallCommitter {
         fm: FileManager = .default
     ) -> String? {
         let manifestURL = steamapps.appending(path: "appmanifest_\(appid).acf")
-        guard let text = try? String(contentsOf: manifestURL, encoding: .utf8),
+        // A real manifest is a few KB; anything far larger is not Steam's.
+        let manifestSize = (try? fm.attributesOfItem(atPath: manifestURL.path)[.size] as? NSNumber)??.intValue ?? 0
+        guard manifestSize <= maxManifestBytes,
+              let text = try? String(contentsOf: manifestURL, encoding: .utf8),
               let parsed = SteamKeyValues.parse(text), parsed.key == "AppState"
         else { return nil }
         var app = parsed.value
 
-        guard let installdir = app.string("installdir"), !installdir.isEmpty,
+        // `installdir` is read from a file in the bottle. It must name one
+        // folder: unchecked, `../../..` turned the move below into "replace
+        // files anywhere in the user's home folder", on simply opening an
+        // imported bottle (security scan 2026-11-20, finding 1).
+        guard let installdir = app.string("installdir"), SteamPaths.isSafeFolderName(installdir),
               let bytesToStage = app.int("BytesToStage"), bytesToStage > 0
         else { return nil }
         // Already installed — nothing to do.
@@ -74,8 +81,14 @@ enum SteamInstallCommitter {
 
         // Move the real files into common/<installdir>, merging over any
         // stub directory a prior attempt left behind.
-        let dest = steamapps.appending(path: "common", directoryHint: .isDirectory)
-            .appending(path: installdir, directoryHint: .isDirectory)
+        let common = steamapps.appending(path: "common", directoryHint: .isDirectory)
+        let dest = common.appending(path: installdir, directoryHint: .isDirectory)
+        // And the folder must really be where it says: no symlinked
+        // `common`, game folder or download folder leading out of Steam.
+        guard SteamPaths.resolves(dest, inside: steamRoot),
+              SteamPaths.resolves(appDir, inside: steamRoot),
+              !isSymlink(dest, fm: fm), !isSymlink(appDir, fm: fm)
+        else { return nil }
         do {
             try mergeMove(from: appDir, into: dest, fm: fm)
         } catch {
@@ -171,6 +184,13 @@ enum SteamInstallCommitter {
             .map(\.lastPathComponent)
             .first { $0.hasPrefix(prefix) && $0.hasSuffix(".manifest") }
             .map { String($0.dropFirst(prefix.count).dropLast(".manifest".count)) }
+    }
+
+    /// Largest manifest that is read at all.
+    static let maxManifestBytes = 1 << 20
+
+    private static func isSymlink(_ url: URL, fm: FileManager) -> Bool {
+        (try? fm.attributesOfItem(atPath: url.path)[.type] as? FileAttributeType) == .typeSymbolicLink
     }
 
     /// Moves every child of `src` into `dest` (created if absent), replacing

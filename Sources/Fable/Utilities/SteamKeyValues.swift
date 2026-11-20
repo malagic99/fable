@@ -63,9 +63,17 @@ indirect enum VDFValue: Equatable, Sendable {
 /// VDF implementation (no macros, unquoted tokens, or conditionals).
 enum SteamKeyValues {
     /// Parses a document into its single root pair (e.g. `"AppState" { … }`).
+    /// Deepest nesting accepted. Steam's own files go about five levels
+    /// deep; the limit stops a crafted file (20,000 nested blocks in 100 KB)
+    /// from overflowing the stack and crashing Fable (security scan
+    /// 2026-11-20, finding 3).
+    static let maxDepth = 64
+
     static func parse(_ text: String) -> (key: String, value: VDFValue)? {
         var tokens = tokenize(text)[...]
-        return parsePair(&tokens)
+        var tooDeep = false
+        let pair = parsePair(&tokens, depth: 0, tooDeep: &tooDeep)
+        return tooDeep ? nil : pair
     }
 
     /// Serializes a root pair back to VDF text with tab indentation.
@@ -118,7 +126,13 @@ enum SteamKeyValues {
         return tokens
     }
 
-    private static func parsePair(_ tokens: inout ArraySlice<Token>) -> (key: String, value: VDFValue)? {
+    private static func parsePair(
+        _ tokens: inout ArraySlice<Token>, depth: Int, tooDeep: inout Bool
+    ) -> (key: String, value: VDFValue)? {
+        guard depth <= maxDepth else {
+            tooDeep = true
+            return nil
+        }
         guard case .string(let key)? = tokens.first else { return nil }
         tokens = tokens.dropFirst()
         guard let next = tokens.first else { return (key, .string("")) }
@@ -130,7 +144,7 @@ enum SteamKeyValues {
             tokens = tokens.dropFirst()
             var pairs: [(key: String, value: VDFValue)] = []
             while let t = tokens.first, t != .close {
-                guard let pair = parsePair(&tokens) else { break }
+                guard let pair = parsePair(&tokens, depth: depth + 1, tooDeep: &tooDeep) else { break }
                 pairs.append(pair)
             }
             if tokens.first == .close { tokens = tokens.dropFirst() }
