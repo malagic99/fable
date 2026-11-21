@@ -636,3 +636,7 @@
 "Add Steam Games Automatically" = "Adicionar jogos do Steam automaticamente";
 "When Steam finishes installing a game in a bottle, Fable adds it to your games. It reads Steam's own files on this Mac and uses the program Steam itself would start." = "Quando o Steam acaba de instalar um jogo numa garrafa, o Fable adiciona-o aos seus jogos. Lê os ficheiros do Steam neste Mac e usa o programa que o próprio Steam iniciaria.";
 "steam.auto_added" = "Adicionado a partir do Steam: %@ (em %@).";
+
+/* Engine prepared at launch */
+"launch.engine_downloading" = "A transferir o motor %@ para «%@»… só uma vez.";
+"launch.engine_failed" = "Não foi possível configurar o motor %@: %@";

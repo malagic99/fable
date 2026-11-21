@@ -226,7 +226,11 @@ enum EngineCanary {
             let process = Process()
             process.executableURL = invocation.wine
             process.arguments = invocation.arguments
-            process.environment = invocation.environment
+            // Added to the inherited environment, as a real launch does
+            // (`ProcessRunner`): replacing it left Wine without HOME, PATH or
+            // TMPDIR, a configuration no game runs in (code-quality #10).
+            process.environment = ProcessInfo.processInfo.environment
+                .merging(invocation.environment) { _, launch in launch }
             process.currentDirectoryURL = invocation.workingDirectory
             process.standardOutput = FileHandle.nullDevice
             process.standardError = try? FileHandle(forWritingTo: errorFile)

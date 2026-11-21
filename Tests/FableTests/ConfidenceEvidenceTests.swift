@@ -90,16 +90,6 @@ struct ConfidenceEvidenceTests {
         #expect(result.evidence == .none(secondsHere: 3600, secondsElsewhere: 0, crashed: true))
     }
 
-    @Test
-    func theOldEntryPointAgreesWithTheNewOne() {
-        // assess(hasRecipe:) stays for callers with no bottle; same order.
-        let played = stats(total: 3600)
-        #expect(GameConfidence.assess(hasRecipe: false, findings: [], stats: played)
-            == GameConfidence.assessment(recipe: nil, backend: nil, findings: [], stats: played).confidence)
-        #expect(GameConfidence.assess(hasRecipe: true, findings: [])
-            == GameConfidence.assessment(recipe: aceCombat, backend: nil, findings: []).confidence)
-    }
-
     // MARK: Engine keys
 
     @Test

@@ -1,5 +1,27 @@
 # Changelog
 
+## v1.3.4 — 2026-11-21
+
+**Small fixes from the code-quality and security checks.**
+
+- **A missing engine is downloaded when you press Play.** Only the Wine 11
+  engine did this before. A bottle whose engine was never downloaded — for
+  example after skipping the download during setup, or a game set to GPTK on
+  its own — failed with "not installed". Now Fable says it's downloading the
+  engine (once) and starts the game. A bottle pinned to an engine that's
+  still on disk downloads nothing.
+- **Opening a second window no longer doubles Fable's background work.**
+  File → New Window re-ran start-up, including another never-ending
+  30-second Steam check per window. Start-up now runs once.
+- **The engine test runs the way a game does.** It started Wine without the
+  usual system settings (home folder, search path, temporary folder) that a
+  real launch passes on. Re-run on the main engine: all five checks pass.
+- **Steam's library is only scanned when it changed.** The 30-second check
+  re-read every Steam file each time, even when nothing had changed.
+- **Steam's cache is read safely.** It was mapped from disk, so Steam
+  rewriting it mid-scan could crash Fable.
+- **A malformed benchmark result no longer crashes Fable.**
+
 ## v1.3.3 — 2026-11-20
 
 **Donor exports keep your account, and shared bottles import again.**

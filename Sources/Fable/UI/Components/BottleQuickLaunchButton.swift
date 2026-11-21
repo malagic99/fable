@@ -69,7 +69,7 @@ struct BottleQuickLaunchButton: View {
         Task {
             do {
                 // The shortcut runs Wine without Fable — set up the prefix first.
-                try await gameLauncher.prepareSikarugir11(for: game, in: bottle)
+                try await gameLauncher.prepareEngine(for: game, in: bottle)
                 let plan = try gameLauncher.makeLaunchPlan(game, in: bottle)
                 let desktop = FileManager.default.urls(for: .desktopDirectory, in: .userDomainMask).first
                     ?? FileManager.default.homeDirectoryForCurrentUser.appending(path: "Desktop")

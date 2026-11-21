@@ -75,10 +75,28 @@ struct FableApp: App {
         ))
     }
 
+    /// Whether the app-wide start-up has run.
+    @MainActor
+    enum AppStartup {
+        private static var started = false
+
+        /// True the first time only.
+        static func claim() -> Bool {
+            guard !started else { return false }
+            started = true
+            return true
+        }
+    }
+
     var body: some Scene {
         WindowGroup {
             MainWindow()
                 .onAppear {
+                    // Every window runs this, and File → New Window opens
+                    // another. The managers are shared, so the wiring and the
+                    // background loops below must start once per app run, not
+                    // once per window (code-quality check 2026-11-20, #1).
+                    guard AppStartup.claim() else { return }
                     // Carry the experimental D3DMetal choice into the manager
                     // so a Sikarugir update re-applies it instead of silently
                     // reverting to the stock framework.

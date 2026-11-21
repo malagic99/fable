@@ -90,8 +90,10 @@ enum GameConfidence: Equatable, Hashable, CaseIterable {
             engineKey: bottle.runtime?.engineKey(for: backend))
     }
 
-    /// Pure, so the rules are tested without a bottle. Same order as
-    /// ``assess(hasRecipe:findings:stats:)``, with two honesty rules on top:
+    /// Pure, so the rules are tested without a bottle. A blocker always wins
+    /// (an anti-cheat that won't run trumps a recipe for the game around
+    /// it); then caveats; then a recipe; then real observed sessions;
+    /// otherwise unknown — with two honesty rules on top:
     ///
     /// A recipe only earns `verified` when the game runs on the backend the
     /// recipe was tested on. Otherwise the green tick would vouch for a setup
@@ -130,35 +132,6 @@ enum GameConfidence: Equatable, Hashable, CaseIterable {
         return Assessment(
             confidence: .unknown,
             evidence: .none(secondsHere: here, secondsElsewhere: elsewhere, crashed: crashed))
-    }
-
-    /// Verdict from the signals. A blocker always wins (an anti-cheat that
-    /// won't run trumps a recipe for the game around it); then caveats; then
-    /// a recipe match earns verified; then real observed sessions; otherwise
-    /// unknown.
-    /// The one entry point views should use — recipe lookup + quirk findings
-    /// in one place, so the rule can't drift between call sites.
-    @MainActor
-    static func assess(
-        _ game: Game, recipes: UserRecipeStore, quirks: QuirkService, stats: GameStatsStore.Stats? = nil
-    ) -> GameConfidence {
-        let hasRecipe = recipes.recipe(forExecutablePath: game.executablePath) != nil
-            || GameRecipeCatalog.recipe(forExecutablePath: game.executablePath) != nil
-        return assess(hasRecipe: hasRecipe, findings: quirks.findings(forGameNamed: game.name), stats: stats)
-    }
-
-    static func assess(
-        hasRecipe: Bool, findings: [CompatibilityFinding], stats: GameStatsStore.Stats? = nil
-    ) -> GameConfidence {
-        if findings.contains(where: { $0.severity == .knownBlocker }) { return .blocked }
-        if findings.contains(where: { $0.severity == .caveat }) { return .caveat }
-        if hasRecipe { return .verified }
-        if let stats,
-           stats.totalSeconds >= playedEvidenceSeconds,
-           (stats.crashSignatures ?? [:]).isEmpty {
-            return .played
-        }
-        return .unknown
     }
 
     var tint: Color {
