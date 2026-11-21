@@ -247,6 +247,44 @@ struct SteamLibrarySyncTests {
         #expect(SteamLibrarySync.newGames(games, bottle: bottle, known: []).map(\.name) == ["Pure Skill Demo"])
     }
 
+    /// Security scan 2026-11-20, finding 6: an unchanged library must not be
+    /// read at all — the old code scanned every time, then compared.
+    @Test
+    func anUnchangedLibraryIsNotScannedAgain() throws {
+        let library = try makeLibrary()
+        defer { try? FileManager.default.removeItem(at: library.driveC.deletingLastPathComponent()) }
+        let first = try #require(SteamLibrarySync.discoverIfChanged(
+            steamRoot: library.steamRoot, driveC: library.driveC, previousFingerprint: nil))
+        #expect(first.games.count == 2)
+
+        // Make the cache unreadable: if anything were scanned now, no games
+        // would come back. Its size and time don't change, so neither does
+        // the fingerprint.
+        let cache = library.steamRoot.appending(path: "appcache/appinfo.vdf")
+        try FileManager.default.setAttributes([.posixPermissions: 0], ofItemAtPath: cache.path)
+        defer { try? FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: cache.path) }
+
+        #expect(SteamLibrarySync.discoverIfChanged(
+            steamRoot: library.steamRoot, driveC: library.driveC, previousFingerprint: first.fingerprint) == nil)
+        // Without the previous fingerprint it does scan (and finds nothing now).
+        #expect(SteamLibrarySync.discoverIfChanged(
+            steamRoot: library.steamRoot, driveC: library.driveC, previousFingerprint: nil)?.games.isEmpty == true)
+    }
+
+    /// Finding 6, second half: a string count from the file was trusted up
+    /// to five million before allocating.
+    @Test
+    func aStringCountLargerThanTheFileIsRefused() {
+        func u32(_ v: UInt32) -> [UInt8] { (0..<4).map { UInt8((v >> (8 * UInt32($0))) & 0xFF) } }
+        var file = u32(0x0756_4429) + u32(1)
+        let tableOffset = UInt64(file.count + 8 + 4)
+        file += u32(UInt32(tableOffset)) + u32(0)
+        file += u32(0)                       // no apps
+        file += u32(4_000_000)               // claims four million strings…
+        file += Array("only\0".utf8)          // …and holds one
+        #expect(SteamAppInfoCache.entries(for: [1], in: Data(file)) == nil)
+    }
+
     @Test
     func theFingerprintChangesWhenTheLibraryDoes() throws {
         let library = try makeLibrary()

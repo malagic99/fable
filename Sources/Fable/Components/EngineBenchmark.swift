@@ -146,9 +146,13 @@ enum EngineBenchmark {
             let pair = field.split(separator: "=", maxSplits: 1)
             if pair.count == 2, let number = Double(pair[1]) { numbers[String(pair[0])] = number }
         }
+        // Finite and in a sane range: `Int(frames)` traps on inf or 1e300,
+        // which would crash Fable (security scan 2026-11-20, finding 8).
         guard let frames = numbers["frames"], let median = numbers["median_ms"],
               let average = numbers["avg_ms"], let p99 = numbers["p99_ms"],
-              frames >= 10, median > 0
+              [frames, median, average, p99].allSatisfy(\.isFinite),
+              frames >= 10, frames <= 10_000_000,
+              median > 0, average >= 0, p99 >= 0
         else { return nil }
         return .init(id: id, frames: Int(frames), medianMs: median, averageMs: average, p99Ms: p99)
     }

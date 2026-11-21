@@ -286,11 +286,11 @@ final class BottleManager: ObservableObject {
         else { return [] }
         let driveC = driveCDirectory(for: bottle)
 
-        let scan = await Task.detached(priority: .utility) { () -> (String, [SteamLibraryGame])? in
-            let fingerprint = SteamLibrarySync.fingerprint(steamRoot: root)
-            return (fingerprint, SteamLibrarySync.discover(steamRoot: root, driveC: driveC))
+        let previous = steamLibraryFingerprints[id]
+        let scan = await Task.detached(priority: .utility) {
+            SteamLibrarySync.discoverIfChanged(steamRoot: root, driveC: driveC, previousFingerprint: previous)
         }.value
-        guard let (fingerprint, discovered) = scan, steamLibraryFingerprints[id] != fingerprint else { return [] }
+        guard let (fingerprint, discovered) = scan else { return [] }
 
         // The bottle may have changed while the scan ran.
         guard let index = bottles.firstIndex(where: { $0.id == id }) else { return [] }
