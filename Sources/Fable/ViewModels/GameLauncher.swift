@@ -684,7 +684,7 @@ final class GameLauncher: ObservableObject {
             )
         }
 
-        try await prepareSikarugir11(for: prepared, in: fresh)
+        try await prepareEngine(for: prepared, in: fresh)
 
         // Read before launching: launch() records the session, after which
         // every game counts as played and the notice could never show.
@@ -732,6 +732,42 @@ final class GameLauncher: ObservableObject {
     /// and off for Steam's web helper. Called before a launch and before a
     /// desktop shortcut is made, since the shortcut runs Wine on its own.
     /// No-op for every other backend.
+    /// Makes sure the engine `game` runs on in `bottle` is on disk, and
+    /// downloads it if it isn't — the one place every Play control calls.
+    /// Only Wine 11 used to self-heal: a bottle whose engine was never
+    /// downloaded (setup skipped, or a per-game GPTK override) failed at Play
+    /// with "not installed" (code-quality check 2026-11-20, #2). A bottle
+    /// pinned to an engine still on disk downloads nothing.
+    func prepareEngine(for game: Game, in bottle: Bottle) async throws {
+        guard let deps else { throw GameLaunchError.notConfigured }
+        let backend = game.graphicsBackend ?? bottle.graphicsBackend
+        if backend == .sikarugir11 {
+            try await prepareSikarugir11(for: game, in: bottle)
+            return
+        }
+        let resolver = ManagerRuntimeResolver(deps: deps)
+        let available = EnginePins.$current.withValue(bottle.enginePins) {
+            (try? resolver.wineBinary(for: backend)) != nil
+        }
+        guard !available else { return }
+
+        let install: () async throws -> Void
+        switch backend {
+        case .sikarugir: install = { try await deps.sikarugirManager.ensureInstalled() }
+        case .gptk: install = { try await deps.gptkManager.ensureInstalled() }
+        case .off, .dxmt, .dxvk: install = { try await deps.wineManager.ensureWineInstalled() }
+        case .crossover, .sikarugir11: return   // the user's own install; handled above
+        }
+        deps.toastCenter.success(L10n.string("launch.engine_downloading", backend.shortName, game.name))
+        do {
+            try await install()
+        } catch {
+            // Some callers (the Game Wall's double-click) drop the error.
+            deps.toastCenter.error(L10n.string("launch.engine_failed", backend.shortName, error.localizedDescription))
+            throw error
+        }
+    }
+
     func prepareSikarugir11(for game: Game, in bottle: Bottle) async throws {
         guard let deps else { throw GameLaunchError.notConfigured }
         let backend = game.graphicsBackend ?? bottle.graphicsBackend

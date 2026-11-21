@@ -268,3 +268,7 @@
 
 /* Steam library sync */
 "steam.auto_added" = "Added from Steam: %@ (in %@).";
+
+/* Engine prepared at launch */
+"launch.engine_downloading" = "Downloading the %@ engine for “%@”… one time.";
+"launch.engine_failed" = "The %@ engine couldn’t be set up: %@";

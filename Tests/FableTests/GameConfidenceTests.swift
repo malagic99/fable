@@ -4,6 +4,17 @@ import Testing
 
 /// The cover wall's confidence verdict + the interface-style setting.
 @Suite struct GameConfidenceTests {
+    /// The rules through the one function the app uses. `hasRecipe` stands
+    /// for a recipe whose backend isn't known to differ from the game's.
+    private func assess(
+        hasRecipe: Bool, findings: [CompatibilityFinding], stats: GameStatsStore.Stats? = nil
+    ) -> GameConfidence {
+        let recipe = GameRecipe(
+            name: "R", executables: ["r.exe"], backend: .sikarugir, metalFX: false, frameRateCap: nil, note: "")
+        return GameConfidence.assessment(
+            recipe: hasRecipe ? recipe : nil, backend: nil, findings: findings, stats: stats).confidence
+    }
+
 
     private func finding(_ severity: CompatibilityFinding.Severity) -> CompatibilityFinding {
         CompatibilityFinding(id: "t", severity: severity, title: "t", detail: "d", suggestion: "s")
@@ -12,25 +23,25 @@ import Testing
     @Test
     func blockerAlwaysWins() {
         // Even a verified recipe can't outrank a kernel anti-cheat blocker.
-        #expect(GameConfidence.assess(hasRecipe: true, findings: [finding(.knownBlocker)]) == .blocked)
-        #expect(GameConfidence.assess(hasRecipe: false, findings: [finding(.knownBlocker), finding(.caveat)]) == .blocked)
+        #expect(assess(hasRecipe: true, findings: [finding(.knownBlocker)]) == .blocked)
+        #expect(assess(hasRecipe: false, findings: [finding(.knownBlocker), finding(.caveat)]) == .blocked)
     }
 
     @Test
     func caveatBeatsRecipe() {
-        #expect(GameConfidence.assess(hasRecipe: true, findings: [finding(.caveat)]) == .caveat)
+        #expect(assess(hasRecipe: true, findings: [finding(.caveat)]) == .caveat)
     }
 
     @Test
     func recipeEarnsVerified() {
-        #expect(GameConfidence.assess(hasRecipe: true, findings: []) == .verified)
-        #expect(GameConfidence.assess(hasRecipe: true, findings: [finding(.info)]) == .verified)
+        #expect(assess(hasRecipe: true, findings: []) == .verified)
+        #expect(assess(hasRecipe: true, findings: [finding(.info)]) == .verified)
     }
 
     @Test
     func noSignalIsHonestlyUnknown() {
-        #expect(GameConfidence.assess(hasRecipe: false, findings: []) == .unknown)
-        #expect(GameConfidence.assess(hasRecipe: false, findings: [finding(.info)]) == .unknown)
+        #expect(assess(hasRecipe: false, findings: []) == .unknown)
+        #expect(assess(hasRecipe: false, findings: [finding(.info)]) == .unknown)
     }
 
     @Test
@@ -39,24 +50,24 @@ import Testing
         stats.totalSeconds = 3600
 
         // An hour of tracked play, no crashes → "played on this Mac".
-        #expect(GameConfidence.assess(hasRecipe: false, findings: [], stats: stats) == .played)
+        #expect(assess(hasRecipe: false, findings: [], stats: stats) == .played)
         // A recipe still outranks observation (a recipe says HOW it works;
         // playtime only says THAT it ran — see Absolute Drift's white screen).
-        #expect(GameConfidence.assess(hasRecipe: true, findings: [], stats: stats) == .verified)
+        #expect(assess(hasRecipe: true, findings: [], stats: stats) == .verified)
         // Findings outrank observation too.
-        #expect(GameConfidence.assess(hasRecipe: false, findings: [finding(.knownBlocker)], stats: stats) == .blocked)
+        #expect(assess(hasRecipe: false, findings: [finding(.knownBlocker)], stats: stats) == .blocked)
 
         // A few launch attempts aren't evidence.
         stats.totalSeconds = 120
-        #expect(GameConfidence.assess(hasRecipe: false, findings: [], stats: stats) == .unknown)
+        #expect(assess(hasRecipe: false, findings: [], stats: stats) == .unknown)
 
         // Crash signatures poison the claim — it ran, but not cleanly.
         stats.totalSeconds = 7200
         stats.crashSignatures = ["sikarugir": "int3"]
-        #expect(GameConfidence.assess(hasRecipe: false, findings: [], stats: stats) == .unknown)
+        #expect(assess(hasRecipe: false, findings: [], stats: stats) == .unknown)
 
         // No stats at all (the pre-tracking world) stays unknown.
-        #expect(GameConfidence.assess(hasRecipe: false, findings: [], stats: nil) == .unknown)
+        #expect(assess(hasRecipe: false, findings: [], stats: nil) == .unknown)
     }
 }
 
