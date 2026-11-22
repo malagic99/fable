@@ -102,6 +102,7 @@ struct FableApp: App {
                     // reverting to the stock framework.
                     sikarugirManager.preferredD3DMetalSource =
                         settingsManager.settings.sikarugirUsesGPTK4D3DMetal ? .gptk4 : .sikarugir
+                    sikarugirManager.useLegacySetup = settingsManager.settings.legacyWine10EngineSetup
                     // Wire the launcher's collaborators once — every Play
                     // control then runs the same launchSmart/stopSmart flow.
                     gameLauncher.configure(.init(

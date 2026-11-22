@@ -1,5 +1,20 @@
 # Changelog
 
+## v1.3.5 — 2026-11-21
+
+**The main engine is set up with the same code as the others.**
+
+- **Wine 10 engine setup now uses the shared code** the Wine 11 and installer
+  engines already use. The old copy had missed later fixes, and found its
+  support libraries by a folder layout that the next Sikarugir template would
+  change — which would have broken new engines without an error. A fresh
+  engine set up the new way is identical, file for file, to one set up the
+  old way (all 4,807 files) and to the engine already on the test Mac, and
+  passes the engine test and benchmark the same.
+- **The old setup stays available for now:** Settings → Advanced → Legacy →
+  "Legacy Wine 10 Engine Setup". It applies the next time an engine is set
+  up and will be removed in a later release.
+
 ## v1.3.4 — 2026-11-21
 
 **Small fixes from the code-quality and security checks.**

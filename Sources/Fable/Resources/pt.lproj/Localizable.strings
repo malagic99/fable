@@ -640,3 +640,8 @@
 /* Engine prepared at launch */
 "launch.engine_downloading" = "A transferir o motor %@ para «%@»… só uma vez.";
 "launch.engine_failed" = "Não foi possível configurar o motor %@: %@";
+
+/* Legacy Wine 10 setup */
+"Legacy Wine 10 Engine Setup" = "Configuração antiga do motor Wine 10";
+"Legacy" = "Antigo";
+"Since v1.3.5 Fable sets up the Sikarugir Wine 10 engine with the same code as its other engines, which keeps working when Sikarugir changes its template's layout. Turn this on to go back to the earlier setup if a game misbehaves after an engine update. It applies the next time an engine is set up; engines already on your Mac aren't changed. This switch will go away in a later release." = "Desde a v1.3.5, o Fable configura o motor Sikarugir Wine 10 com o mesmo código dos seus outros motores, que continua a funcionar quando o Sikarugir muda a estrutura do seu modelo. Ative para voltar à configuração anterior se um jogo falhar após uma atualização do motor. Aplica-se da próxima vez que um motor for configurado; os motores que já estão no seu Mac não mudam. Este interruptor vai desaparecer numa versão futura.";

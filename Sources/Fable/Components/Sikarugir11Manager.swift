@@ -222,14 +222,21 @@ final class Sikarugir11Manager: ObservableObject {
     /// into the engine, preserving symbolic links. The host-side `.so` files
     /// are links to one `libd3dshared.dylib`; following them would load six
     /// copies of D3DMetal with six sets of state.
-    nonisolated static func overlay(renderer: URL, intoLib lib: URL, layout: WineLayout = .rosetta) throws {
+    ///
+    /// `includeI386` copies `wine/i386-windows` when the renderer has one.
+    /// D3DMetal ships no 32-bit DLLs: in Template 1.0.10 that folder is a
+    /// link to cnc-ddraw's `ddraw.dll`, a DirectDraw wrapper, which must not
+    /// be laid over Wine's own for every game. Wine 10 passes false.
+    nonisolated static func overlay(
+        renderer: URL, intoLib lib: URL, layout: WineLayout = .rosetta, includeI386: Bool = true
+    ) throws {
         let fm = FileManager.default
         let groups = [
             "wine/\(layout.peDirectory)",
-            "wine/i386-windows",
+            includeI386 ? "wine/i386-windows" : nil,
             "wine/\(layout.unixDirectory)",
             "external",
-        ]
+        ].compactMap { $0 }
         for group in groups {
             let source = renderer.appending(path: group, directoryHint: .isDirectory)
             guard fm.fileExists(atPath: source.path) else { continue }

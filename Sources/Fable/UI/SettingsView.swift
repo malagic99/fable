@@ -379,6 +379,20 @@ private struct AdvancedSettingsTab: View {
                     .foregroundStyle(.secondary)
             }
             Section {
+                Toggle("Legacy Wine 10 Engine Setup", isOn: Binding(
+                    get: { settingsManager.settings.legacyWine10EngineSetup },
+                    set: { newValue in
+                        settingsManager.settings.legacyWine10EngineSetup = newValue
+                        sikarugirManager.useLegacySetup = newValue
+                    }))
+            } header: {
+                Text("Legacy")
+            } footer: {
+                Text("Since v1.3.5 Fable sets up the Sikarugir Wine 10 engine with the same code as its other engines, which keeps working when Sikarugir changes its template's layout. Turn this on to go back to the earlier setup if a game misbehaves after an engine update. It applies the next time an engine is set up; engines already on your Mac aren't changed. This switch will go away in a later release.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Section {
                 LabeledContent("Saved Shaders",
                                value: shaderCacheStore.localBytes > 0 ? BottleDiskUsage.formatted(shaderCacheStore.localBytes) : "—")
                 if let external = shaderCacheStore.externalLocation {
