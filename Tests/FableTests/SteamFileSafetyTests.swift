@@ -105,7 +105,7 @@ struct SteamFileSafetyTests {
         let fixture = try Fixture(installdir: "Game")
         defer { fixture.cleanUp() }
         let padded = fixture.manifest(installdir: "Game")
-            + String(repeating: "/", count: SteamInstallCommitter.maxManifestBytes)
+            + String(repeating: "/", count: SteamAppManifest.maxManifestBytes)
         try padded.write(to: fixture.steamapps.appending(path: "appmanifest_123.acf"), atomically: true, encoding: .utf8)
         #expect(fixture.commit() == nil)
     }

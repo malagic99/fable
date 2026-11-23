@@ -220,6 +220,22 @@ struct SteamLibrarySyncTests {
         #expect(GameLauncher.needsSteamRunning(Game(name: wingman.name, executablePath: wingman.executablePath)))
     }
 
+    /// External review 2026-11-23, N3: auto-add reads manifests with the
+    /// same size limit as the stuck-install committer.
+    @Test
+    func anOversizedManifestIsSkippedByDiscovery() throws {
+        let library = try makeLibrary()
+        defer { try? FileManager.default.removeItem(at: library.driveC.deletingLastPathComponent()) }
+        let file = library.steamRoot.appending(path: "steamapps/appmanifest_895870.acf")
+        let padded = try String(contentsOf: file, encoding: .utf8)
+            + String(repeating: "/", count: SteamAppManifest.maxManifestBytes)
+        try padded.write(to: file, atomically: true, encoding: .utf8)
+        let games = SteamLibrarySync.discover(steamRoot: library.steamRoot, driveC: library.driveC)
+        #expect(games.map(\.name) == ["Pure Skill Demo"])
+        #expect(SteamAppManifest.appID(forInstallDir: "Project Wingman", steamRoot: library.steamRoot) == nil)
+        #expect(SteamAppManifest.appID(forInstallDir: "Pure Skill Demo", steamRoot: library.steamRoot) == 5503090)
+    }
+
     @Test
     func aGameIsAddedOnceAndStaysRemovedWhenRemoved() throws {
         let library = try makeLibrary()

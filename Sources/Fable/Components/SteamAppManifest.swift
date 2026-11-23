@@ -9,6 +9,20 @@ import Foundation
 /// type-checker cycle. The regex is narrower and side-steps it cleanly.
 enum SteamAppManifest {
 
+    /// Largest `appmanifest_*.acf` read at all. A real one is a few KB; the
+    /// folder belongs to Windows programs in the bottle, so anything far
+    /// larger is not Steam's and is skipped rather than loaded whole.
+    static let maxManifestBytes = 1 << 20
+
+    /// A manifest's text, or nil when it is missing, oversized or not UTF-8.
+    /// Every reader of these files goes through here.
+    static func readText(at url: URL, fm: FileManager = .default) -> String? {
+        guard let size = (try? fm.attributesOfItem(atPath: url.path)[.size] as? NSNumber)??.intValue,
+              size <= maxManifestBytes
+        else { return nil }
+        return try? String(contentsOf: url, encoding: .utf8)
+    }
+
     /// The install-directory name from a Steam game's exe path — the component
     /// right after `steamapps/common/`. nil for non-Steam paths.
     static func installDir(fromExecutablePath path: String) -> String? {
@@ -29,7 +43,7 @@ enum SteamAppManifest {
 
         for acf in entries where acf.lastPathComponent.hasPrefix("appmanifest_")
             && acf.pathExtension == "acf" {
-            guard let text = try? String(contentsOf: acf, encoding: .utf8),
+            guard let text = readText(at: acf),
                   let manifestDir = value(of: "installdir", in: text),
                   manifestDir.caseInsensitiveCompare(dirName) == .orderedSame,
                   let resolved = value(of: "appid", in: text).flatMap(Int.init) else { continue }

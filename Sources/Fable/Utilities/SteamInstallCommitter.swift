@@ -53,9 +53,7 @@ enum SteamInstallCommitter {
     ) -> String? {
         let manifestURL = steamapps.appending(path: "appmanifest_\(appid).acf")
         // A real manifest is a few KB; anything far larger is not Steam's.
-        let manifestSize = (try? fm.attributesOfItem(atPath: manifestURL.path)[.size] as? NSNumber)??.intValue ?? 0
-        guard manifestSize <= maxManifestBytes,
-              let text = try? String(contentsOf: manifestURL, encoding: .utf8),
+        guard let text = SteamAppManifest.readText(at: manifestURL, fm: fm),
               let parsed = SteamKeyValues.parse(text), parsed.key == "AppState"
         else { return nil }
         var app = parsed.value
@@ -185,9 +183,6 @@ enum SteamInstallCommitter {
             .first { $0.hasPrefix(prefix) && $0.hasSuffix(".manifest") }
             .map { String($0.dropFirst(prefix.count).dropLast(".manifest".count)) }
     }
-
-    /// Largest manifest that is read at all.
-    static let maxManifestBytes = 1 << 20
 
     private static func isSymlink(_ url: URL, fm: FileManager) -> Bool {
         (try? fm.attributesOfItem(atPath: url.path)[.type] as? FileAttributeType) == .typeSymbolicLink

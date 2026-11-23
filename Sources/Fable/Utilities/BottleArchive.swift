@@ -166,7 +166,13 @@ enum BottleArchive {
             let clone = try await cloneForDonor(prefixSource, beside: source)
             defer { try? fm.removeItem(at: clone.deletingLastPathComponent()) }
             let registry = clone.appending(path: "user.reg")
-            if let text = try? String(contentsOf: registry, encoding: .utf8) {
+            // A registry that exists but can't be read as text is not
+            // exported as it is: it would carry the account name the
+            // sanitizer is there to remove (external review N2).
+            if fm.fileExists(atPath: registry.path) {
+                guard let text = try? String(contentsOf: registry, encoding: .utf8) else {
+                    throw ArchiveError.registryUnreadable
+                }
                 try DonorExport.sanitizedUserRegistry(text).write(to: registry, atomically: false, encoding: .utf8)
             }
             prefixSource = clone
@@ -301,6 +307,24 @@ enum BottleArchive {
 
     // MARK: Unpack
 
+    /// The tar arguments that unpack an archive into `directory`.
+    ///
+    /// -p keeps permission bits as archived (without it the umask
+    /// drops group-write and the checksum can't match). Ownership is
+    /// never restored for a non-root user. On macOS -p also restores
+    /// file flags, ACLs and extended attributes, which an archive from
+    /// someone else could use to make files undeletable or writable by
+    /// other users (external review N1); none of them is in the
+    /// checksum, so they are not restored.
+    static func extractArguments(archive: URL, into directory: URL) -> [String] {
+        // Order matters: bsdtar's -p turns flags, ACLs, attributes and Mac
+        // metadata back on, so the --no-… options must come after it.
+        [
+            "--zstd", "-x", "-p", "--no-fflags", "--no-acls", "--no-xattrs", "--no-mac-metadata",
+            "-f", archive.path, "-C", directory.path,
+        ]
+    }
+
     /// Extracts the archive into a temporary working directory.
     /// Verifies schema version, prefix checksum, and that bottle.json
     /// decodes cleanly. Caller cleans up `workingDirectory`.
@@ -312,10 +336,7 @@ enum BottleArchive {
 
         let result = try await ProcessRunner.run(
             URL(filePath: "/usr/bin/tar"),
-            // -p keeps permission bits as archived (without it the umask
-            // drops group-write and the checksum can't match). Ownership is
-            // never restored for a non-root user.
-            arguments: ["--zstd", "-xpf", archive.path, "-C", workingDir.path]
+            arguments: extractArguments(archive: archive, into: workingDir)
         )
         guard result.succeeded else {
             try? fm.removeItem(at: workingDir)
@@ -430,6 +451,7 @@ enum ArchiveError: LocalizedError, Equatable {
     case malformed(String)
     case unsupportedSchema(Int)
     case checksumMismatch(expected: String, actual: String)
+    case registryUnreadable
 
     var errorDescription: String? {
         switch self {
@@ -443,6 +465,8 @@ enum ArchiveError: LocalizedError, Equatable {
             "This archive uses schema version \(version), which this build of Fable doesn't support. Update Fable."
         case .checksumMismatch:
             "Archive prefix checksum doesn't match the manifest — the file is corrupt or tampered."
+        case .registryUnreadable:
+            "The bottle's registry (user.reg) couldn't be read as text, so the account details in it couldn't be removed. Nothing was exported."
         }
     }
 }

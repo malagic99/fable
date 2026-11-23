@@ -15,6 +15,19 @@
   "Legacy Wine 10 Engine Setup". It applies the next time an engine is set
   up and will be removed in a later release.
 
+**Fixes from an external review of the repository.**
+
+- **Importing a bottle no longer restores file flags, ACLs or extended
+  attributes.** macOS `tar -p` restores them along with permissions, so a
+  bottle from someone else could make its files impossible to delete or let
+  other users on the Mac write to them. Permissions are still restored as
+  archived; the checksum never covered the rest.
+- **A donor export stops if the registry can't be read,** instead of
+  exporting it with the account name still in it.
+- **Automatic Steam adding skips oversized install files,** with the same
+  1 MB limit the stuck-install fixer already used. Every reader of those
+  files now shares one limit.
+
 ## v1.3.4 — 2026-11-21
 
 **Small fixes from the code-quality and security checks.**

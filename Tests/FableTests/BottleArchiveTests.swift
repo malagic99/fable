@@ -362,3 +362,92 @@ import Testing
         #expect(unpacked.bottle.installedWinetricksVerbs == ["dotnet48"])
     }
 }
+
+/// External review 2026-11-23, N1 and N2.
+@MainActor
+@Suite struct BottleArchiveHardeningTests {
+    private func run(_ tool: String, _ arguments: [String]) throws -> String {
+        let process = Process()
+        process.executableURL = URL(filePath: tool)
+        process.arguments = arguments
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = pipe
+        try process.run()
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        process.waitUntilExit()
+        return String(decoding: data, as: UTF8.self)
+    }
+
+    /// An archive from someone else can carry file flags and ACLs. Import
+    /// must not restore them: an immutable file can't be deleted, and an
+    /// ACL can let other users on the Mac write to it.
+    @Test
+    func importDoesNotRestoreFileFlagsOrACLs() throws {
+        let fm = FileManager.default
+        let root = fm.temporaryDirectory.appending(path: "ArchiveFlags-\(UUID().uuidString)", directoryHint: .isDirectory)
+        let source = root.appending(path: "source", directoryHint: .isDirectory)
+        let out = root.appending(path: "out", directoryHint: .isDirectory)
+        try fm.createDirectory(at: source, withIntermediateDirectories: true)
+        try fm.createDirectory(at: out, withIntermediateDirectories: true)
+        defer {
+            _ = try? run("/usr/bin/chflags", ["-R", "nouchg", root.path])
+            try? fm.removeItem(at: root)
+        }
+        let file = source.appending(path: "locked.txt")
+        try Data("x".utf8).write(to: file)
+        _ = try run("/bin/chmod", ["775", file.path])
+        _ = try run("/bin/chmod", ["+a", "everyone allow write", file.path])
+        _ = try run("/usr/bin/chflags", ["uchg", file.path])
+
+        let archive = root.appending(path: "crafted.tar.zst")
+        _ = try run("/usr/bin/tar", ["--zstd", "-cf", archive.path, "-C", source.path, "locked.txt"])
+        _ = try run("/usr/bin/chflags", ["nouchg", file.path])
+        // The crafted archive really carries both, or this test proves nothing.
+        let listing = try run("/usr/bin/tar", ["--zstd", "-xpf", archive.path, "-C", out.path])
+        #expect(listing.isEmpty)
+        let unprotected = out.appending(path: "locked.txt")
+        #expect((try fm.attributesOfItem(atPath: unprotected.path)[.immutable] as? Bool) == true)
+        #expect(try run("/bin/ls", ["-le", unprotected.path]).contains("everyone allow write"))
+        _ = try run("/usr/bin/chflags", ["nouchg", unprotected.path])
+        try fm.removeItem(at: unprotected)
+
+        _ = try run("/usr/bin/tar", BottleArchive.extractArguments(archive: archive, into: out))
+        let extracted = out.appending(path: "locked.txt")
+        #expect(fm.fileExists(atPath: extracted.path))
+        #expect((try fm.attributesOfItem(atPath: extracted.path)[.immutable] as? Bool) != true)
+        #expect(!(try run("/bin/ls", ["-le", extracted.path]).contains("everyone allow write")))
+        // What -p is there for still happens: the permission bits as archived.
+        #expect((try fm.attributesOfItem(atPath: extracted.path)[.posixPermissions] as? Int) == 0o775)
+    }
+
+    /// A registry that can't be read as text must stop a donor export, not
+    /// travel with the owner's account name in it.
+    @Test
+    func aDonorExportStopsWhenTheRegistryCantBeRead() async throws {
+        let fm = FileManager.default
+        let root = fm.temporaryDirectory.appending(path: "ArchiveReg-\(UUID().uuidString)", directoryHint: .isDirectory)
+        defer { try? fm.removeItem(at: root) }
+        let manager = BottleManager(bottlesDirectory: root.appending(path: "Bottles", directoryHint: .isDirectory))
+        var bottle = try manager.createBottle(name: "Donor")
+        try manager.setStatus(.ready, for: bottle.id)
+        bottle = try #require(manager.bottle(with: bottle.id))
+        let prefix = manager.prefixDirectory(for: bottle)
+        try fm.createDirectory(at: prefix.appending(path: "drive_c"), withIntermediateDirectories: true)
+        // "owneraccount" in Latin-1 around a byte that is never valid UTF-8.
+        try Data("\"AutoLoginUser\"=\"owneraccount\"\u{00FF}".data(using: .isoLatin1)!)
+            .write(to: prefix.appending(path: "user.reg"))
+        let catalog = VersionCatalog(components: [
+            "wine": .init(name: "Wine", version: "11.10", url: URL(string: "https://x")!, sha256: ""),
+        ])
+
+        let archive = root.appending(path: "Donor.fbottle")
+        await #expect(throws: ArchiveError.registryUnreadable) {
+            _ = try await BottleArchive.pack(bottle, bottleManager: manager, catalog: catalog,
+                                             to: archive, sanitizeRegistry: true)
+        }
+        #expect(!fm.fileExists(atPath: archive.path))
+        #expect(try fm.contentsOfDirectory(atPath: manager.directory(for: bottle).path)
+            .allSatisfy { !$0.hasPrefix(".donor-export") })
+    }
+}
