@@ -71,6 +71,14 @@ final class SikarugirManager: ObservableObject {
     /// store. Defaults to the tested pairing.
     var preferredD3DMetalSource: D3DMetalSource = .sikarugir
 
+    /// Set up the engine the pre-v1.3.5 way (Settings → Advanced → Legacy).
+    /// Mirrored from settings like ``preferredD3DMetalSource``. The legacy
+    /// setup is kept for a few releases in case the shared one misbehaves:
+    /// it is an older copy of the shared code, and finds the support
+    /// libraries by a path that only works for the template layout Wine 10
+    /// uses today, so a newer template would break it without an error.
+    var useLegacySetup = false
+
     init(componentManager: ComponentManager, catalog: VersionCatalog? = nil) {
         self.componentManager = componentManager
         self.catalog = catalog
@@ -300,6 +308,7 @@ final class SikarugirManager: ObservableObject {
 
         let installRoot: URL
         let renderer: URL
+        var templateApp: URL?
         if let pair = catalogPair {
             // 1. Download both, checksum-pinned. The engine archive unpacks to
             //    wswine.bundle/… at the root of its version directory.
@@ -310,6 +319,7 @@ final class SikarugirManager: ObservableObject {
                   let found = Sikarugir11Manager.renderer(in: app)
             else { throw SikarugirError.rendererMissing(templateRoot.path) }
             renderer = found
+            templateApp = app
         } else {
             let tarball = try engineTarball()
             renderer = try d3dMetalRenderer()
@@ -328,10 +338,20 @@ final class SikarugirManager: ObservableObject {
             }
         }
 
+        // The shared setup (the Wine 11 and installer engines' code) needs the
+        // downloaded template; a Sikarugir install, or the legacy toggle,
+        // uses the setup this engine had before v1.3.5.
+        let shared = !useLegacySetup && templateApp != nil
+
         // 2. Overlay the d3dmetal renderer onto the engine's lib tree.
+        //    Not `i386-windows`: in this template it's cnc-ddraw, not D3DMetal.
         let bundle = installRoot.appending(path: "wswine.bundle", directoryHint: .isDirectory)
         let lib = bundle.appending(path: "lib", directoryHint: .isDirectory)
-        try Self.overlay(renderer: renderer, intoLib: lib)
+        if shared {
+            try Sikarugir11Manager.overlay(renderer: renderer, intoLib: lib, includeI386: false)
+        } else {
+            try Self.overlay(renderer: renderer, intoLib: lib)
+        }
 
         // 2a. Patch d3d12.so's rpath so it can dlopen D3DMetal.framework
         //      from lib/external/ via @rpath. The overlay copies d3d12.so
@@ -347,7 +367,13 @@ final class SikarugirManager: ObservableObject {
         //     app bundle. Without this step the FIRST launch crashes
         //     with `dyld: Library not loaded: @rpath/libinotify.0.dylib`.
         //     Real-world bite: user's Sikarugir backend, 2026-06-15.
-        try Self.copyBundleSupportLibs(renderer: renderer, intoLib: lib)
+        if shared, let templateApp {
+            // Straight from the template's Frameworks, whatever folder its
+            // renderer sits in (newer templates moved it to SharedSupport).
+            try Self.copyTemplateSupportLibs(templateApp: templateApp, intoLib: lib)
+        } else {
+            try Self.copyBundleSupportLibs(renderer: renderer, intoLib: lib)
+        }
 
         // 3. Strip quarantine — Rosetta-loaded wine fails dlopen on
         //    quarantined dylibs/frameworks otherwise.
@@ -360,6 +386,7 @@ final class SikarugirManager: ObservableObject {
             .write(to: installRoot.appending(path: Self.assembledMarker))
         // Record what a correct engine looks like, now that it is one.
         var source = ["renderer": renderer.path.contains("/\(Self.templateComponentID)/") ? "catalog template" : "Sikarugir install"]
+        source["setup"] = shared ? "shared" : "legacy"
         if let pair = catalogPair {
             source["engineArchiveSHA256"] = pair.engine.sha256
             source["templateVersion"] = pair.template.version
@@ -393,6 +420,18 @@ final class SikarugirManager: ObservableObject {
         guard let renderer = try? d3dMetalRenderer() else { return false }
         try Self.copyBundleSupportLibs(renderer: renderer, intoLib: lib)
         return true
+    }
+
+    /// The template's support dylibs (libinotify, gnutls, freetype…) into
+    /// the engine's `lib`, links kept as links — the shared setup.
+    nonisolated static func copyTemplateSupportLibs(templateApp: URL, intoLib lib: URL) throws {
+        let frameworks = templateApp.appending(path: "Contents/Frameworks", directoryHint: .isDirectory)
+        let fm = FileManager.default
+        try fm.createDirectory(at: lib, withIntermediateDirectories: true)
+        for item in (try? fm.contentsOfDirectory(at: frameworks, includingPropertiesForKeys: nil)) ?? []
+        where item.pathExtension == "dylib" {
+            try Sikarugir11Manager.replaceItem(at: lib.appending(path: item.lastPathComponent), with: item)
+        }
     }
 
     /// Copies the support dylibs the engine wineserver/wine64 dlopen

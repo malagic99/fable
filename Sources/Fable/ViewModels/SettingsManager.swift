@@ -100,6 +100,9 @@ struct AppSettings: Codable, Equatable, Sendable {
     /// Put games on the wall as Steam finishes installing them in a bottle.
     /// Reads Steam's own files on this Mac; no network.
     var autoAddSteamGames: Bool = true
+    /// Set up the Wine 10 engine the pre-v1.3.5 way. Off by default; kept
+    /// for a few releases as a way back.
+    var legacyWine10EngineSetup: Bool = false
 
     init() {}
 
@@ -134,6 +137,7 @@ struct AppSettings: Codable, Equatable, Sendable {
         checkForUpdatesAutomatically = try container
             .decodeIfPresent(Bool.self, forKey: .checkForUpdatesAutomatically) ?? true
         autoAddSteamGames = try container.decodeIfPresent(Bool.self, forKey: .autoAddSteamGames) ?? true
+        legacyWine10EngineSetup = try container.decodeIfPresent(Bool.self, forKey: .legacyWine10EngineSetup) ?? false
     }
 }
 
