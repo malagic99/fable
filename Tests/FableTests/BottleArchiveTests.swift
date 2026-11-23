@@ -451,3 +451,213 @@ import Testing
             .allSatisfy { !$0.hasPrefix(".donor-export") })
     }
 }
+
+/// External review 2026-11-23: a donor export carried the owner's Mac user
+/// name — the profile folder, its links into their home, the registry, and
+/// installer logs — and the names of their mounted volumes.
+@MainActor
+@Suite struct DonorUserNameTests {
+    @Test
+    func onlyProfileAndHomePathsAreRenamed() {
+        let text = #"""
+        "TEMP"="C:\\users\\owner\\AppData\\Local\\Temp"
+        "HOMEPATH"="\\users\\owner"
+        "ProfileImagePath"="C:\\users\\owner"
+        "Marlett (TrueType)"="Z:\\Users\\owner\\Library\\Fable\\marlett.ttf"
+        "DesktopFile"="\\\\?\\Z:\\Users\\owner\\.local\\x.desktop"
+        "Unix"="/Users/owner/Desktop"
+        "Other"="C:\\users\\owners\\x"
+        "Name"="owner"
+        "Engine"="Z:\\Users\\someone\\owner.app"
+        "USERNAME"="owner"
+        "USERNAME"="owner2"
+        """#
+        let out = DonorExport.replacingProfileName(text, user: "owner", with: "fable-donor")
+        #expect(out == #"""
+        "TEMP"="C:\\users\\fable-donor\\AppData\\Local\\Temp"
+        "HOMEPATH"="\\users\\fable-donor"
+        "ProfileImagePath"="C:\\users\\fable-donor"
+        "Marlett (TrueType)"="Z:\\Users\\fable-donor\\Library\\Fable\\marlett.ttf"
+        "DesktopFile"="\\\\?\\Z:\\Users\\fable-donor\\.local\\x.desktop"
+        "Unix"="/Users/fable-donor/Desktop"
+        "Other"="C:\\users\\owners\\x"
+        "Name"="owner"
+        "Engine"="Z:\\Users\\someone\\owner.app"
+        "USERNAME"="fable-donor"
+        "USERNAME"="owner2"
+        """#)
+        // A user named after something else in the registry damages nothing.
+        let wine = #""Source"="Z:\\Users\\wine\\Wine Devel.app\\wine""#
+        #expect(DonorExport.replacingProfileName(wine, user: "wine", with: "x")
+            == #""Source"="Z:\\Users\\x\\Wine Devel.app\\wine""#)
+    }
+
+    private func everyMention(of name: String, under root: URL) throws -> [String] {
+        let fm = FileManager.default
+        var hits: [String] = []
+        let walker = try #require(fm.enumerator(atPath: root.path))
+        while let relative = walker.nextObject() as? String {
+            let path = root.appending(path: relative).path
+            if relative.contains(name) { hits.append("name: \(relative)") }
+            if let target = try? fm.destinationOfSymbolicLink(atPath: path) {
+                if target.contains(name) { hits.append("link: \(relative) -> \(target)") }
+                continue
+            }
+            if let data = fm.contents(atPath: path), data.range(of: Data(name.utf8)) != nil {
+                hits.append("contents: \(relative)")
+            }
+        }
+        return hits
+    }
+
+    @Test
+    func aDonorExportNamesNobodyAndImportUsesTheImportersName() async throws {
+        let fm = FileManager.default
+        let root = fm.temporaryDirectory.appending(path: "DonorName-\(UUID().uuidString)", directoryHint: .isDirectory)
+        defer { try? fm.removeItem(at: root) }
+        let manager = BottleManager(bottlesDirectory: root.appending(path: "Bottles", directoryHint: .isDirectory))
+        var bottle = try manager.createBottle(name: "Donor")
+        try manager.setStatus(.ready, for: bottle.id)
+        bottle = try #require(manager.bottle(with: bottle.id))
+        let prefix = manager.prefixDirectory(for: bottle)
+        let users = prefix.appending(path: "drive_c/users", directoryHint: .isDirectory)
+        let profile = users.appending(path: "zowner", directoryHint: .isDirectory)
+
+        // The profile as Wine makes it.
+        for folder in ["AppData/Local/Temp", "AppData/Roaming/Game", "Saved Games", "Games/Hand Game"] {
+            try fm.createDirectory(at: profile.appending(path: folder), withIntermediateDirectories: true)
+        }
+        for (link, target) in [("Desktop", "/Users/zowner/Desktop"), ("Documents", "/Users/zowner/Documents")] {
+            try fm.createSymbolicLink(atPath: profile.appending(path: link).path, withDestinationPath: target)
+        }
+        try Data("C:\\users\\zowner\\AppData".utf8).write(to: profile.appending(path: "AppData/Local/Temp/dd_vcredist.log"))
+        // Links Wine and the owner made elsewhere: another profile, deep in
+        // AppData, a game linked in from a download folder, a linked file —
+        // and an ordinary link inside the bottle, which stays.
+        let other = users.appending(path: "crossover", directoryHint: .isDirectory)
+        try fm.createDirectory(at: other.appending(path: "AppData/Roaming/Microsoft/Windows"), withIntermediateDirectories: true)
+        try fm.createSymbolicLink(atPath: other.appending(path: "Music").path, withDestinationPath: "/Users/zowner/Music")
+        try fm.createSymbolicLink(
+            atPath: other.appending(path: "AppData/Roaming/Microsoft/Windows/Templates").path,
+            withDestinationPath: "/Users/zowner/Templates")
+        let programs = prefix.appending(path: "drive_c/Program Files", directoryHint: .isDirectory)
+        try fm.createDirectory(at: programs.appending(path: "Tool/data"), withIntermediateDirectories: true)
+        try fm.createSymbolicLink(atPath: programs.appending(path: "Linked Game").path, withDestinationPath: "/Users/zowner/Downloads/Linked Game")
+        let realFile = root.appending(path: "zowner-notes.txt")
+        try Data("x".utf8).write(to: realFile)
+        try fm.createSymbolicLink(atPath: programs.appending(path: "Tool/notes.txt").path, withDestinationPath: realFile.path)
+        try fm.createSymbolicLink(atPath: programs.appending(path: "Tool/current").path, withDestinationPath: "data")
+        try Data("keep".utf8).write(to: profile.appending(path: "AppData/Roaming/Game/settings.ini"))
+        try Data("MZ".utf8).write(to: profile.appending(path: "Games/Hand Game/game.exe"))
+        try Data("zowner".utf8).write(to: users.appending(path: ".DS_Store"))
+        let logs = prefix.appending(path: "drive_c/ProgramData/Launcher/logs", directoryHint: .isDirectory)
+        try fm.createDirectory(at: logs, withIntermediateDirectories: true)
+        try Data("Z:\\Users\\zowner".utf8).write(to: logs.appending(path: "bootstrap.log"))
+        try fm.createDirectory(at: users.appending(path: "Public"), withIntermediateDirectories: true)
+
+        let dosdevices = prefix.appending(path: "dosdevices", directoryHint: .isDirectory)
+        try fm.createDirectory(at: dosdevices, withIntermediateDirectories: true)
+        try fm.createSymbolicLink(atPath: dosdevices.appending(path: "c:").path, withDestinationPath: "../drive_c")
+        try fm.createSymbolicLink(atPath: dosdevices.appending(path: "z:").path, withDestinationPath: "/")
+        try fm.createSymbolicLink(atPath: dosdevices.appending(path: "f:").path, withDestinationPath: "/Volumes/Private Project")
+        try fm.createSymbolicLink(atPath: dosdevices.appending(path: "f::").path, withDestinationPath: "/dev/rdisk14")
+
+        try #"""
+        [Environment] 1
+        "TEMP"="C:\\users\\zowner\\AppData\\Local\\Temp"
+        [Volatile Environment] 1
+        "USERNAME"="zowner"
+        [Software\\Wine\\Fonts] 1
+        "Marlett"="Z:\\Users\\zowner\\Library\\Application Support\\Fable\\marlett.ttf"
+        """#.write(to: prefix.appending(path: "user.reg"), atomically: true, encoding: .utf8)
+        try #"""
+        [Software\\Microsoft\\Windows NT\\CurrentVersion\\ProfileList\\S-1-5-21] 1
+        "ProfileImagePath"="C:\\users\\zowner"
+        """#.write(to: prefix.appending(path: "system.reg"), atomically: true, encoding: .utf8)
+        try #""Desktop"="C:\\users\\zowner\\Desktop""#
+            .write(to: prefix.appending(path: "userdef.reg"), atomically: true, encoding: .utf8)
+
+        var withGame = bottle
+        withGame.games = [Game(name: "Hand Game", executablePath: "users/zowner/Games/Hand Game/game.exe")]
+        let catalog = VersionCatalog(components: [
+            "wine": .init(name: "Wine", version: "11.10", url: URL(string: "https://x")!, sha256: ""),
+        ])
+        let archive = root.appending(path: "Donor.fbottle")
+        _ = try await BottleArchive.pack(
+            BottleArchive.donorBottle(withGame), bottleManager: manager, catalog: catalog, to: archive,
+            excluding: BottleArchive.donorExclusions(for: withGame), sanitizeRegistry: true,
+            ownerUserName: "zowner")
+        // The owner's own bottle is as it was.
+        #expect(fm.fileExists(atPath: profile.appending(path: "Games/Hand Game/game.exe").path))
+        #expect((try? fm.destinationOfSymbolicLink(atPath: profile.appending(path: "Desktop").path)) == "/Users/zowner/Desktop")
+        #expect(fm.fileExists(atPath: dosdevices.appending(path: "f:").path) || (try? fm.destinationOfSymbolicLink(atPath: dosdevices.appending(path: "f:").path)) != nil)
+
+        // Nothing in the archive names the owner or their volumes.
+        let raw = root.appending(path: "raw", directoryHint: .isDirectory)
+        try fm.createDirectory(at: raw, withIntermediateDirectories: true)
+        let tar = Process()
+        tar.executableURL = URL(filePath: "/usr/bin/tar")
+        tar.arguments = ["--zstd", "-xf", archive.path, "-C", raw.path]
+        try tar.run()
+        tar.waitUntilExit()
+        #expect(try everyMention(of: "zowner", under: raw).isEmpty)
+        #expect(try everyMention(of: "Private Project", under: raw).isEmpty)
+        let rawPrefix = raw.appending(path: "prefix")
+        #expect(try fm.contentsOfDirectory(atPath: rawPrefix.appending(path: "dosdevices").path).sorted() == ["c:", "z:"])
+
+        // Import: the profile takes the importer's name and still works.
+        let unpacked = try await BottleArchive.unpack(archive, importerUserName: "friend")
+        defer { try? fm.removeItem(at: unpacked.workingDirectory) }
+        #expect(unpacked.manifest.profilePlaceholder == DonorExport.profilePlaceholder)
+        let theirs = unpacked.prefixDirectory.appending(path: "drive_c/users/friend", directoryHint: .isDirectory)
+        #expect(try fm.contentsOfDirectory(atPath: theirs.deletingLastPathComponent().path).sorted() == ["Public", "crossover", "friend"])
+        var isDirectory: ObjCBool = false
+        #expect(fm.fileExists(atPath: theirs.appending(path: "Desktop").path, isDirectory: &isDirectory) && isDirectory.boolValue)
+        #expect((try? fm.destinationOfSymbolicLink(atPath: theirs.appending(path: "Desktop").path)) == nil)
+        #expect(try fm.contentsOfDirectory(atPath: theirs.appending(path: "AppData/Local/Temp").path).isEmpty)
+        #expect(fm.fileExists(atPath: theirs.appending(path: "AppData/Roaming/Game/settings.ini").path))
+        #expect(fm.fileExists(atPath: theirs.appending(path: "Saved Games").path))
+        // The game kept in the profile was still left out after the rename.
+        #expect(!fm.fileExists(atPath: theirs.appending(path: "Games/Hand Game").path))
+        let userReg = try String(contentsOf: unpacked.prefixDirectory.appending(path: "user.reg"), encoding: .utf8)
+        #expect(userReg.contains(#""TEMP"="C:\\users\\friend\\AppData\\Local\\Temp""#))
+        #expect(userReg.contains(#""USERNAME"="friend""#))
+        #expect(userReg.contains(#"Z:\\Users\\friend\\Library\\Application Support\\Fable\\marlett.ttf"#))
+        let systemReg = try String(contentsOf: unpacked.prefixDirectory.appending(path: "system.reg"), encoding: .utf8)
+        #expect(systemReg.contains(#""ProfileImagePath"="C:\\users\\friend""#))
+        #expect(try everyMention(of: "fable-donor", under: unpacked.prefixDirectory).isEmpty)
+        let out = unpacked.prefixDirectory.appending(path: "drive_c")
+        for folder in ["users/crossover/Music", "users/crossover/AppData/Roaming/Microsoft/Windows/Templates",
+                       "Program Files/Linked Game"] {
+            var isFolder: ObjCBool = false
+            #expect(fm.fileExists(atPath: out.appending(path: folder).path, isDirectory: &isFolder) && isFolder.boolValue, "\(folder)")
+            #expect((try? fm.destinationOfSymbolicLink(atPath: out.appending(path: folder).path)) == nil, "\(folder)")
+        }
+        #expect((try? fm.destinationOfSymbolicLink(atPath: out.appending(path: "Program Files/Tool/notes.txt").path)) == nil)
+        #expect(!fm.fileExists(atPath: out.appending(path: "Program Files/Tool/notes.txt").path))
+        #expect((try? fm.destinationOfSymbolicLink(atPath: out.appending(path: "Program Files/Tool/current").path)) == "data")
+    }
+
+    /// A plain (non-donor) export is a backup: it keeps everything.
+    @Test
+    func aPlainExportKeepsTheProfileAsItIs() async throws {
+        let fm = FileManager.default
+        let root = fm.temporaryDirectory.appending(path: "PlainName-\(UUID().uuidString)", directoryHint: .isDirectory)
+        defer { try? fm.removeItem(at: root) }
+        let manager = BottleManager(bottlesDirectory: root.appending(path: "Bottles", directoryHint: .isDirectory))
+        var bottle = try manager.createBottle(name: "Backup")
+        try manager.setStatus(.ready, for: bottle.id)
+        bottle = try #require(manager.bottle(with: bottle.id))
+        let profile = manager.prefixDirectory(for: bottle).appending(path: "drive_c/users/zowner", directoryHint: .isDirectory)
+        try fm.createDirectory(at: profile, withIntermediateDirectories: true)
+        let catalog = VersionCatalog(components: [
+            "wine": .init(name: "Wine", version: "11.10", url: URL(string: "https://x")!, sha256: ""),
+        ])
+        let archive = root.appending(path: "Backup.fbottle")
+        _ = try await BottleArchive.pack(bottle, bottleManager: manager, catalog: catalog, to: archive, ownerUserName: "zowner")
+        let unpacked = try await BottleArchive.unpack(archive, importerUserName: "friend")
+        defer { try? fm.removeItem(at: unpacked.workingDirectory) }
+        #expect(unpacked.manifest.profilePlaceholder == nil)
+        #expect(fm.fileExists(atPath: unpacked.prefixDirectory.appending(path: "drive_c/users/zowner").path))
+    }
+}

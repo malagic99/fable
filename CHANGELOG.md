@@ -1,5 +1,27 @@
 # Changelog
 
+## v1.3.6 — unreleased
+
+**Donor exports no longer name you.**
+
+- **Your Mac user name stays home.** Wine names the Windows profile after
+  your Mac user and writes that name — and your home folder — into the
+  registry dozens of times; a donor bottle carried all of it, plus links
+  from the profile into your Desktop, Documents and Downloads. A donor
+  export now calls the profile `fable-donor`, rewrites those registry paths
+  to match, turns every link that pointed outside the bottle into an empty
+  folder, and empties the profile's Temp folder. When your friend imports
+  it, the profile takes *their* user name. Checked on a real 166 GB Steam
+  bottle: after export and import, no file, link or file name mentions the
+  owner.
+- **Nor the names of your drives.** Wine remembers every volume that was
+  mounted when it last ran (disk images, USB drives) as a drive letter; a
+  donor export keeps only `C:` and `Z:`.
+- **Logs are left out of donor exports.** Installers, launchers and games
+  write logs full of paths with your user name in them; a donor needs none.
+- Game saves and settings that games keep in the profile's AppData still
+  travel, as before.
+
 ## v1.3.5 — 2026-11-21
 
 **The main engine is set up with the same code as the others.**
