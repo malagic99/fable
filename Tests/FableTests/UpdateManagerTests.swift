@@ -26,21 +26,21 @@ import Testing
     private let fixture = """
     [
       {
-        "tag_name": "11.10",
+        "prerelease": false, "draft": false, "published_at": "2026-01-01T00:00:00Z", "tag_name": "11.10",
         "assets": [
           {"name": "wine-devel-11.10-osx64.tar.xz",
-           "browser_download_url": "https://example.com/devel.tar.xz",
+           "browser_download_url": "https://github.com/o/r/releases/download/t/devel.tar.xz",
            "digest": "sha256:\(shaA)"},
           {"name": "wine-staging-11.10-osx64.tar.xz",
-           "browser_download_url": "https://example.com/staging.tar.xz",
+           "browser_download_url": "https://github.com/o/r/releases/download/t/staging.tar.xz",
            "digest": "sha256:\(shaB)"}
         ]
       },
       {
-        "tag_name": "11.0_2",
+        "prerelease": false, "draft": false, "published_at": "2026-01-01T00:00:00Z", "tag_name": "11.0_2",
         "assets": [
           {"name": "wine-stable-11.0_2-osx64.tar.xz",
-           "browser_download_url": "https://example.com/stable.tar.xz",
+           "browser_download_url": "https://github.com/o/r/releases/download/t/stable.tar.xz",
            "digest": "sha256:\(shaC)"}
         ]
       }
@@ -50,7 +50,7 @@ import Testing
     @Test
     func picksNewestReleaseWithMatchingAsset() throws {
         let component = try UpdateManager.component(
-            fromReleasesJSON: Data(fixture.utf8),
+            fromReleasesJSON: Data(fixture.utf8), repo: "o/r",
             assetPrefix: "wine-stable-",
             assetSuffix: "-osx64.tar.xz",
             displayName: "Wine Stable"
@@ -58,13 +58,68 @@ import Testing
         // 11.10 has no stable asset, so 11.0_2 wins.
         #expect(component?.version == "11.0_2")
         #expect(component?.sha256 == Self.shaC)
-        #expect(component?.url.absoluteString == "https://example.com/stable.tar.xz")
+        #expect(component?.url.absoluteString == "https://github.com/o/r/releases/download/t/stable.tar.xz")
+    }
+
+    /// One release per entry, newest first: (tag, prerelease, draft, published, url).
+    private func releases(_ entries: [(String, Bool?, Bool?, String?, String)]) -> Data {
+        let items = entries.map { tag, pre, draft, published, url in
+            var fields = [#""tag_name": "\#(tag)""#]
+            if let pre { fields.append(#""prerelease": \#(pre)"#) }
+            if let draft { fields.append(#""draft": \#(draft)"#) }
+            if let published { fields.append(#""published_at": "\#(published)""#) }
+            fields.append(#""assets": [{"name": "dxmt-\#(tag)-builtin.tar.gz", "browser_download_url": "\#(url)", "digest": "sha256:\#(Self.shaA)"}]"#)
+            return "{" + fields.joined(separator: ", ") + "}"
+        }
+        return Data(("[" + items.joined(separator: ",") + "]").utf8)
+    }
+
+    private func pick(_ data: Data, now: Date = ISO8601DateFormatter().date(from: "2026-11-23T12:00:00Z")!) throws -> String? {
+        try UpdateManager.component(fromReleasesJSON: data, repo: "3Shain/dxmt", assetPrefix: "dxmt-v",
+                                    assetSuffix: "-builtin.tar.gz", displayName: "DXMT", now: now)?.version
+    }
+
+    private let own = "https://github.com/3Shain/dxmt/releases/download/x/f.tar.gz"
+    private let old = "2026-10-01T00:00:00Z"
+
+    @Test
+    func preReleasesAndDraftsAreNeverOffered() throws {
+        #expect(try pick(releases([
+            ("v0.83", true, false, old, own),
+            ("v0.82", false, true, old, own),
+            ("v0.81", nil, false, old, own),   // flag missing: treated as a pre-release
+            ("v0.80", false, false, old, own),
+        ])) == "0.80")
+    }
+
+    @Test
+    func aReleaseIsOfferedOnlyAfterAWeek() throws {
+        let data = releases([
+            ("v0.82", false, false, "2026-11-20T12:00:00Z", own), // 3 days old
+            ("v0.81", false, false, "2026-11-16T11:00:00Z", own), // 7 days, 1 hour
+            ("v0.80", false, false, old, own),
+        ])
+        #expect(try pick(data) == "0.81")
+        // A week later the newest is old enough too.
+        #expect(try pick(data, now: ISO8601DateFormatter().date(from: "2026-11-28T00:00:00Z")!) == "0.82")
+        // A release with no publication date has no known age.
+        #expect(try pick(releases([("v0.82", false, false, nil, own)])) == nil)
+    }
+
+    @Test
+    func onlyTheProjectsOwnReleaseFilesAreOffered() throws {
+        #expect(try pick(releases([
+            ("v0.83", false, false, old, "https://example.com/3Shain/dxmt/releases/download/x/f.tar.gz"),
+            ("v0.82", false, false, old, "https://github.com/someone-else/dxmt/releases/download/x/f.tar.gz"),
+            ("v0.81", false, false, old, "http://github.com/3Shain/dxmt/releases/download/x/f.tar.gz"),
+            ("v0.80", false, false, old, "https://github.com/3Shain/dxmt/releases/download/v0.80/f.tar.gz"),
+        ])) == "0.80")
     }
 
     @Test
     func returnsNilWhenNothingMatches() throws {
         let component = try UpdateManager.component(
-            fromReleasesJSON: Data(fixture.utf8),
+            fromReleasesJSON: Data(fixture.utf8), repo: "o/r",
             assetPrefix: "dxmt-v",
             assetSuffix: ".tar.gz",
             displayName: "DXMT"
@@ -75,14 +130,14 @@ import Testing
     @Test
     func stripsTagVPrefix() throws {
         let json = """
-        [{"tag_name": "v0.81", "assets": [
+        [{"prerelease": false, "draft": false, "published_at": "2026-01-01T00:00:00Z", "tag_name": "v0.81", "assets": [
           {"name": "dxmt-v0.81-builtin.tar.gz",
-           "browser_download_url": "https://example.com/dxmt.tar.gz",
+           "browser_download_url": "https://github.com/o/r/releases/download/t/dxmt.tar.gz",
            "digest": "sha256:\(Self.shaA)"}
         ]}]
         """
         let component = try UpdateManager.component(
-            fromReleasesJSON: Data(json.utf8),
+            fromReleasesJSON: Data(json.utf8), repo: "o/r",
             assetPrefix: "dxmt-v",
             assetSuffix: "-builtin.tar.gz",
             displayName: "DXMT"
@@ -96,23 +151,23 @@ import Testing
         // Newest first: no digest, then a non-SHA-256 one, then a truncated
         // one — none can be verified, so the update offered is v0.80.
         let json = """
-        [{"tag_name": "v0.83", "assets": [
+        [{"prerelease": false, "draft": false, "published_at": "2026-01-01T00:00:00Z", "tag_name": "v0.83", "assets": [
            {"name": "dxmt-v0.83-builtin.tar.gz",
-            "browser_download_url": "https://example.com/83.tar.gz", "digest": null}]},
-         {"tag_name": "v0.82", "assets": [
+            "browser_download_url": "https://github.com/o/r/releases/download/t/83.tar.gz", "digest": null}]},
+         {"prerelease": false, "draft": false, "published_at": "2026-01-01T00:00:00Z", "tag_name": "v0.82", "assets": [
            {"name": "dxmt-v0.82-builtin.tar.gz",
-            "browser_download_url": "https://example.com/82.tar.gz",
+            "browser_download_url": "https://github.com/o/r/releases/download/t/82.tar.gz",
             "digest": "sha512:\(Self.shaA)"}]},
-         {"tag_name": "v0.81", "assets": [
+         {"prerelease": false, "draft": false, "published_at": "2026-01-01T00:00:00Z", "tag_name": "v0.81", "assets": [
            {"name": "dxmt-v0.81-builtin.tar.gz",
-            "browser_download_url": "https://example.com/81.tar.gz", "digest": "sha256:abcd"}]},
-         {"tag_name": "v0.80", "assets": [
+            "browser_download_url": "https://github.com/o/r/releases/download/t/81.tar.gz", "digest": "sha256:abcd"}]},
+         {"prerelease": false, "draft": false, "published_at": "2026-01-01T00:00:00Z", "tag_name": "v0.80", "assets": [
            {"name": "dxmt-v0.80-builtin.tar.gz",
-            "browser_download_url": "https://example.com/80.tar.gz",
+            "browser_download_url": "https://github.com/o/r/releases/download/t/80.tar.gz",
             "digest": "sha256:\(Self.shaB)"}]}]
         """
         let component = try UpdateManager.component(
-            fromReleasesJSON: Data(json.utf8),
+            fromReleasesJSON: Data(json.utf8), repo: "o/r",
             assetPrefix: "dxmt-v",
             assetSuffix: "-builtin.tar.gz",
             displayName: "DXMT"
@@ -122,12 +177,12 @@ import Testing
 
         // And when no release can be verified, nothing is offered at all.
         let unverifiable = """
-        [{"tag_name": "v0.83", "assets": [
+        [{"prerelease": false, "draft": false, "published_at": "2026-01-01T00:00:00Z", "tag_name": "v0.83", "assets": [
            {"name": "dxmt-v0.83-builtin.tar.gz",
-            "browser_download_url": "https://example.com/83.tar.gz"}]}]
+            "browser_download_url": "https://github.com/o/r/releases/download/t/83.tar.gz"}]}]
         """
         #expect(try UpdateManager.component(
-            fromReleasesJSON: Data(unverifiable.utf8),
+            fromReleasesJSON: Data(unverifiable.utf8), repo: "o/r",
             assetPrefix: "dxmt-v",
             assetSuffix: "-builtin.tar.gz",
             displayName: "DXMT"

@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.3.8 — unreleased
+
+**Engine updates wait for a full, settled release.**
+
+- **No pre-releases, drafts or brand-new releases.** When you
+  check for Wine or DXMT updates, Fable now skips releases their authors
+  marked as pre-releases or drafts, and waits until a release has been public
+  for seven days before offering it. GitHub's checksum proves a file arrived
+  intact, not who put it there, and these projects publish no signatures, so
+  the week gives a bad release time to be noticed and pulled before it
+  reaches you.
+- **Only the project's own files.** An update is offered only when its
+  download comes from that project's own GitHub releases.
+
 ## v1.3.7 — 2026-11-23
 
 **Runtimes are checked before they run.**

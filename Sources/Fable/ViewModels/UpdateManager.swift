@@ -14,6 +14,14 @@ enum UpdateError: LocalizedError {
 /// Checks GitHub for newer component releases and installs them.
 /// Checksums come from GitHub's own asset digests, so updates stay
 /// verified even though they're newer than the pinned versions.json.
+///
+/// That digest proves the download arrived intact, not who published it:
+/// it comes from the same release as the file. Wine and DXMT publish no
+/// signatures, so there is no second source to check against. What Fable
+/// can do instead: offer only full releases (no pre-releases or drafts),
+/// only files hosted by that project's own releases, and only once a
+/// release has been public for ``minimumReleaseAge`` — long enough for a
+/// bad release from a hijacked account to be noticed and pulled first.
 @MainActor
 final class UpdateManager: ObservableObject {
     /// Newer-than-installed components found by the last check.
@@ -21,6 +29,9 @@ final class UpdateManager: ObservableObject {
     @Published private(set) var isChecking = false
     @Published private(set) var lastChecked: Date?
     @Published private(set) var lastError: String?
+
+    /// How long a release must have been public before it's offered.
+    nonisolated static let minimumReleaseAge: TimeInterval = 7 * 24 * 60 * 60
 
     let componentManager: ComponentManager
     let catalog: VersionCatalog
@@ -96,6 +107,9 @@ final class UpdateManager: ObservableObject {
         }
         let tag_name: String
         let assets: [Asset]
+        let prerelease: Bool?
+        let draft: Bool?
+        let published_at: Date?
     }
 
     /// Finds the newest release in `repo` carrying an asset that matches
@@ -113,6 +127,7 @@ final class UpdateManager: ObservableObject {
         }
         return try component(
             fromReleasesJSON: data,
+            repo: repo,
             assetPrefix: assetPrefix,
             assetSuffix: assetSuffix,
             displayName: displayName
@@ -122,15 +137,29 @@ final class UpdateManager: ObservableObject {
     /// Pure parsing step, separated for testability.
     nonisolated static func component(
         fromReleasesJSON data: Data,
+        repo: String,
         assetPrefix: String,
         assetSuffix: String,
-        displayName: String
+        displayName: String,
+        now: Date = .now
     ) throws -> VersionCatalog.Component? {
-        let releases = try JSONDecoder().decode([GitHubRelease].self, from: data)
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let releases = try decoder.decode([GitHubRelease].self, from: data)
+        let ownDownloads = "https://github.com/\(repo)/releases/download/".lowercased()
         for release in releases {
+            // Pre-releases and drafts are for testers, not everyone. A
+            // missing flag counts as set: fail closed.
+            guard release.prerelease == false, release.draft == false else { continue }
+            // Too new to have been looked at — or of unknown age.
+            guard let published = release.published_at,
+                  now.timeIntervalSince(published) >= minimumReleaseAge else { continue }
             guard let asset = release.assets.first(where: {
                 $0.name.hasPrefix(assetPrefix) && $0.name.hasSuffix(assetSuffix)
             }) else { continue }
+            // Only the project's own release files, over HTTPS.
+            guard asset.browser_download_url.absoluteString.lowercased().hasPrefix(ownDownloads)
+            else { continue }
 
             // No SHA-256 digest from GitHub = nothing to verify the download
             // against, so it isn't offered (older assets predate digests).
