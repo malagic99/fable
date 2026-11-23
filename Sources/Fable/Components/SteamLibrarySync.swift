@@ -112,7 +112,7 @@ enum SteamLibrarySync {
         let steamapps = steamRoot.appending(path: "steamapps", directoryHint: .isDirectory)
         let manifests: [Manifest] = ((try? fm.contentsOfDirectory(at: steamapps, includingPropertiesForKeys: nil)) ?? [])
             .filter { $0.lastPathComponent.hasPrefix("appmanifest_") && $0.pathExtension == "acf" }
-            .compactMap { (try? String(contentsOf: $0, encoding: .utf8)).flatMap(Manifest.parse) }
+            .compactMap { SteamAppManifest.readText(at: $0).flatMap(Manifest.parse) }
             .filter(\.isFullyInstalled)
         guard !manifests.isEmpty,
               let cache = SteamAppInfoCache.entries(for: Set(manifests.map(\.appID)), steamRoot: steamRoot)
