@@ -1,6 +1,6 @@
 # Changelog
 
-## v1.3.7 — unreleased
+## v1.3.7 — 2026-11-23
 
 **Runtimes are checked before they run.**
 
