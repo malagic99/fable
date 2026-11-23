@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.3.7 — 2026-11-23
+
+**Runtimes are checked before they run.**
+
+- **Visual C++, DirectX and OpenAL installers are verified.** Fable downloads
+  these and runs them inside your bottles, and until now ran whatever arrived.
+  The Microsoft installers must now carry Microsoft's own code signature,
+  covering every byte and chaining to Microsoft's code-signing root (bundled,
+  since macOS doesn't trust it). OpenAL must match a pinned SHA-256. A file
+  that fails isn't unpacked or run, and you see why. Microsoft's links always
+  serve the newest build, so a fixed hash would break with every update.
+  DirectX's file has also changed: Microsoft re-signed it after winetricks
+  pinned its hash.
+
 ## v1.3.6 — 2026-11-23
 
 **Donor exports no longer name you.**
