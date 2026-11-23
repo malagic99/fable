@@ -1,6 +1,6 @@
 # Changelog
 
-## v1.3.6 — unreleased
+## v1.3.6 — 2026-11-23
 
 **Donor exports no longer name you.**
 
