@@ -20,6 +20,25 @@ struct Dependency: Identifiable, Sendable {
     /// key is written only by a real MSI install — and is the same one the
     /// game launchers themselves check.
     var detectionRegistryKey: String?
+    /// What the download must pass before it runs inside a bottle.
+    let check: DownloadCheck
+}
+
+/// How a downloaded installer is checked before Fable runs it.
+enum DownloadCheck: Sendable {
+    /// For links that always serve the newest build (Microsoft's `aka.ms`),
+    /// where no fixed hash can work: the file's Authenticode signature must
+    /// cover every byte and chain to the publisher's own root.
+    case signedBy(AuthenticodePublisher)
+    /// For files that never change.
+    case sha256(String)
+
+    func verify(_ file: URL) throws {
+        switch self {
+        case .signedBy(let publisher): try Authenticode.verify(file, publisher: publisher)
+        case .sha256(let expected): try ChecksumVerifier.verify(file, sha256: expected)
+        }
+    }
 }
 
 enum DependencyCatalog {
@@ -31,7 +50,8 @@ enum DependencyCatalog {
             kind: .vcRedist,
             isZipped: false,
             detectionPath: "windows/system32/msvcp140.dll",
-            detectionRegistryKey: #"Software\\Microsoft\\VisualStudio\\14.0\\VC\\Runtimes\\x64"#
+            detectionRegistryKey: #"Software\\Microsoft\\VisualStudio\\14.0\\VC\\Runtimes\\x64"#,
+            check: .signedBy(.microsoft)
         ),
         Dependency(
             id: "vcredist-x86",
@@ -40,7 +60,8 @@ enum DependencyCatalog {
             kind: .vcRedist,
             isZipped: false,
             detectionPath: "windows/syswow64/msvcp140.dll",
-            detectionRegistryKey: #"Software\\Microsoft\\VisualStudio\\14.0\\VC\\Runtimes\\x86"#
+            detectionRegistryKey: #"Software\\Microsoft\\VisualStudio\\14.0\\VC\\Runtimes\\x86"#,
+            check: .signedBy(.microsoft)
         ),
         Dependency(
             id: "openal",
@@ -48,7 +69,10 @@ enum DependencyCatalog {
             url: URL(string: "https://openal.org/downloads/oalinst.zip")!,
             kind: .openAL,
             isZipped: true,
-            detectionPath: "windows/system32/OpenAL32.dll"
+            detectionPath: "windows/system32/OpenAL32.dll",
+            // Creative's 2009 installer, unchanged since: the oalinst.exe
+            // inside still matches its own (long-expired) Creative signature.
+            check: .sha256("d165bcb7628fd950d14847585468cc11943b2a1da92a59a839d397c68f9d4b06")
         ),
         Dependency(
             id: "directx-jun2010",
@@ -56,7 +80,10 @@ enum DependencyCatalog {
             url: URL(string: "https://download.microsoft.com/download/8/4/A/84A35BF1-DAFE-4AE8-82AF-AD2AE20B6B14/directx_Jun2010_redist.exe")!,
             kind: .directX,
             isZipped: false,
-            detectionPath: "windows/system32/d3dx9_43.dll"
+            detectionPath: "windows/system32/d3dx9_43.dll",
+            // Not a hash: Microsoft re-signed this 2010 file (it no longer
+            // matches the hash winetricks pins), and could again.
+            check: .signedBy(.microsoft)
         ),
     ]
 }
@@ -128,6 +155,9 @@ final class DependencyInstaller: ObservableObject {
 
         var installerFile = workDir.appending(path: dependency.url.lastPathComponent)
         try await DownloadManager.download(from: dependency.url, to: installerFile)
+        // Checked before anything is unpacked or run.
+        let downloaded = installerFile
+        try await Task.detached { try dependency.check.verify(downloaded) }.value
 
         if dependency.isZipped {
             let result = try await ProcessRunner.run(
