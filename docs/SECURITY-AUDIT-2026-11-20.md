@@ -61,3 +61,16 @@ Unchanged: Microsoft redistributables unverified (Authenticode check needed); th
 2. **#9–#14** as small follow-ups; #12 and #13 are mostly wording.
 
 Every fix shipped so far comes with tests that were run against the code before the fix and failed there.
+
+## External review, 23 November 2026
+
+An outside review of the repository, checked against the code before anything was changed.
+
+| Finding | Status |
+|---|---|
+| **N1** Importing used `tar -xpf`, which on macOS also restores file flags, ACLs and extended attributes: a crafted bottle could leave undeletable files or files other users can write. | **Fixed in v1.3.5** ([#140](https://github.com/malagic99/fable/pull/140)). The `--no-…` options must come *after* `-p`, which turns them back on; the test caught the first attempt. |
+| **N2** A donor export went ahead with an unsanitized registry when `user.reg` couldn't be read as text. | **Fixed in v1.3.5** ([#140](https://github.com/malagic99/fable/pull/140)): the export stops with an error. |
+| **N3** Steam auto-add read install manifests with no size limit. | **Fixed in v1.3.5** ([#140](https://github.com/malagic99/fable/pull/140)): one 1 MB limit shared by every reader. |
+| Donor exports carried the owner's Mac user name: the profile folder, its links into the owner's home (in every profile, not only the owner's), ~80 registry paths, `USERNAME`, and installer logs. Not in the review: they also carried the names of mounted volumes (`dosdevices`). | **Fixed for v1.3.6**: profile renamed to `fable-donor` (the importer's name on import), outward links become empty folders, Temp emptied, `.log` files and remembered volumes left out. Checked on a real 166 GB Steam bottle: no file, link or file name mentions the owner afterwards. |
+| Redistributables (VC++, DirectX, OpenAL) are downloaded and run without any check. The review rates this High; this scan's first audit had it Medium. | Open. Plan: check Microsoft's Authenticode signature (the `aka.ms` links always serve the latest build, so a pinned hash can't work) and pin a hash for OpenAL. |
+| Component updates don't skip pre-releases, and their digest comes from the same release as the file. | Open. The digest point is this audit's "transport integrity, not origin" limit. |

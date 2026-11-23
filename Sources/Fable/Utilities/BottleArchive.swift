@@ -52,6 +52,10 @@ enum BottleArchive {
         /// drops group-write bits). ``ChecksumFormat/normalized`` leaves
         /// those out. Older Fable ignores the field.
         var checksumFormat: Int? = nil
+        /// Set on donor exports: the Windows profile name used in place of
+        /// the owner's Mac user name. Import renames it to the importer's.
+        /// Older Fable ignores it, and the bottle works under this name.
+        var profilePlaceholder: String? = nil
 
         struct Components: Codable, Hashable, Sendable {
             let wine: String?
@@ -106,6 +110,10 @@ enum BottleArchive {
             // Both regenerate on first launch. The `*` stands for the donor's
             // Wine user name (their Mac user name).
             "\(prefixEntryName)/drive_c/users/*/AppData/Local/Steam",
+            // Logs written by Windows programs — installers, launchers,
+            // games — are full of the owner's paths and user name, and a
+            // donor needs none of them (external review 2026-11-23).
+            "*.log",
         ]
     }
 
@@ -142,7 +150,8 @@ enum BottleArchive {
         catalog: VersionCatalog,
         to destination: URL,
         excluding: [String] = [],
-        sanitizeRegistry: Bool = false
+        sanitizeRegistry: Bool = false,
+        ownerUserName: String = NSUserName()
     ) async throws -> URL {
         let fm = FileManager.default
         let source = bottleManager.directory(for: bottle)
@@ -165,20 +174,30 @@ enum BottleArchive {
         if sanitizeRegistry, fm.fileExists(atPath: prefixSource.path) {
             let clone = try await cloneForDonor(prefixSource, beside: source)
             defer { try? fm.removeItem(at: clone.deletingLastPathComponent()) }
-            let registry = clone.appending(path: "user.reg")
-            // A registry that exists but can't be read as text is not
-            // exported as it is: it would carry the account name the
-            // sanitizer is there to remove (external review N2).
-            if fm.fileExists(atPath: registry.path) {
-                guard let text = try? String(contentsOf: registry, encoding: .utf8) else {
+            // The account data, and the owner's Mac user name wherever it
+            // names the profile or the home folder. A registry that exists
+            // but can't be read as text is not exported as it is (external
+            // review N2).
+            for name in DonorExport.registryFiles {
+                let registry = clone.appending(path: name)
+                guard fm.fileExists(atPath: registry.path) else { continue }
+                guard var text = try? String(contentsOf: registry, encoding: .utf8) else {
                     throw ArchiveError.registryUnreadable
                 }
-                try DonorExport.sanitizedUserRegistry(text).write(to: registry, atomically: false, encoding: .utf8)
+                if name == "user.reg" { text = DonorExport.sanitizedUserRegistry(text) }
+                text = DonorExport.replacingProfileName(
+                    text, user: ownerUserName, with: DonorExport.profilePlaceholder)
+                try text.write(to: registry, atomically: false, encoding: .utf8)
+            }
+            var excluding = excluding
+            if try DonorExport.anonymizeProfile(prefix: clone, user: ownerUserName) {
+                excluding = DonorExport.renamingProfile(
+                    in: excluding, user: ownerUserName, prefixEntry: prefixEntryName)
             }
             prefixSource = clone
             return try await packTree(
                 bottle, prefixSource: prefixSource, staging: staging, catalog: catalog,
-                to: destination, excluding: excluding)
+                to: destination, excluding: excluding, profilePlaceholder: DonorExport.profilePlaceholder)
         }
         return try await packTree(
             bottle, prefixSource: prefixSource, staging: staging, catalog: catalog,
@@ -205,7 +224,7 @@ enum BottleArchive {
     @MainActor
     private static func packTree(
         _ bottle: Bottle, prefixSource: URL, staging: URL, catalog: VersionCatalog,
-        to destination: URL, excluding: [String]
+        to destination: URL, excluding: [String], profilePlaceholder: String? = nil
     ) async throws -> URL {
         let fm = FileManager.default
         // An empty prefix still needs a directory for tar to reference.
@@ -243,7 +262,8 @@ enum BottleArchive {
                 winetricks: catalog.components["winetricks"]?.version
             ),
             prefixChecksum: checksum,
-            checksumFormat: ChecksumFormat.normalized.rawValue
+            checksumFormat: ChecksumFormat.normalized.rawValue,
+            profilePlaceholder: profilePlaceholder
         )
         let manifestData = try JSONEncoder.fablePretty().encode(manifest)
         try manifestData.write(to: staging.appending(path: manifestEntryName))
@@ -328,7 +348,7 @@ enum BottleArchive {
     /// Extracts the archive into a temporary working directory.
     /// Verifies schema version, prefix checksum, and that bottle.json
     /// decodes cleanly. Caller cleans up `workingDirectory`.
-    static func unpack(_ archive: URL) async throws -> UnpackedBottle {
+    static func unpack(_ archive: URL, importerUserName: String = NSUserName()) async throws -> UnpackedBottle {
         let fm = FileManager.default
         let workingDir = fm.temporaryDirectory
             .appending(path: "fable-import-\(UUID().uuidString)", directoryHint: .isDirectory)
@@ -380,6 +400,12 @@ enum BottleArchive {
                 expected: manifest.prefixChecksum,
                 actual: recomputed
             )
+        }
+
+        // Verified, so now it can change: a donor's profile takes the
+        // importer's name.
+        if manifest.profilePlaceholder == DonorExport.profilePlaceholder {
+            DonorExport.restoreProfile(prefix: prefixDir, user: importerUserName)
         }
 
         return UnpackedBottle(
@@ -466,7 +492,7 @@ enum ArchiveError: LocalizedError, Equatable {
         case .checksumMismatch:
             "Archive prefix checksum doesn't match the manifest — the file is corrupt or tampered."
         case .registryUnreadable:
-            "The bottle's registry (user.reg) couldn't be read as text, so the account details in it couldn't be removed. Nothing was exported."
+            "One of the bottle's registry files couldn't be read as text, so the account details and user name in it couldn't be removed. Nothing was exported."
         }
     }
 }
