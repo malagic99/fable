@@ -157,7 +157,7 @@ Releases up to and including v1.1.0 were published under the MIT licence and
 remain available under it.
 
 Everything Fable stands on, and what that implies, is inventoried in
-[THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) — Wine (LGPL), DXMT (zlib),
+[THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) — Wine (LGPL), DXMT (LGPL),
 DXVK/vkd3d-proton, MoltenVK, Apple's Game Porting Toolkit (D3DMetal, never
 bundled), Sikarugir, innoextract (zlib), and the Gcenx packaging work.
 Respect the licenses of any games you run, and each store's terms for their
