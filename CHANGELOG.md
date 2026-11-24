@@ -1,5 +1,28 @@
 # Changelog
 
+## v1.3.9 — 2026-11-24
+
+**Tighter edges for shared bottles, artwork and GPTK.**
+
+- **Shared bottles can't point Wine at outside code.** A game's own settings
+  may no longer set any variable that makes macOS load a library or plugin:
+  GStreamer's plugin paths, the Vulkan loader's driver and layer lists,
+  `WINEDLLPATH_*`, CrossOver's install paths, `WINEPREFIX`, and anything
+  ending in `PATH`. Ordinary tuning like `DXVK_HUD` still works. An imported
+  bottle also drops the sender's CrossOver bottle config, which could set
+  variables for every launch; Fable writes its own when needed.
+- **A failed import cleans up after itself.** An unreadable manifest, a
+  checksum error, or a problem adding the bottle no longer leaves a full
+  copy of the bottle in your temp folder.
+- **GPTK is checked before it's trusted.** Before Fable clears the download
+  flag on the Game Porting Toolkit's libraries, D3DMetal and every other
+  framework and library in the disk image must carry Apple's own signature.
+- **Cover-art lookups stay where they should.** A game's name is fully
+  escaped in SteamGridDB requests, so an odd name can't reach a different
+  part of the site with your API key.
+- **Your SteamGridDB key is hidden.** It's typed into a password-style field,
+  and Fable's settings file is now readable only by you.
+
 ## v1.3.8 — 2026-11-24
 
 **Engine updates wait for a full, settled release.**

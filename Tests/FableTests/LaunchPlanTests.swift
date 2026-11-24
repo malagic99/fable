@@ -425,6 +425,28 @@ import Testing
     }
 
     @Test
+    func everyNativeLibrarySearchVariableIsRefused() {
+        // Each of these makes macOS-side code load a file the sender chose —
+        // the ones Fable's own engines set are all here (from a real launch).
+        let loaders = [
+            "GST_PLUGIN_PATH", "GST_PLUGIN_PATH_1_0", "GST_PLUGIN_SYSTEM_PATH", "gst_plugin_scanner",
+            "GST_REGISTRY", "VK_DRIVER_FILES", "VK_ICD_FILENAMES", "VK_ADD_LAYER_PATH",
+            "VK_INSTANCE_LAYERS", "WINEDLLPATH_DXMT", "WINEDLLPATH_PREPEND", "WINEPREFIX",
+            "CX_ROOT", "CX_D3DMETALPATH", "CX_APPLEGPTK_LIBD3DSHARED_PATH", "LD_LIBRARY_PATH",
+            "PATH", "WINETRICKS_FALLBACK_LIBRARY_PATH", "XDG_DATA_DIRS", "DXVK_LOG_PATH",
+        ]
+        let tuning = [
+            "DXVK_HUD", "DXVK_ASYNC", "MTL_HUD_ENABLED", "MVK_CONFIG_FAST_MATH_ENABLED",
+            "WINEDEBUG", "WINEDLLOVERRIDES", "WINEMSYNC", "ROSETTA_ADVERTISE_AVX",
+            "CX_FWD_COMPAT_GL_CTX", "GST_DEBUG", "SDL_JOYSTICK_MFI", "DXMT_ALLOW_CROSS_PROCESS_SWAPCHAIN",
+        ]
+        let (applied, refused) = WineEnv.screenedOverrides(
+            Dictionary(uniqueKeysWithValues: (loaders + tuning).map { ($0, "x") }))
+        #expect(refused == loaders.sorted())
+        #expect(Set(applied.keys) == Set(tuning))
+    }
+
+    @Test
     func dxvkRoutesDLLsNativeAndCarriesTheCap() throws {
         let (prefix, driveC) = try makePrefix()
         defer { try? fm.removeItem(at: prefix) }

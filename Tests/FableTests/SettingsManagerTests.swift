@@ -22,6 +22,16 @@ import Testing
     }
 
     @Test
+    func theConfigIsReadableOnlyByThisUser() throws {
+        let url = tempConfig()
+        defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+        let manager = SettingsManager(configURL: url)
+        manager.settings.steamGridDBKey = "secret-key"
+        let mode = try FileManager.default.attributesOfItem(atPath: url.path)[.posixPermissions] as? Int
+        #expect(mode == 0o600)
+    }
+
+    @Test
     func changesPersistAcrossInstances() {
         let url = tempConfig()
         defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }

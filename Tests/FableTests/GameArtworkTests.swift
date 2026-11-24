@@ -5,6 +5,21 @@ import Testing
 /// The cover-art pipeline's pure parts: URL building, response parsing with
 /// name-match safety, cache keys, and the Steam-client exclusion.
 @Suite struct GameArtworkTests {
+    @Test
+    func aGameNameStaysOneSegmentOfTheSteamGridDBPath() {
+        let base = "https://www.steamgriddb.com/api/v2/search/autocomplete/"
+        for name in ["../../grids/game/1", "a/b", "x?y=1", "x#frag", "50% off", "Half-Life 2: Episode One"] {
+            let url = GameArtwork.sgdbSearchURL(name: name)
+            #expect(url.absoluteString.hasPrefix(base), "\(name)")
+            let segment = String(url.absoluteString.dropFirst(base.count))
+            #expect(!segment.contains("/") && !segment.contains("?") && !segment.contains("#"), "\(name)")
+            #expect(segment.removingPercentEncoding == name, "\(name)")
+            #expect(url.path(percentEncoded: false) == "/api/v2/search/autocomplete/" + name, "\(name)")
+        }
+        // A name of only dots can't climb either.
+        #expect(GameArtwork.sgdbSearchURL(name: "..").absoluteString.hasSuffix("autocomplete/%2E%2E"))
+    }
+
 
     @Test
     func steamCDNURLTargetsThePortraitCapsule() {

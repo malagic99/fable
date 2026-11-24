@@ -255,7 +255,7 @@ private struct LibrarySettingsTab: View {
 
             Section {
                 Toggle("Fetch Cover Art Online", isOn: $settingsManager.settings.onlineArtwork)
-                TextField("SteamGridDB API Key (optional)", text: $settingsManager.settings.steamGridDBKey)
+                SecureField("SteamGridDB API Key (optional)", text: $settingsManager.settings.steamGridDBKey)
                     .textFieldStyle(.roundedBorder)
             } header: {
                 Text("Artwork")
