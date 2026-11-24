@@ -34,7 +34,7 @@ discovers them already installed on your machine. Their licenses govern your
 copy directly:
 
 - **Wine** (LGPL-2.1) — Gcenx macOS builds
-- **DXMT** (zlib) — 3Shain
+- **DXMT** (LGPL-2.1-or-later; zlib before its relicensing) — 3Shain
 - **DXVK / vkd3d** (zlib / LGPL), **MoltenVK** (Apache-2.0)
 - **winetricks** (LGPL-2.1)
 - **Sikarugir** (GPL) — its Wine engines and wrapper template, downloaded
