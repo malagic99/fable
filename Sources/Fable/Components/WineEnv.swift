@@ -195,13 +195,24 @@ enum WineEnv {
     // MARK: - Per-game overrides
 
     /// Names a per-game override may not set. A game's settings can arrive
-    /// inside a shared `.fbottle`, and each of these makes the *native* side
-    /// load a binary of the sender's choosing: dyld's `DYLD_*` inject a dylib
-    /// into Wine itself; `WINELOADER`/`WINESERVER` name the Wine executables;
-    /// `WINEDLLPATH` finds builtin DLLs and their unix-side libraries. Fable's
-    /// own layers may still set them. Matched case-insensitively.
-    static let refusedOverridePrefixes = ["DYLD_"]
-    static let refusedOverrideNames: Set<String> = ["WINELOADER", "WINESERVER", "WINEDLLPATH"]
+    /// inside a shared `.fbottle`, so anything that makes the *native* side
+    /// load or run a file of the sender's choosing is refused:
+    /// - dyld's `DYLD_*` (and `LD_*`) inject or redirect dylibs into Wine;
+    /// - `WINELOADER`/`WINESERVER` name the Wine executables, `WINEPREFIX`
+    ///   points Wine at another folder;
+    /// - `WINEDLLPATH*` finds builtin DLLs and their unix-side libraries;
+    /// - GStreamer's `GST_PLUGIN*`/`GST_REGISTRY*` load plugin dylibs (Wine's
+    ///   media playback runs through GStreamer);
+    /// - the Vulkan loader's `VK_*` name driver and layer manifests, each
+    ///   pointing at a dylib (MoltenVK, DXVK);
+    /// - CrossOver's `CX_ROOT` and its `CX_*PATH` names choose its install;
+    /// - and, as a net for the rest, any name ending in `PATH`, `PATHS`,
+    ///   `_FILES`, `_FILENAMES` or `_DIRS` — the usual spelling of "look for
+    ///   code here" — including plain `PATH`.
+    /// Fable's own layers may still set them. Matched case-insensitively.
+    static let refusedOverridePrefixes = ["DYLD_", "LD_", "WINEDLLPATH", "GST_PLUGIN", "GST_REGISTRY", "VK_"]
+    static let refusedOverrideSuffixes = ["PATH", "PATHS", "_FILES", "_FILENAMES", "_DIRS"]
+    static let refusedOverrideNames: Set<String> = ["WINELOADER", "WINESERVER", "WINEPREFIX", "CX_ROOT"]
 
     /// True for a POSIX shell variable name: `[A-Za-z_][A-Za-z0-9_]*`. The
     /// desktop-shortcut script exports names unquoted, so nothing else is safe.
@@ -226,7 +237,8 @@ enum WineEnv {
             let upper = name.uppercased()
             if !isPlainVariableName(name)
                 || refusedOverrideNames.contains(upper)
-                || refusedOverridePrefixes.contains(where: upper.hasPrefix) {
+                || refusedOverridePrefixes.contains(where: upper.hasPrefix)
+                || refusedOverrideSuffixes.contains(where: upper.hasSuffix) {
                 refused.append(name)
             } else {
                 applied[name] = value

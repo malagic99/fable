@@ -450,6 +450,109 @@ import Testing
         #expect(try fm.contentsOfDirectory(atPath: manager.directory(for: bottle).path)
             .allSatisfy { !$0.hasPrefix(".donor-export") })
     }
+
+    private func makeBottle(_ root: URL) throws -> (BottleManager, Bottle, VersionCatalog) {
+        let manager = BottleManager(bottlesDirectory: root.appending(path: "Bottles", directoryHint: .isDirectory))
+        var bottle = try manager.createBottle(name: "Shared")
+        try manager.setStatus(.ready, for: bottle.id)
+        bottle = try #require(manager.bottle(with: bottle.id))
+        let prefix = manager.prefixDirectory(for: bottle)
+        try FileManager.default.createDirectory(at: prefix.appending(path: "drive_c"), withIntermediateDirectories: true)
+        try Data("WINE REGISTRY Version 2\n".utf8).write(to: prefix.appending(path: "system.reg"))
+        let catalog = VersionCatalog(components: [
+            "wine": .init(name: "Wine", version: "11.10", url: URL(string: "https://x")!, sha256: ""),
+        ])
+        return (manager, bottle, catalog)
+    }
+
+    /// CrossOver applies a bottle config's [EnvironmentVariables] to every
+    /// launch, past the per-game screen — so a shared one is never kept.
+    @Test
+    func aSharedCrossOverConfigIsDroppedOnImport() async throws {
+        let fm = FileManager.default
+        let root = fm.temporaryDirectory.appending(path: "ArchiveCX-\(UUID().uuidString)", directoryHint: .isDirectory)
+        defer { try? fm.removeItem(at: root) }
+        let (manager, bottle, catalog) = try makeBottle(root)
+        let prefix = manager.prefixDirectory(for: bottle)
+        try Data("[EnvironmentVariables]\n\"DYLD_INSERT_LIBRARIES\" = \"/tmp/evil.dylib\"\n".utf8)
+            .write(to: prefix.appending(path: "cxbottle.conf"))
+
+        let archive = root.appending(path: "Shared.fbottle")
+        try await BottleArchive.pack(bottle, bottleManager: manager, catalog: catalog, to: archive)
+        let scratch = root.appending(path: "scratch", directoryHint: .isDirectory)
+        try fm.createDirectory(at: scratch, withIntermediateDirectories: true)
+        let unpacked = try await BottleArchive.unpack(archive, scratchRoot: scratch)
+        #expect(!fm.fileExists(atPath: unpacked.prefixDirectory.appending(path: "cxbottle.conf").path))
+        #expect(fm.fileExists(atPath: unpacked.prefixDirectory.appending(path: "system.reg").path))
+    }
+
+    /// Every way an import can fail removes its scratch copy of the bottle.
+    @Test
+    func aFailedImportLeavesNothingBehind() async throws {
+        let fm = FileManager.default
+        let root = fm.temporaryDirectory.appending(path: "ArchiveFail-\(UUID().uuidString)", directoryHint: .isDirectory)
+        defer { try? fm.removeItem(at: root) }
+        let scratch = root.appending(path: "scratch", directoryHint: .isDirectory)
+        try fm.createDirectory(at: scratch, withIntermediateDirectories: true)
+
+        // 1. Not an archive at all.
+        let junk = root.appending(path: "junk.fbottle")
+        try Data("not a bottle".utf8).write(to: junk)
+        // 2. A manifest that isn't JSON (this one used to leak).
+        let staging = root.appending(path: "staging", directoryHint: .isDirectory)
+        try fm.createDirectory(at: staging, withIntermediateDirectories: true)
+        try Data("{ not json".utf8).write(to: staging.appending(path: "manifest.json"))
+        try Data("{}".utf8).write(to: staging.appending(path: "bottle.json"))
+        let badManifest = root.appending(path: "bad-manifest.fbottle")
+        _ = try run("/usr/bin/tar", ["--zstd", "-cf", badManifest.path, "-C", staging.path,
+                                     "manifest.json", "bottle.json"])
+        // 3. A real archive whose prefix was changed after packing.
+        let (manager, bottle, catalog) = try makeBottle(root)
+        let good = root.appending(path: "Shared.fbottle")
+        try await BottleArchive.pack(bottle, bottleManager: manager, catalog: catalog, to: good)
+        let edit = root.appending(path: "edit", directoryHint: .isDirectory)
+        try fm.createDirectory(at: edit, withIntermediateDirectories: true)
+        _ = try run("/usr/bin/tar", BottleArchive.extractArguments(archive: good, into: edit))
+        let editedPrefix = try #require(fm.enumerator(at: edit, includingPropertiesForKeys: nil)?
+            .compactMap { $0 as? URL }.first { $0.lastPathComponent == "system.reg" })
+        try Data("WINE REGISTRY Version 2\n;; edited\n".utf8).write(to: editedPrefix)
+        let tampered = root.appending(path: "tampered.fbottle")
+        _ = try run("/usr/bin/tar", ["--zstd", "-cf", tampered.path, "-C", edit.path]
+                    + (try fm.contentsOfDirectory(atPath: edit.path)))
+
+        for archive in [junk, badManifest, tampered] {
+            await #expect(throws: (any Error).self, "\(archive.lastPathComponent)") {
+                _ = try await BottleArchive.unpack(archive, scratchRoot: scratch)
+            }
+            #expect(try fm.contentsOfDirectory(atPath: scratch.path).isEmpty, "\(archive.lastPathComponent)")
+        }
+    }
+
+    /// If adopting the unpacked bottle fails, neither the scratch folder nor
+    /// a half-made bottle stays behind.
+    @Test
+    func aFailedAdoptionCleansUp() async throws {
+        let fm = FileManager.default
+        let root = fm.temporaryDirectory.appending(path: "ArchiveAdopt-\(UUID().uuidString)", directoryHint: .isDirectory)
+        defer { try? fm.removeItem(at: root) }
+        let (manager, bottle, catalog) = try makeBottle(root)
+        let archive = root.appending(path: "Shared.fbottle")
+        try await BottleArchive.pack(bottle, bottleManager: manager, catalog: catalog, to: archive)
+        let scratch = root.appending(path: "scratch", directoryHint: .isDirectory)
+        try fm.createDirectory(at: scratch, withIntermediateDirectories: true)
+        let unpacked = try await BottleArchive.unpack(archive, scratchRoot: scratch)
+
+        // A bottles folder that can't take a new bottle.
+        let blocked = root.appending(path: "Blocked", directoryHint: .isDirectory)
+        try fm.createDirectory(at: blocked, withIntermediateDirectories: true)
+        try fm.setAttributes([.posixPermissions: 0o555], ofItemAtPath: blocked.path)
+        defer { try? fm.setAttributes([.posixPermissions: 0o755], ofItemAtPath: blocked.path) }
+        let other = BottleManager(bottlesDirectory: blocked)
+        #expect(throws: (any Error).self) { _ = try other.importBottle(unpacked) }
+        #expect(!fm.fileExists(atPath: unpacked.workingDirectory.path))
+        #expect(try fm.contentsOfDirectory(atPath: blocked.path).isEmpty)
+        #expect(other.bottles.isEmpty)
+    }
 }
 
 /// External review 2026-11-23: a donor export carried the owner's Mac user

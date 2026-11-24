@@ -5,6 +5,8 @@ enum GPTKError: LocalizedError {
     case binaryNotFound(String)
     case dmgMountFailed(String)
     case redistNotFound
+    /// A library in the dmg isn't signed by Apple.
+    case notSignedByApple(String)
 
     var errorDescription: String? {
         switch self {
@@ -16,6 +18,8 @@ enum GPTKError: LocalizedError {
             "Couldn't open the disk image: \(detail)"
         case .redistNotFound:
             "That disk image doesn't contain the evaluation environment's redist/lib payload. Mount Apple's Game Porting Toolkit dmg and use the nested “Evaluation environment for Windows games” image."
+        case .notSignedByApple(let name):
+            "\(name) in that disk image isn't signed by Apple, so Fable won't install it. Download the Game Porting Toolkit again from Apple's developer site."
         }
     }
 }
@@ -150,6 +154,11 @@ final class GPTKManager: ObservableObject {
             throw GPTKError.redistNotFound
         }
 
+        // The quarantine flag is about to be cleared, so check first that
+        // the native code really is Apple's: D3DMetal and every other
+        // framework and dylib must carry Apple's own signature.
+        try await Self.requireAppleSignatures(in: redistLib)
+
         let lib = try libDirectory()
         try Self.merge(redistLib, into: lib)
 
@@ -163,6 +172,37 @@ final class GPTKManager: ObservableObject {
             // from the user's browser download; the merge() doesn't drop
             // xattrs, so we explicitly clear them post-copy.
             try? await Self.stripQuarantine(at: root)
+        }
+    }
+
+    /// Every `.framework` and `.dylib` under `directory` must pass
+    /// `codesign --verify --strict` against `anchor apple` — Apple's own
+    /// software signing, not any Developer ID — and D3DMetal must be among
+    /// them. The Wine-side `.so`/`.dll` bridge files aren't checked here.
+    nonisolated static func requireAppleSignatures(in directory: URL) async throws {
+        let fm = FileManager.default
+        var native: [URL] = []
+        let walker = fm.enumerator(at: directory, includingPropertiesForKeys: nil)
+        while let item = walker?.nextObject() as? URL {
+            switch item.pathExtension.lowercased() {
+            case "framework":
+                native.append(item)
+                walker?.skipDescendants() // the bundle's signature covers its insides
+            case "dylib":
+                native.append(item)
+            default:
+                continue
+            }
+        }
+        guard native.contains(where: { $0.lastPathComponent == "D3DMetal.framework" }) else {
+            throw GPTKError.redistNotFound
+        }
+        for item in native {
+            let result = try await ProcessRunner.run(
+                URL(filePath: "/usr/bin/codesign"),
+                arguments: ["--verify", "--strict", "-R=anchor apple", item.path]
+            )
+            guard result.succeeded else { throw GPTKError.notSignedByApple(item.lastPathComponent) }
         }
     }
 

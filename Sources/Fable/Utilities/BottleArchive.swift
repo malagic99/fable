@@ -348,18 +348,35 @@ enum BottleArchive {
     /// Extracts the archive into a temporary working directory.
     /// Verifies schema version, prefix checksum, and that bottle.json
     /// decodes cleanly. Caller cleans up `workingDirectory`.
-    static func unpack(_ archive: URL, importerUserName: String = NSUserName()) async throws -> UnpackedBottle {
+    static func unpack(
+        _ archive: URL,
+        importerUserName: String = NSUserName(),
+        scratchRoot: URL = FileManager.default.temporaryDirectory
+    ) async throws -> UnpackedBottle {
         let fm = FileManager.default
-        let workingDir = fm.temporaryDirectory
+        let workingDir = scratchRoot
             .appending(path: "fable-import-\(UUID().uuidString)", directoryHint: .isDirectory)
         try fm.createDirectory(at: workingDir, withIntermediateDirectories: true)
+        // Whatever goes wrong from here on, the scratch folder goes with it —
+        // an unreadable manifest or a failed checksum run once left a copy of
+        // the whole bottle in the temp folder.
+        do {
+            return try await unpack(archive, into: workingDir, importerUserName: importerUserName)
+        } catch {
+            try? fm.removeItem(at: workingDir)
+            throw error
+        }
+    }
 
+    private static func unpack(
+        _ archive: URL, into workingDir: URL, importerUserName: String
+    ) async throws -> UnpackedBottle {
+        let fm = FileManager.default
         let result = try await ProcessRunner.run(
             URL(filePath: "/usr/bin/tar"),
             arguments: extractArguments(archive: archive, into: workingDir)
         )
         guard result.succeeded else {
-            try? fm.removeItem(at: workingDir)
             throw ArchiveError.tarFailed(result.standardError)
         }
 
@@ -369,7 +386,6 @@ enum BottleArchive {
         guard fm.fileExists(atPath: manifestURL.path),
               fm.fileExists(atPath: bottleURL.path)
         else {
-            try? fm.removeItem(at: workingDir)
             throw ArchiveError.malformed("archive missing manifest.json or bottle.json")
         }
 
@@ -378,7 +394,6 @@ enum BottleArchive {
             from: Data(contentsOf: manifestURL)
         )
         guard manifest.schemaVersion <= Manifest.currentSchemaVersion else {
-            try? fm.removeItem(at: workingDir)
             throw ArchiveError.unsupportedSchema(manifest.schemaVersion)
         }
 
@@ -395,7 +410,6 @@ enum BottleArchive {
         let format = ChecksumFormat(rawValue: manifest.checksumFormat ?? ChecksumFormat.raw.rawValue) ?? .raw
         let recomputed = try await prefixChecksum(stagingPrefix: prefixDir, format: format)
         guard recomputed == manifest.prefixChecksum else {
-            try? fm.removeItem(at: workingDir)
             throw ArchiveError.checksumMismatch(
                 expected: manifest.prefixChecksum,
                 actual: recomputed
@@ -407,6 +421,11 @@ enum BottleArchive {
         if manifest.profilePlaceholder == DonorExport.profilePlaceholder {
             DonorExport.restoreProfile(prefix: prefixDir, user: importerUserName)
         }
+        // CrossOver's bottle config can set environment variables for every
+        // launch (`[EnvironmentVariables]`) — DYLD_INSERT_LIBRARIES included —
+        // past the per-game screen. Fable writes its own minimal one when a
+        // bottle first runs on CrossOver, so the sender's is dropped.
+        try? fm.removeItem(at: prefixDir.appending(path: crossOverConfigName))
 
         return UnpackedBottle(
             manifest: manifest,
@@ -414,6 +433,9 @@ enum BottleArchive {
             workingDirectory: workingDir
         )
     }
+
+    /// CrossOver's per-bottle config, which an import never keeps.
+    static let crossOverConfigName = "cxbottle.conf"
 
     // MARK: Checksum
 

@@ -41,10 +41,17 @@ enum GameArtwork {
     }
 
     /// SteamGridDB endpoints (need an API key as a Bearer header).
+    /// The name is one path segment, so everything but RFC 3986's unreserved
+    /// characters is escaped. `.urlPathAllowed` let `/` and `..` through: a
+    /// game named `../../grids/game/1` reached another endpoint, with the
+    /// user's API key attached.
     static func sgdbSearchURL(name: String) -> URL {
-        let escaped = name.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? name
+        let escaped = name.addingPercentEncoding(withAllowedCharacters: segmentAllowed) ?? ""
         return URL(string: "https://www.steamgriddb.com/api/v2/search/autocomplete/\(escaped)")!
     }
+
+    static let segmentAllowed = CharacterSet(
+        charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_~")
 
     static func sgdbGridsURL(gameID: Int) -> URL {
         URL(string: "https://www.steamgriddb.com/api/v2/grids/game/\(gameID)?dimensions=600x900")!

@@ -170,6 +170,8 @@ final class SettingsManager: ObservableObject {
                 withIntermediateDirectories: true
             )
             try encoder.encode(settings).write(to: configURL, options: .atomic)
+            // It can hold the SteamGridDB API key: readable by this user only.
+            try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: configURL.path)
         } catch {
             NSLog("Fable: failed to save settings: \(error)")
         }

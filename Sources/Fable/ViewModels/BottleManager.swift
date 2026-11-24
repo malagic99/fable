@@ -177,15 +177,22 @@ final class BottleManager: ObservableObject {
         imported.runtime = nil
 
         let fm = FileManager.default
-        try fm.createDirectory(at: directory(for: imported), withIntermediateDirectories: true)
-        if fm.fileExists(atPath: unpacked.prefixDirectory.path) {
-            try fm.moveItem(at: unpacked.prefixDirectory, to: prefixDirectory(for: imported))
-            // Stale wineserver bookkeeping from the donor machine.
-            try? fm.removeItem(at: prefixDirectory(for: imported).appending(path: ".update-timestamp"))
+        // The scratch folder goes either way; on failure, so does the
+        // half-made bottle (a fresh id, so nothing else lives there).
+        defer { try? fm.removeItem(at: unpacked.workingDirectory) }
+        do {
+            try fm.createDirectory(at: directory(for: imported), withIntermediateDirectories: true)
+            if fm.fileExists(atPath: unpacked.prefixDirectory.path) {
+                try fm.moveItem(at: unpacked.prefixDirectory, to: prefixDirectory(for: imported))
+                // Stale wineserver bookkeeping from the donor machine.
+                try? fm.removeItem(at: prefixDirectory(for: imported).appending(path: ".update-timestamp"))
+            }
+            try save(imported)
+        } catch {
+            try? fm.removeItem(at: directory(for: imported))
+            throw error
         }
-        try save(imported)
         bottles.append(imported)
-        try? fm.removeItem(at: unpacked.workingDirectory)
         return imported
     }
 
