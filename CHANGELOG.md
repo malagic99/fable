@@ -1,6 +1,6 @@
 # Changelog
 
-## v1.3.10 — unreleased
+## v1.3.10 — 2026-11-24
 
 - **The settings file is made private at launch.** v1.3.9 restricted it only
   when a setting was saved, so an existing file stayed readable by other
