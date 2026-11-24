@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.3.10 — 2026-11-24
+
+- **The settings file is made private at launch.** v1.3.9 restricted it only
+  when a setting was saved, so an existing file stayed readable by other
+  users on the Mac until you changed something. Fable now restricts it every
+  time it starts.
+
 ## v1.3.9 — 2026-11-24
 
 **Tighter edges for shared bottles, artwork and GPTK.**
