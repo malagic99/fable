@@ -1,6 +1,6 @@
 # Changelog
 
-## v1.3.8 — unreleased
+## v1.3.8 — 2026-11-24
 
 **Engine updates wait for a full, settled release.**
 
