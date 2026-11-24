@@ -32,6 +32,20 @@ import Testing
     }
 
     @Test
+    func anOlderWorldReadableConfigIsTightenedAtLaunch() throws {
+        let url = tempConfig()
+        defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+        let fm = FileManager.default
+        try fm.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try Data(#"{"steamGridDBKey":"secret-key"}"#.utf8).write(to: url)
+        try fm.setAttributes([.posixPermissions: 0o644], ofItemAtPath: url.path)
+
+        let manager = SettingsManager(configURL: url)
+        #expect(manager.settings.steamGridDBKey == "secret-key")
+        #expect(try fm.attributesOfItem(atPath: url.path)[.posixPermissions] as? Int == 0o600)
+    }
+
+    @Test
     func changesPersistAcrossInstances() {
         let url = tempConfig()
         defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }

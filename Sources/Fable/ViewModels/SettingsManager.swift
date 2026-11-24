@@ -152,6 +152,9 @@ final class SettingsManager: ObservableObject {
 
     init(configURL: URL = AppPaths.applicationSupport.appending(path: "config.json")) {
         self.configURL = configURL
+        // Configs written before v1.3.9 are world-readable and only tighten
+        // on the next save, which may never come — so tighten at launch too.
+        try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: configURL.path)
         if let data = try? Data(contentsOf: configURL),
            let loaded = try? JSONDecoder().decode(AppSettings.self, from: data) {
             settings = loaded
