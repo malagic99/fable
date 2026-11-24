@@ -1,6 +1,6 @@
 # Changelog
 
-## v1.3.9 — unreleased
+## v1.3.9 — 2026-11-24
 
 **Tighter edges for shared bottles, artwork and GPTK.**
 
