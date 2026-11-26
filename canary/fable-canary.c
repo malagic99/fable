@@ -8,6 +8,12 @@
  *           anything else has touched the renderer
  *   adapter a graphics adapter is reported
  *   d3d11.* a D3D11 device can be created
+ *   winemetal  DXMT's Metal bridge is in the process, so the D3D11 device
+ *           came from DXMT and not from Wine's own d3d11
+ *
+ * With "no-d3d12" as argv[2] the D3D12 rungs are reported skipped without
+ * loading d3d12.dll: DXMT has no D3D12, and Wine's own would only test
+ * something a DXMT game never uses.
  *
  * It writes one "key=value" line per fact to the file named by argv[1] (or
  * stdout), flushing after each, so a crash part-way still leaves everything
@@ -75,7 +81,8 @@ typedef HRESULT (WINAPI *create_device11_fn)(IDXGIAdapter *, D3D_DRIVER_TYPE, HM
 
 int main(int argc, char **argv)
 {
-    HMODULE dxgi, d3d12, d3d11;
+    HMODULE dxgi, d3d12 = NULL, d3d11;
+    int no_d3d12 = argc > 2 && !strcmp(argv[2], "no-d3d12");
     IDXGIAdapter1 *adapter = NULL;
 
     out = stdout;
@@ -93,7 +100,8 @@ int main(int argc, char **argv)
         return 0;
     }
 
-    d3d12 = load("d3d12.dll", "dll.d3d12");
+    if (no_d3d12) say("dll.d3d12=skipped");
+    else d3d12 = load("d3d12.dll", "dll.d3d12");
 
     /*
      * D3D12 first, and cold: no DXGI factory has been created yet, so nothing
@@ -176,13 +184,16 @@ int main(int argc, char **argv)
             : E_NOINTERFACE;
         if (SUCCEEDED(hr) && device) {
             say("d3d11.device=ok level=0x%04x", (unsigned)level);
+            say("winemetal=%s", GetModuleHandleA("winemetal.dll") ? "ok" : "failed not loaded");
             if (context) ID3D11DeviceContext_Release(context);
             ID3D11Device_Release(device);
         } else {
             say("d3d11.device=failed hr=0x%08lx", (unsigned long)hr);
+            say("winemetal=skipped");
         }
     } else {
         say("d3d11.device=skipped");
+        say("winemetal=skipped");
     }
 
     if (adapter) IDXGIAdapter1_Release(adapter);

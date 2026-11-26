@@ -71,14 +71,27 @@ enum EngineCanary {
     }
 
     /// Backends whose engine the canary can exercise as Fable launches it.
-    /// DXMT and DXVK put their DLLs in the bottle, not the engine, so a
-    /// throwaway prefix wouldn't test what a game gets; CrossOver is the
-    /// user's own install. Those are reported unsupported, not passed.
+    /// DXMT is tested with its package staged into the throwaway prefix, as a
+    /// launch stages it into the bottle. DXVK still isn't (its DLLs come from
+    /// the bottle's own setup), and CrossOver is the user's own install:
+    /// those are reported unsupported, not passed.
     static func supports(_ backend: GraphicsBackend) -> Bool {
         switch backend {
-        case .sikarugir, .sikarugir11, .gptk: true
-        case .off, .dxmt, .dxvk, .crossover: false
+        case .sikarugir, .sikarugir11, .gptk, .dxmt: true
+        case .off, .dxvk, .crossover: false
         }
+    }
+
+    /// Extra arguments for the program after the result file's name. DXMT
+    /// has no D3D12, so its run skips those rungs instead of testing Wine's.
+    static func programArguments(for backend: GraphicsBackend) -> [String] {
+        backend == .dxmt ? ["no-d3d12"] : []
+    }
+
+    /// The rungs a backend is judged on. DXMT is DirectX 11 only, so it has
+    /// no D3D12 rung rather than one that can never pass.
+    static func rungIDs(for backend: GraphicsBackend) -> [CanaryRung.ID] {
+        backend == .dxmt ? CanaryRung.ID.allCases.filter { $0 != .direct3D12 } : CanaryRung.ID.allCases
     }
 
     static let programName = "fable-canary64.exe"
@@ -94,7 +107,7 @@ enum EngineCanary {
     static func unsupportedResult(backend: GraphicsBackend, engineKey: String?, at date: Date = .now) -> CanaryResult {
         CanaryResult(
             backend: backend, engineKey: engineKey, manifestID: nil, date: date, durationSeconds: 0,
-            rungs: CanaryRung.ID.allCases.map { CanaryRung(id: $0, status: .unsupported, detail: nil) },
+            rungs: rungIDs(for: backend).map { CanaryRung(id: $0, status: .unsupported, detail: nil) },
             fableVersion: appVersion)
     }
 
@@ -110,7 +123,11 @@ enum EngineCanary {
     /// The program flushes a line per fact, so after a crash or a hang the
     /// lines stop at the rung that was in progress: that rung failed, and the
     /// ones after it were never reached — skipped, not passed.
-    static func rungs(output: String, exit: Exit, errorTail: String) -> [CanaryRung] {
+    ///
+    /// For DXMT the renderer rung doesn't need d3d12, there is no D3D12 rung,
+    /// and the D3D11 rung also needs DXMT's Metal bridge in the process: a
+    /// device from Wine's own d3d11 is exactly the failure DXMT once had.
+    static func rungs(output: String, exit: Exit, errorTail: String, backend: GraphicsBackend = .sikarugir) -> [CanaryRung] {
         var facts: [String: String] = [:]
         var crash: String?
         for line in output.split(whereSeparator: \.isNewline) {
@@ -164,14 +181,15 @@ enum EngineCanary {
             result.append(CanaryRung(id: id, status: .passed, detail: detail?(facts)))
         }
 
+        let isDXMT = backend == .dxmt
         rung(.windowsProgram, keys: ["pe"])
-        rung(.rendererLoads, keys: ["dll.d3d12", "dll.dxgi", "dll.d3d11"])
-        rung(.direct3D12, keys: ["d3d12.device", "d3d12.queue"])
+        rung(.rendererLoads, keys: isDXMT ? ["dll.dxgi", "dll.d3d11"] : ["dll.d3d12", "dll.dxgi", "dll.d3d11"])
+        if !isDXMT { rung(.direct3D12, keys: ["d3d12.device", "d3d12.queue"]) }
         rung(.adapter, keys: ["adapter"]) { facts in
             // "ok vendor=… device=… vram_mb=… name=AMD Compatibility Mode"
             facts["adapter"]?.range(of: "name=").map { String(facts["adapter"]![$0.upperBound...]) }
         }
-        rung(.direct3D11, keys: ["d3d11.device"])
+        rung(.direct3D11, keys: isDXMT ? ["d3d11.device", "winemetal"] : ["d3d11.device"])
         return result
     }
 
@@ -187,6 +205,7 @@ enum EngineCanary {
         case "d3d12.queue": "no D3D12 command queue"
         case "d3d11.device": "no D3D11 device"
         case "adapter": "no graphics adapter"
+        case "winemetal": "the device came from Wine's own Direct3D 11, not DXMT"
         default: key
         }
         return code.map { "\(what) (error \($0))" } ?? what

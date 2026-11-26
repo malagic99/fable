@@ -453,6 +453,8 @@ final class GameLauncher: ObservableObject {
         var errorTail: String
         /// False when the backend can't be exercised this way at all.
         var supported = true
+        /// The DXMT build staged for the run, for a DXMT probe.
+        var dxmtVersion: String?
     }
 
     /// Runs one of Fable's test programs for `backend` under `pins` in a
@@ -462,7 +464,7 @@ final class GameLauncher: ObservableObject {
     /// the prefix's wineserver is stopped and the prefix removed afterwards.
     private func runProbe(
         program: URL?, programName: String, backend: GraphicsBackend, pins: [String: String],
-        timeout: Double
+        timeout: Double, supported: Bool, extraArguments: [String] = []
     ) async -> ProbeRun {
         let started = Date()
         var probe = Bottle(name: "Fable engine check")
@@ -477,7 +479,7 @@ final class GameLauncher: ObservableObject {
             engineKey: engineKey, manifestID: nil, started: started,
             exit: .couldNotStart(""), output: "", errorTail: "")
 
-        guard let deps, EngineCanary.supports(backend), let program else {
+        guard let deps, supported, let program else {
             run.supported = false
             return run
         }
@@ -506,6 +508,22 @@ final class GameLauncher: ObservableObject {
             return run
         }
 
+        if backend == .dxmt {
+            // Staged into the prefix as a launch stages it into the bottle,
+            // downloading it first as a launch would.
+            do {
+                if !deps.dxmtManager.isInstalled { try await deps.dxmtManager.ensureInstalled() }
+                guard let package = deps.dxmtManager.packageRoot() else {
+                    throw DXMTError.payloadNotFound("its native-mode package")
+                }
+                try DXMTManager.stage(package: package, driveC: driveC)
+                run.dxmtVersion = deps.dxmtManager.installedVersion
+            } catch {
+                run.exit = .couldNotStart(error.localizedDescription)
+                return run
+            }
+        }
+
         let baseEnvironment = deps.wineManager.environment(forPrefix: prefix)
         if backend == .sikarugir11 {
             // The Wine 11 path forces its D3D builtins through the prefix
@@ -520,7 +538,7 @@ final class GameLauncher: ObservableObject {
                     game: Game(
                         name: "fable-canary",
                         executablePath: "fable-canary/\(programName)",
-                        arguments: EngineCanary.resultName),
+                        arguments: ([EngineCanary.resultName] + extraArguments).joined(separator: " ")),
                     bottle: probe, prefix: prefix, driveC: driveC,
                     baseEnvironment: baseEnvironment,
                     logFile: root.appending(path: "canary.log"),
@@ -550,13 +568,22 @@ final class GameLauncher: ObservableObject {
     func runCanary(backend: GraphicsBackend, pins: [String: String]) async -> CanaryResult {
         let run = await runProbe(
             program: EngineCanary.program, programName: EngineCanary.programName,
-            backend: backend, pins: pins, timeout: EngineCanary.timeoutSeconds)
+            backend: backend, pins: pins, timeout: EngineCanary.timeoutSeconds,
+            supported: EngineCanary.supports(backend),
+            extraArguments: EngineCanary.programArguments(for: backend))
         let result: CanaryResult
         if run.supported {
+            var rungs = EngineCanary.rungs(
+                output: run.output, exit: run.exit, errorTail: run.errorTail, backend: backend)
+            // Which DXMT build was tested: the engine key names only Wine.
+            if let version = run.dxmtVersion,
+               let index = rungs.firstIndex(where: { $0.id == .rendererLoads && $0.status == .passed }) {
+                rungs[index].detail = "DXMT \(version)"
+            }
             result = CanaryResult(
                 backend: backend, engineKey: run.engineKey, manifestID: run.manifestID, date: run.started,
                 durationSeconds: Date().timeIntervalSince(run.started),
-                rungs: EngineCanary.rungs(output: run.output, exit: run.exit, errorTail: run.errorTail),
+                rungs: rungs,
                 fableVersion: EngineCanary.appVersion)
         } else {
             result = EngineCanary.unsupportedResult(backend: backend, engineKey: run.engineKey)
@@ -570,7 +597,9 @@ final class GameLauncher: ObservableObject {
     func runBenchmark(backend: GraphicsBackend, pins: [String: String]) async -> BenchmarkResult {
         let run = await runProbe(
             program: EngineBenchmark.program, programName: EngineBenchmark.programName,
-            backend: backend, pins: pins, timeout: EngineBenchmark.timeoutSeconds)
+            backend: backend, pins: pins, timeout: EngineBenchmark.timeoutSeconds,
+            // The benchmark is a D3D12 scene: DXMT has no D3D12 to time.
+            supported: EngineCanary.supports(backend) && backend != .dxmt)
         let result = EngineBenchmark.result(
             backend: backend, engineKey: run.engineKey, manifestID: run.manifestID,
             date: run.started, durationSeconds: Date().timeIntervalSince(run.started),
