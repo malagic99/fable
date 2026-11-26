@@ -53,7 +53,7 @@ struct EngineCanaryTests {
         #expect(result.hasFailure)
         #expect(result.firstProblem?.id == .rendererLoads)
         // An engine that can't be tested claims nothing either.
-        let unsupported = EngineCanary.unsupportedResult(backend: .dxmt, engineKey: nil)
+        let unsupported = EngineCanary.unsupportedResult(backend: .dxvk, engineKey: nil)
         #expect(!unsupported.allPassed)
         #expect(!unsupported.hasFailure)
         #expect(CanaryResult(backend: .sikarugir, engineKey: nil, manifestID: nil, date: .now,
@@ -131,11 +131,64 @@ struct EngineCanaryTests {
         #expect(EngineCanary.supports(.sikarugir))
         #expect(EngineCanary.supports(.sikarugir11))
         #expect(EngineCanary.supports(.gptk))
-        // Their Direct3D lives in the bottle, or in someone else's install.
-        #expect(!EngineCanary.supports(.dxmt))
+        // Staged into the throwaway prefix, as a launch stages it.
+        #expect(EngineCanary.supports(.dxmt))
+        #expect(EngineCanary.programArguments(for: .dxmt) == ["no-d3d12"])
+        #expect(EngineCanary.programArguments(for: .sikarugir).isEmpty)
+        // Their Direct3D lives in the bottle's own setup, or in someone else's install.
         #expect(!EngineCanary.supports(.dxvk))
         #expect(!EngineCanary.supports(.crossover))
         #expect(!EngineCanary.supports(.off))
+    }
+
+    // MARK: DXMT
+
+    /// DXMT's run: no D3D12, and the D3D11 device comes with DXMT's Metal
+    /// bridge in the process.
+    private let dxmtHealthy = """
+    fable-canary 1
+    pe=ok bits=64
+    dll.d3d12=skipped
+    d3d12.device=skipped
+    d3d12.queue=skipped
+    dll.dxgi=ok path=C:\\windows\\system32\\dxgi.dll
+    adapter=ok vendor=0x106b device=0x0000 vram_mb=0 name=Apple M4 Pro
+    dll.d3d11=ok path=C:\\windows\\system32\\d3d11.dll
+    d3d11.device=ok level=0xb000
+    winemetal=ok
+    done
+    """
+
+    @Test
+    func dxmtIsJudgedWithoutADirect3D12Rung() {
+        let rungs = EngineCanary.rungs(output: dxmtHealthy, exit: .exited(0), errorTail: "", backend: .dxmt)
+        #expect(rungs.map(\.id) == [.windowsProgram, .rendererLoads, .adapter, .direct3D11])
+        #expect(statuses(rungs) == [.passed, .passed, .passed, .passed])
+        let result = CanaryResult(
+            backend: .dxmt, engineKey: nil, manifestID: nil, date: .now, durationSeconds: 3,
+            rungs: rungs, fableVersion: nil)
+        #expect(result.allPassed)
+        #expect(EngineCanary.unsupportedResult(backend: .dxmt, engineKey: nil).rungs.count == 4)
+    }
+
+    /// The bug v1.3.11 fixed: a D3D11 device was created, but by Wine's own
+    /// d3d11, so DXMT never ran. That is a failure, not a pass.
+    @Test
+    func aDeviceFromWinesOwnD3D11FailsTheDXMTRung() {
+        let wined3d = dxmtHealthy.replacingOccurrences(of: "winemetal=ok", with: "winemetal=failed not loaded")
+        let rungs = EngineCanary.rungs(output: wined3d, exit: .exited(0), errorTail: "", backend: .dxmt)
+        #expect(statuses(rungs) == [.passed, .passed, .passed, .failed])
+        #expect(rungs.last?.detail?.contains("not DXMT") == true)
+        // Other backends don't ask for DXMT's bridge.
+        #expect(statuses(EngineCanary.rungs(output: healthy, exit: .exited(0), errorTail: "")).allSatisfy { $0 == .passed })
+    }
+
+    /// An old program that never writes the winemetal line can't pass DXMT.
+    @Test
+    func aDXMTRunWithoutTheBridgeFactIsNotPassed() {
+        let old = dxmtHealthy.replacingOccurrences(of: "winemetal=ok\n", with: "")
+        let rungs = EngineCanary.rungs(output: old, exit: .exited(0), errorTail: "", backend: .dxmt)
+        #expect(rungs.last?.status == .inconclusive)
     }
 
     @Test
@@ -173,7 +226,7 @@ struct EngineCanaryTests {
             backend: .sikarugir, engineKey: nil, manifestID: nil, date: .now, durationSeconds: 8,
             rungs: EngineCanary.rungs(output: healthy, exit: .exited(0), errorTail: ""), fableVersion: nil)
         #expect(!passed.summaryText.contains("%"))
-        #expect(!EngineCanary.unsupportedResult(backend: .dxmt, engineKey: nil).summaryText.contains("%"))
+        #expect(!EngineCanary.unsupportedResult(backend: .dxvk, engineKey: nil).summaryText.contains("%"))
     }
 
     /// The canary programs are committed binaries. They may only change

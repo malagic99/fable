@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- **Test Engine works on DXMT bottles.** The engine test stages Fable's DXMT
+  build into its throwaway bottle, as a launch does, and checks that the
+  DirectX 11 device really comes from DXMT: a device from Wine's own
+  Direct3D (what DXMT bottles got before v1.3.11) now fails the test. DXMT
+  has no DirectX 12, so its test has four checks, not five. Benchmark Engine
+  still can't run on DXMT, since the benchmark is a DirectX 12 scene.
+
 ## v1.3.11 — 2026-11-26
 
 **DXMT now actually runs.**

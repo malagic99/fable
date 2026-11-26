@@ -56,6 +56,15 @@ final class DXMTManager: ObservableObject {
 
     var isInstalled: Bool { packageRoot() != nil }
 
+    /// The version folder the package was found in ("0.80-fable.1").
+    var installedVersion: String? {
+        guard let root = packageRoot() else { return nil }
+        let versions = componentManager.installedVersions(for: Self.componentID)
+        return versions.contains(root.lastPathComponent)
+            ? root.lastPathComponent
+            : root.deletingLastPathComponent().lastPathComponent
+    }
+
     /// Installs the catalog's DXMT and removes other installed versions:
     /// DXMT isn't pinned per bottle, and older installs are upstream's
     /// builtin build, which ``packageRoot(installedIn:)`` won't use anyway.
