@@ -691,7 +691,9 @@ struct BottleDetailView: View {
         case .off:
             "Best for D3D9-era games. DirectX renders through Wine's built-in path."
         case .dxmt:
-            "Best for DirectX 11/10 games. D3D12-only games need Game Porting Toolkit or DXVK."
+            DXMTManager.isHeldBack
+                ? L10n.string("dxmt.held_back")
+                : "Best for DirectX 11/10 games. D3D12-only games need Game Porting Toolkit or DXVK."
         case .gptk:
             "Runs games on Apple's Game Porting Toolkit Wine with D3DMetal (D3D9–12). Downloads ~240 MB on first use. Wine 7.7 base — fails on modern UE5 SEH unwinding."
         case .dxvk:

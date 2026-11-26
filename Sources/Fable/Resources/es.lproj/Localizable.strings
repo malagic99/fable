@@ -597,7 +597,7 @@
 
 /* Engine canary */
 "Test Engine" = "Probar motor";
-"Runs a small test program on this bottle's engine in a throwaway bottle of its own. Your bottle is not touched." = "Ejecuta un pequeño programa de prueba en el motor de esta botella, dentro de una botella desechable propia. Tu botella no se toca.";
+"Runs a small test program on this bottle's engine in a throwaway bottle of its own. A small window flashes up for a moment. Your bottle is not touched." = "Ejecuta un pequeño programa de prueba en el motor de esta botella, dentro de una botella desechable propia. Aparece una ventana pequeña por un momento. Tu botella no se toca.";
 "canary.running" = "Probando el motor en una botella desechable… unos segundos, o uno o dos minutos la primera vez con Wine 11.";
 "canary.summary.passed" = "El motor superó las %@ comprobaciones en este Mac (%@). Esto muestra que el motor funciona aquí, no que un juego concreto lo haga.";
 "canary.summary.failed" = "El motor falló una comprobación en este Mac (%@): %@.";
@@ -609,6 +609,8 @@
 "canary.rung.direct3D12" = "Se crea un dispositivo DirectX 12";
 "canary.rung.adapter" = "Se detecta un adaptador gráfico";
 "canary.rung.direct3D11" = "Se crea un dispositivo DirectX 11";
+"canary.rung.present" = "Se muestra un fotograma en una ventana";
+"dxmt.held_back" = "DXMT está en pausa en esta versión: se carga, pero todavía no puede mostrar imagen con los motores de Fable. Los juegos de esta botella usan el Direct3D propio de Wine hasta que llegue un DXMT corregido.";
 "canary.status.passed" = "superado";
 "canary.status.failed" = "fallido";
 "canary.status.skipped" = "no alcanzado";

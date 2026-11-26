@@ -10,6 +10,9 @@
  *   d3d11.* a D3D11 device can be created
  *   winemetal  DXMT's Metal bridge is in the process, so the D3D11 device
  *           came from DXMT and not from Wine's own d3d11
+ *   present a small window gets a D3D11 swap chain and one frame is
+ *           presented in it: a renderer that makes devices but can't reach
+ *           a window (DXMT on Wine 11.10) runs no game
  *
  * With "no-d3d12" as argv[2] the D3D12 rungs are reported skipped without
  * loading d3d12.dll: DXMT has no D3D12, and Wine's own would only test
@@ -17,8 +20,9 @@
  *
  * It writes one "key=value" line per fact to the file named by argv[1] (or
  * stdout), flushing after each, so a crash part-way still leaves everything
- * learned up to that point. It never draws anything and never claims a game
- * works: creating a device proves the renderer is wired up, nothing more.
+ * learned up to that point. Its only drawing is one cleared frame in a small
+ * window, and it never claims a game works: a device and a presented frame
+ * prove the renderer is wired up, nothing more.
  *
  * Every Direct3D entry point is looked up at run time rather than imported,
  * so a missing DLL is reported as a failed rung instead of stopping the
@@ -74,10 +78,59 @@ static HMODULE load(const char *name, const char *key)
 
 typedef HRESULT (WINAPI *create_factory_fn)(REFIID, void **);
 typedef HRESULT (WINAPI *create_device12_fn)(IUnknown *, D3D_FEATURE_LEVEL, REFIID, void **);
+typedef HRESULT (WINAPI *create_device_swapchain11_fn)(IDXGIAdapter *, D3D_DRIVER_TYPE, HMODULE, UINT,
+                                                       const D3D_FEATURE_LEVEL *, UINT, UINT,
+                                                       const DXGI_SWAP_CHAIN_DESC *, IDXGISwapChain **,
+                                                       ID3D11Device **, D3D_FEATURE_LEVEL *,
+                                                       ID3D11DeviceContext **);
 typedef HRESULT (WINAPI *create_device11_fn)(IDXGIAdapter *, D3D_DRIVER_TYPE, HMODULE, UINT,
                                              const D3D_FEATURE_LEVEL *, UINT, UINT,
                                              ID3D11Device **, D3D_FEATURE_LEVEL *,
                                              ID3D11DeviceContext **);
+
+/*
+ * A small window, a swap chain on it and one presented frame: the path every
+ * game takes to the screen. Device creation alone doesn't touch it.
+ */
+static void present_rung(HMODULE d3d11)
+{
+    create_device_swapchain11_fn create = (create_device_swapchain11_fn)(void *)GetProcAddress(d3d11, "D3D11CreateDeviceAndSwapChain");
+    DXGI_SWAP_CHAIN_DESC desc;
+    IDXGISwapChain *swapchain = NULL;
+    ID3D11Device *device = NULL;
+    ID3D11DeviceContext *context = NULL;
+    HWND window;
+    HRESULT hr;
+
+    stage = "present";
+    window = CreateWindowExA(WS_EX_TOOLWINDOW, "STATIC", "Fable engine test", WS_POPUP | WS_VISIBLE,
+                             0, 0, 128, 128, NULL, NULL, GetModuleHandleA(NULL), NULL);
+    if (!window) {
+        say("present=failed error=%lu", (unsigned long)GetLastError());
+        return;
+    }
+    memset(&desc, 0, sizeof(desc));
+    desc.BufferDesc.Width = 128;
+    desc.BufferDesc.Height = 128;
+    desc.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    desc.SampleDesc.Count = 1;
+    desc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+    desc.BufferCount = 2;
+    desc.OutputWindow = window;
+    desc.Windowed = TRUE;
+    desc.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
+    hr = create
+        ? create(NULL, D3D_DRIVER_TYPE_HARDWARE, NULL, 0, NULL, 0, D3D11_SDK_VERSION,
+                 &desc, &swapchain, &device, NULL, &context)
+        : E_NOINTERFACE;
+    if (SUCCEEDED(hr) && swapchain) hr = IDXGISwapChain_Present(swapchain, 0, 0);
+    if (SUCCEEDED(hr) && swapchain) say("present=ok");
+    else say("present=failed hr=0x%08lx", (unsigned long)hr);
+    if (swapchain) IDXGISwapChain_Release(swapchain);
+    if (context) ID3D11DeviceContext_Release(context);
+    if (device) ID3D11Device_Release(device);
+    DestroyWindow(window);
+}
 
 int main(int argc, char **argv)
 {
@@ -187,13 +240,16 @@ int main(int argc, char **argv)
             say("winemetal=%s", GetModuleHandleA("winemetal.dll") ? "ok" : "failed not loaded");
             if (context) ID3D11DeviceContext_Release(context);
             ID3D11Device_Release(device);
+            present_rung(d3d11);
         } else {
             say("d3d11.device=failed hr=0x%08lx", (unsigned long)hr);
             say("winemetal=skipped");
+            say("present=skipped");
         }
     } else {
         say("d3d11.device=skipped");
         say("winemetal=skipped");
+        say("present=skipped");
     }
 
     if (adapter) IDXGIAdapter1_Release(adapter);

@@ -28,6 +28,10 @@ struct CanaryRung: Codable, Equatable, Hashable, Sendable {
         case adapter
         /// A D3D11 device was created.
         case direct3D11
+        /// A swap chain on a small window presented one frame: the step
+        /// every game needs to reach the screen, which device creation alone
+        /// never touches (DXMT on Wine 11.10 makes devices and can't do this).
+        case present
     }
 
     var id: ID
@@ -77,7 +81,10 @@ enum EngineCanary {
     /// those are reported unsupported, not passed.
     static func supports(_ backend: GraphicsBackend) -> Bool {
         switch backend {
-        case .sikarugir, .sikarugir11, .gptk, .dxmt: true
+        case .sikarugir, .sikarugir11, .gptk: true
+        // Held back: a DXMT bottle runs Wine's own Direct3D, which isn't
+        // what the DXMT test checks.
+        case .dxmt: !DXMTManager.isHeldBack
         case .off, .dxvk, .crossover: false
         }
     }
@@ -190,6 +197,7 @@ enum EngineCanary {
             facts["adapter"]?.range(of: "name=").map { String(facts["adapter"]![$0.upperBound...]) }
         }
         rung(.direct3D11, keys: isDXMT ? ["d3d11.device", "winemetal"] : ["d3d11.device"])
+        rung(.present, keys: ["present"])
         return result
     }
 
@@ -206,6 +214,7 @@ enum EngineCanary {
         case "d3d11.device": "no D3D11 device"
         case "adapter": "no graphics adapter"
         case "winemetal": "the device came from Wine's own Direct3D 11, not DXMT"
+        case "present": "no frame could be shown in a window"
         default: key
         }
         return code.map { "\(what) (error \($0))" } ?? what

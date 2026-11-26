@@ -1,5 +1,26 @@
 # Changelog
 
+## v1.3.13 — 2026-11-26
+
+**DXMT is held back: DXMT bottles run games again.**
+
+- **DXMT bottles use Wine's own Direct3D again,** as they did before
+  v1.3.11. Fable's DXMT build loads, but it can't show a picture on the
+  engines Fable has. Wine 11.10 doesn't give DXMT the window functions it
+  needs, so v1.3.11 and v1.3.12 stopped every DirectX 11 game in a DXMT
+  bottle as soon as it opened its window. On the Sikarugir engines DXMT
+  crashes instead. Until a fixed DXMT ships, a DXMT bottle launches exactly
+  like one set to Off, nothing is downloaded or copied into it, and its
+  Graphics section says so. Its frame-rate cap doesn't apply meanwhile.
+- **The engine test opens a window.** Test Engine now also creates a small
+  window, puts a DirectX 11 swap chain on it and shows one frame. That's the
+  step DXMT failed, and the old test never reached it. On Fable's Sikarugir
+  Wine 10 and Wine 11 engines all six checks pass. The window flashes up for
+  a moment.
+- **DXMT bottles can't run Test Engine for now.** While DXMT is held back,
+  a DXMT bottle runs Wine's own Direct3D, which isn't what the DXMT test
+  checks.
+
 ## v1.3.12 — 2026-11-26
 
 **The engine test covers DXMT.**
