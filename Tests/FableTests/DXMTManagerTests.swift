@@ -68,7 +68,7 @@ import Testing
 
         #expect(dxmt.packageRoot()?.lastPathComponent == "v0.80-fable.1")
         #expect(!dxmt.isEnabled(in: bottle, bottleManager: bottles))
-        try dxmt.enable(in: bottle, bottleManager: bottles, wineManager: wine)
+        try dxmt.enable(in: bottle, bottleManager: bottles, wineManager: wine, heldBack: false)
 
         let windows = bottles.driveCDirectory(for: bottle).appending(path: "windows")
         for dll in ["system32/d3d11.dll", "system32/dxgi.dll", "system32/d3d10core.dll",
@@ -82,7 +82,7 @@ import Testing
         #expect(!fm.fileExists(atPath: legacy.path))
         #expect(dxmt.isEnabled(in: bottle, bottleManager: bottles))
         // Idempotent.
-        try dxmt.enable(in: bottle, bottleManager: bottles, wineManager: wine)
+        try dxmt.enable(in: bottle, bottleManager: bottles, wineManager: wine, heldBack: false)
     }
 
     @Test

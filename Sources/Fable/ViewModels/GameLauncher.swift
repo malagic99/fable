@@ -255,7 +255,8 @@ final class GameLauncher: ObservableObject {
         driveC: URL,
         baseEnvironment: [String: String],
         logFile: URL,
-        runtime: any RuntimeResolving
+        runtime: any RuntimeResolving,
+        dxmtHeldBack: Bool = DXMTManager.isHeldBack
     ) throws -> LaunchPlan {
         let executable = driveC.appending(path: game.executablePath)
         // Adding a game already refuses paths outside drive_c, but a
@@ -339,10 +340,13 @@ final class GameLauncher: ObservableObject {
             // Frame-rate cap rides on DXMT's config when the backend is DXMT.
             var dxmtConfig = bottle.dxmtConfig
             dxmtConfig.maxFrameRate = bottle.performance.frameRateCap
-            let dxmtPackage = runtime.dxmtPackage()
-            if effectiveBackend == .dxmt && dxmtPackage == nil { throw GameLaunchError.dxmtNotInstalled }
+            // While DXMT is held back a DXMT bottle runs as .off does:
+            // Wine's own Direct3D, and no package needed.
+            let dxmtEnabled = effectiveBackend == .dxmt && !dxmtHeldBack
+            let dxmtPackage = dxmtEnabled ? runtime.dxmtPackage() : nil
+            if dxmtEnabled && dxmtPackage == nil { throw GameLaunchError.dxmtNotInstalled }
             environment.merge(DXMTManager.launchEnvironment(
-                enabled: effectiveBackend == .dxmt,
+                enabled: dxmtEnabled,
                 package: dxmtPackage,
                 config: dxmtConfig,
                 baseOverrides: baseOverrides,
@@ -429,7 +433,7 @@ final class GameLauncher: ObservableObject {
             )
             // DXMT's DLLs go into the bottle at every launch (only changed
             // files are copied), so an updated package reaches every bottle.
-            if game.graphicsBackend ?? bottle.graphicsBackend == .dxmt,
+            if game.graphicsBackend ?? bottle.graphicsBackend == .dxmt, !DXMTManager.isHeldBack,
                let package = ManagerRuntimeResolver(deps: deps).dxmtPackage() {
                 try DXMTManager.stage(package: package, driveC: deps.bottleManager.driveCDirectory(for: bottle))
             }
@@ -798,7 +802,7 @@ final class GameLauncher: ObservableObject {
         let resolver = ManagerRuntimeResolver(deps: deps)
         // A DXMT bottle from before Fable built its own DXMT has upstream's
         // package (or none): fetch the current one, as for a missing engine.
-        if backend == .dxmt && resolver.dxmtPackage() == nil {
+        if backend == .dxmt && !DXMTManager.isHeldBack && resolver.dxmtPackage() == nil {
             deps.toastCenter.success(L10n.string("launch.engine_downloading", backend.shortName, game.name))
             do {
                 try await deps.dxmtManager.ensureInstalled()

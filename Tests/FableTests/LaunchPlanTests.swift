@@ -53,13 +53,15 @@ import Testing
         prefix: URL,
         driveC: URL,
         base: [String: String] = ["WINEDLLOVERRIDES": "mscoree,mshtml="],
-        runtime: StubRuntime = StubRuntime()
+        runtime: StubRuntime = StubRuntime(),
+        dxmtHeldBack: Bool = false
     ) throws -> GameLauncher.LaunchPlan {
         try GameLauncher.composeLaunchPlan(
             game: game, bottle: bottle, prefix: prefix, driveC: driveC,
             baseEnvironment: base,
             logFile: fm.temporaryDirectory.appending(path: "plan-test.log"),
-            runtime: runtime
+            runtime: runtime,
+            dxmtHeldBack: dxmtHeldBack
         )
     }
 
@@ -498,6 +500,29 @@ import Testing
         #expect(offPlan.environment["DXMT_CONFIG"] == nil)
         #expect(offPlan.environment["WINEDLLOVERRIDES"]?.hasSuffix("=b") == true)
         #expect(offPlan.environment["WINEDLLPATH"] == nil)
+    }
+
+    /// v1.3.13: DXMT can't show a frame on Fable's engines, so a DXMT bottle
+    /// launches exactly as .off does — Wine's own Direct3D, no package,
+    /// nothing on WINEDLLPATH — instead of aborting at its first swap chain.
+    @Test
+    func heldBackDXMTLaunchesOnWinesOwnDirect3D() throws {
+        let (prefix, driveC) = try makePrefix()
+        defer { try? fm.removeItem(at: prefix) }
+        var runtime = StubRuntime()
+        runtime.dxmt = nil
+        let game = Game(name: "D", executablePath: "Games/Demo/demo.exe")
+        let held = try plan(game: game, bottle: Bottle(name: "B", graphicsBackend: .dxmt),
+                            prefix: prefix, driveC: driveC, runtime: runtime, dxmtHeldBack: true)
+        let off = try plan(game: game, bottle: Bottle(name: "B", graphicsBackend: .off),
+                           prefix: prefix, driveC: driveC, runtime: runtime, dxmtHeldBack: true)
+        #expect(held.environment == off.environment)
+        #expect(held.environment["WINEDLLOVERRIDES"]?.hasSuffix("=b") == true)
+        #expect(held.environment["WINEDLLPATH"] == nil)
+        #expect(held.environment["DXMT_CONFIG"] == nil)
+        #expect(held.wine == off.wine)
+        // The shipped app holds it back until a fixed DXMT shows frames.
+        #expect(DXMTManager.isHeldBack)
     }
 
     @Test

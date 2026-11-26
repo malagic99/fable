@@ -81,7 +81,7 @@ struct BottleEngineSection: View {
             HStack {
                 Button("Test Engine") { test() }
                     .disabled(isTesting || isChecking || isBenchmarking)
-                    .help("Runs a small test program on this bottle's engine in a throwaway bottle of its own. Your bottle is not touched.")
+                    .help("Runs a small test program on this bottle's engine in a throwaway bottle of its own. A small window flashes up for a moment. Your bottle is not touched.")
                 if isTesting {
                     ProgressView().controlSize(.small)
                     Text(L10n.string("canary.running")).font(.caption).foregroundStyle(.secondary)

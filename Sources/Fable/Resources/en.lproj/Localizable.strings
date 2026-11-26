@@ -245,6 +245,8 @@
 "canary.rung.direct3D12" = "A DirectX 12 device is created";
 "canary.rung.adapter" = "A graphics adapter is reported";
 "canary.rung.direct3D11" = "A DirectX 11 device is created";
+"canary.rung.present" = "A frame is shown in a window";
+"dxmt.held_back" = "DXMT is held back in this version: it loads, but it can’t show a picture yet on the engines Fable has. Games in this bottle run on Wine’s own Direct3D until a fixed DXMT ships.";
 "canary.status.passed" = "passed";
 "canary.status.failed" = "failed";
 "canary.status.skipped" = "not reached";

@@ -49,6 +49,19 @@ final class DXMTManager: ObservableObject {
         ("syswow64", "syswow64"), ("i386-windows", "syswow64"),
     ]
 
+    /// DXMT is held back (v1.3.13): launches on a DXMT bottle use Wine's own
+    /// Direct3D, as they did before v1.3.11, and nothing is downloaded or
+    /// copied into bottles.
+    ///
+    /// Fable's DXMT build loads, but it can't show a frame on any engine Fable
+    /// has. Wine 11.10's display driver doesn't export the window functions
+    /// DXMT calls to put its Metal layer in the game's window, so DXMT aborts
+    /// at its first swap chain. Sikarugir's engines export them, but DXMT
+    /// crashes calling them there (tested 2026-11-26 with Pure Skill Demo).
+    /// Clear this only once a game shows frames on the engine DXMT runs on,
+    /// and the engine test's window rung passes on DXMT.
+    nonisolated static let isHeldBack = true
+
     init(componentManager: ComponentManager, catalog: VersionCatalog) {
         self.componentManager = componentManager
         self.catalog = catalog
@@ -69,6 +82,7 @@ final class DXMTManager: ObservableObject {
     /// DXMT isn't pinned per bottle, and older installs are upstream's
     /// builtin build, which ``packageRoot(installedIn:)`` won't use anyway.
     func ensureInstalled() async throws {
+        guard !Self.isHeldBack else { return }
         guard let dxmt = catalog.dxmt else { throw DXMTError.notInCatalog }
         let installed = try await componentManager.install(id: Self.componentID, component: dxmt)
         for version in componentManager.installedVersions(for: Self.componentID)
@@ -125,7 +139,11 @@ final class DXMTManager: ObservableObject {
     /// Also removes the winemetal.so older Fable versions copied into the
     /// Wine engine: the engine doesn't ship one, and nothing should load a
     /// stale copy.
-    func enable(in bottle: Bottle, bottleManager: BottleManager, wineManager: WineManager) throws {
+    func enable(
+        in bottle: Bottle, bottleManager: BottleManager, wineManager: WineManager,
+        heldBack: Bool = isHeldBack
+    ) throws {
+        guard !heldBack else { return }
         guard let package = packageRoot() else {
             throw DXMTError.payloadNotFound("its native-mode package")
         }

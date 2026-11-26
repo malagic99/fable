@@ -18,6 +18,7 @@ struct EngineCanaryTests {
     adapter=ok vendor=0x1002 device=0x66af vram_mb=18186 name=AMD Compatibility Mode
     dll.d3d11=ok path=C:\\windows\\system32\\d3d11.dll
     d3d11.device=ok level=0xb000
+    present=ok
     done
     """
 
@@ -27,7 +28,7 @@ struct EngineCanaryTests {
     func aHealthyEnginePassesEveryRung() {
         let rungs = EngineCanary.rungs(output: healthy, exit: .exited(0), errorTail: "")
         #expect(rungs.map(\.id) == CanaryRung.ID.allCases)
-        #expect(statuses(rungs) == [.passed, .passed, .passed, .passed, .passed])
+        #expect(statuses(rungs) == [.passed, .passed, .passed, .passed, .passed, .passed])
         #expect(rungs.first { $0.id == .adapter }?.detail == "AMD Compatibility Mode")
     }
 
@@ -39,7 +40,7 @@ struct EngineCanaryTests {
         let rungs = EngineCanary.rungs(
             output: partial, exit: .timedOut,
             errorTail: "Assertion failed: (GFXTHandle && \"Failed to dlopen D3DMetal\")")
-        #expect(statuses(rungs) == [.passed, .failed, .skipped, .skipped, .skipped])
+        #expect(statuses(rungs) == [.passed, .failed, .skipped, .skipped, .skipped, .skipped])
         #expect(rungs[1].detail?.contains("Failed to dlopen D3DMetal") == true)
     }
 
@@ -66,7 +67,7 @@ struct EngineCanaryTests {
             .replacingOccurrences(of: "d3d12.device=ok", with: "d3d12.device=failed hr=0x887a0004")
             .replacingOccurrences(of: "d3d12.queue=ok", with: "d3d12.queue=skipped")
         let rungs = EngineCanary.rungs(output: output, exit: .exited(0), errorTail: "")
-        #expect(statuses(rungs) == [.passed, .passed, .failed, .passed, .passed])
+        #expect(statuses(rungs) == [.passed, .passed, .failed, .passed, .passed, .passed])
         #expect(rungs[2].detail == "no D3D12 device (error 0x887a0004)")
     }
 
@@ -82,10 +83,11 @@ struct EngineCanaryTests {
         adapter=ok vendor=0x1 device=0x2 vram_mb=1 name=Some Adapter
         dll.d3d11=ok path=x
         d3d11.device=ok level=0xb000
+        present=ok
         done
         """
         let rungs = EngineCanary.rungs(output: output, exit: .exited(0), errorTail: "")
-        #expect(statuses(rungs) == [.passed, .failed, .skipped, .passed, .passed])
+        #expect(statuses(rungs) == [.passed, .failed, .skipped, .passed, .passed, .passed])
         #expect(rungs[1].detail == "d3d12.dll did not load (error 126)")
     }
 
@@ -93,7 +95,7 @@ struct EngineCanaryTests {
     func aCrashNamesItselfAndNothingAfterItCounts() {
         let output = "fable-canary 1\npe=ok bits=64\ndll.d3d12=ok path=x\ncrash=0xc0000005 stage=d3d12.device\n"
         let rungs = EngineCanary.rungs(output: output, exit: .exited(3), errorTail: "")
-        #expect(statuses(rungs) == [.passed, .failed, .skipped, .skipped, .skipped])
+        #expect(statuses(rungs) == [.passed, .failed, .skipped, .skipped, .skipped, .skipped])
         // dll.dxgi was never reached, so loading didn't finish: that is where it stopped.
         #expect(rungs[1].detail == "crashed (0xc0000005)")
     }
@@ -101,7 +103,7 @@ struct EngineCanaryTests {
     @Test
     func wineNotStartingFailsTheFirstRung() {
         let rungs = EngineCanary.rungs(output: "", exit: .exited(1), errorTail: "dyld: Library not loaded: @rpath/libinotify.0.dylib")
-        #expect(statuses(rungs) == [.failed, .skipped, .skipped, .skipped, .skipped])
+        #expect(statuses(rungs) == [.failed, .skipped, .skipped, .skipped, .skipped, .skipped])
         #expect(rungs[0].detail?.contains("libinotify") == true)
         let noStart = EngineCanary.rungs(output: "", exit: .couldNotStart("Bad CPU type in executable"), errorTail: "")
         #expect(noStart[0].detail == "Bad CPU type in executable")
@@ -111,7 +113,7 @@ struct EngineCanaryTests {
     func aRunThatFinishedWithoutReportingARungIsInconclusiveNotPassed() {
         let output = "fable-canary 1\npe=ok bits=64\ndone\n"
         let rungs = EngineCanary.rungs(output: output, exit: .exited(0), errorTail: "")
-        #expect(statuses(rungs) == [.passed, .inconclusive, .inconclusive, .inconclusive, .inconclusive])
+        #expect(statuses(rungs) == [.passed, .inconclusive, .inconclusive, .inconclusive, .inconclusive, .inconclusive])
     }
 
     @Test
@@ -131,8 +133,9 @@ struct EngineCanaryTests {
         #expect(EngineCanary.supports(.sikarugir))
         #expect(EngineCanary.supports(.sikarugir11))
         #expect(EngineCanary.supports(.gptk))
-        // Staged into the throwaway prefix, as a launch stages it.
-        #expect(EngineCanary.supports(.dxmt))
+        // Held back: a DXMT bottle runs Wine's own Direct3D, which isn't
+        // what the DXMT test checks.
+        #expect(EngineCanary.supports(.dxmt) == !DXMTManager.isHeldBack)
         #expect(EngineCanary.programArguments(for: .dxmt) == ["no-d3d12"])
         #expect(EngineCanary.programArguments(for: .sikarugir).isEmpty)
         // Their Direct3D lives in the bottle's own setup, or in someone else's install.
@@ -156,19 +159,20 @@ struct EngineCanaryTests {
     dll.d3d11=ok path=C:\\windows\\system32\\d3d11.dll
     d3d11.device=ok level=0xb000
     winemetal=ok
+    present=ok
     done
     """
 
     @Test
     func dxmtIsJudgedWithoutADirect3D12Rung() {
         let rungs = EngineCanary.rungs(output: dxmtHealthy, exit: .exited(0), errorTail: "", backend: .dxmt)
-        #expect(rungs.map(\.id) == [.windowsProgram, .rendererLoads, .adapter, .direct3D11])
-        #expect(statuses(rungs) == [.passed, .passed, .passed, .passed])
+        #expect(rungs.map(\.id) == [.windowsProgram, .rendererLoads, .adapter, .direct3D11, .present])
+        #expect(statuses(rungs) == [.passed, .passed, .passed, .passed, .passed])
         let result = CanaryResult(
             backend: .dxmt, engineKey: nil, manifestID: nil, date: .now, durationSeconds: 3,
             rungs: rungs, fableVersion: nil)
         #expect(result.allPassed)
-        #expect(EngineCanary.unsupportedResult(backend: .dxmt, engineKey: nil).rungs.count == 4)
+        #expect(EngineCanary.unsupportedResult(backend: .dxmt, engineKey: nil).rungs.count == 5)
     }
 
     /// The bug v1.3.11 fixed: a D3D11 device was created, but by Wine's own
@@ -177,8 +181,8 @@ struct EngineCanaryTests {
     func aDeviceFromWinesOwnD3D11FailsTheDXMTRung() {
         let wined3d = dxmtHealthy.replacingOccurrences(of: "winemetal=ok", with: "winemetal=failed not loaded")
         let rungs = EngineCanary.rungs(output: wined3d, exit: .exited(0), errorTail: "", backend: .dxmt)
-        #expect(statuses(rungs) == [.passed, .passed, .passed, .failed])
-        #expect(rungs.last?.detail?.contains("not DXMT") == true)
+        #expect(statuses(rungs) == [.passed, .passed, .passed, .failed, .passed])
+        #expect(rungs[3].detail?.contains("not DXMT") == true)
         // Other backends don't ask for DXMT's bridge.
         #expect(statuses(EngineCanary.rungs(output: healthy, exit: .exited(0), errorTail: "")).allSatisfy { $0 == .passed })
     }
@@ -188,7 +192,30 @@ struct EngineCanaryTests {
     func aDXMTRunWithoutTheBridgeFactIsNotPassed() {
         let old = dxmtHealthy.replacingOccurrences(of: "winemetal=ok\n", with: "")
         let rungs = EngineCanary.rungs(output: old, exit: .exited(0), errorTail: "", backend: .dxmt)
-        #expect(rungs.last?.status == .inconclusive)
+        #expect(rungs.first { $0.id == .direct3D11 }?.status == .inconclusive)
+    }
+
+    /// What DXMT did on Wine 11.10 (v1.3.11/12): a device, then an abort when
+    /// the first swap chain asked Wine for the window. The run stops inside
+    /// the window rung, so that rung fails and the device rungs still pass.
+    @Test
+    func aRendererThatCannotReachAWindowFailsThePresentRung() {
+        let aborted = dxmtHealthy.replacingOccurrences(of: "present=ok\ndone", with: "")
+        let rungs = EngineCanary.rungs(
+            output: aborted, exit: .exited(134),
+            errorTail: "err:   Failed to create metal view, it seems like your Wine has no exported symbols needed by DXMT.",
+            backend: .dxmt)
+        #expect(statuses(rungs) == [.passed, .passed, .passed, .passed, .failed])
+        #expect(rungs.last?.detail?.contains("Failed to create metal view") == true)
+        let result = CanaryResult(
+            backend: .dxmt, engineKey: nil, manifestID: nil, date: .now, durationSeconds: 3,
+            rungs: rungs, fableVersion: nil)
+        #expect(result.hasFailure)
+        #expect(result.firstProblem?.id == .present)
+        // A reported failure names the step, with its error.
+        let failed = healthy.replacingOccurrences(of: "present=ok", with: "present=failed hr=0x887a0001")
+        #expect(EngineCanary.rungs(output: failed, exit: .exited(0), errorTail: "").last?.detail
+                == "no frame could be shown in a window (error 0x887a0001)")
     }
 
     @Test
