@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## v1.3.12 — 2026-11-26
+
+**The engine test covers DXMT.**
 
 - **Test Engine works on DXMT bottles.** The engine test stages Fable's DXMT
   build into its throwaway bottle, as a launch does, and checks that the
