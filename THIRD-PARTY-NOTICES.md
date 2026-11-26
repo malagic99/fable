@@ -27,6 +27,19 @@ innoextract source.
 Boost Software License 1.0: permits use and binary redistribution; the
 license text must accompany source copies — it lives with the Boost sources.
 
+## Built and hosted by Fable, downloaded at runtime
+
+- **DXMT** (LGPL-2.1-or-later; zlib before its relicensing): © 3Shain and
+  contributors, <https://github.com/3Shain/dxmt>. Fable builds it with
+  `scripts/build-dxmt.sh` from upstream commit e94c312 plus fixes by SteaMac's
+  contributors (`scripts/dxmt/patches/`, authors kept), and publishes the
+  binary package on Fable's own GitHub release
+  [dxmt-0.80-fable.1](https://github.com/malagic99/fable/releases/tag/dxmt-0.80-fable.1).
+  The complete corresponding source (the upstream archives, the patches, the
+  pins and the build script) is published beside it as
+  `dxmt-0.80-fable.1-source.tar.gz`. Fable downloads the package on first
+  use and checks its SHA-256.
+
 ## Downloaded at runtime, never redistributed by Fable
 
 Fable downloads these from their origins on first use (SHA-256-verified) or
@@ -34,7 +47,6 @@ discovers them already installed on your machine. Their licenses govern your
 copy directly:
 
 - **Wine** (LGPL-2.1) — Gcenx macOS builds
-- **DXMT** (LGPL-2.1-or-later; zlib before its relicensing) — 3Shain
 - **DXVK / vkd3d** (zlib / LGPL), **MoltenVK** (Apache-2.0)
 - **winetricks** (LGPL-2.1)
 - **Sikarugir** (GPL) — its Wine engines and wrapper template, downloaded

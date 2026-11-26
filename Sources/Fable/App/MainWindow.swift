@@ -113,6 +113,7 @@ struct FableApp: App {
                         crossOverManager: crossOverManager,
                         sikarugirManager: sikarugirManager,
                         sikarugir11Manager: sikarugir11Manager,
+                        dxmtManager: dxmtManager,
                         triggerController: triggerController,
                         activityMonitor: activityMonitor,
                         toastCenter: toastCenter
