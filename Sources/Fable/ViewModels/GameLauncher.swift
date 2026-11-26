@@ -11,6 +11,8 @@ enum GameLaunchError: LocalizedError {
     case macSteamNotRunning(String)
     /// A Steam game set to a runtime its bottle's Steam doesn't run on.
     case steamGameNeedsBottleRuntime(game: String, backend: String)
+    /// DXMT backend without Fable's native-mode DXMT package installed.
+    case dxmtNotInstalled
 
     var errorDescription: String? {
         switch self {
@@ -32,6 +34,8 @@ enum GameLaunchError: LocalizedError {
             "“\(game)” plays through your Mac Steam app. Open Steam and sign in, then press Play again."
         case .steamGameNeedsBottleRuntime(let game, let backend):
             "“\(game)” is set to \(backend), but Steam games restart through the Steam in their bottle and run on its Wine. Set the whole bottle to \(backend) instead (Bottle → Graphics), then start Steam and the game again."
+        case .dxmtNotInstalled:
+            "DXMT needs to be installed again for this version of Fable. Open the bottle's Graphics settings and choose DXMT once more."
         }
     }
 }
@@ -47,6 +51,8 @@ protocol RuntimeResolving {
     func wineserverBinary(for backend: GraphicsBackend) -> URL?
     /// The native Steam bridge build, or why there isn't a usable one.
     func steamBridge() -> Result<URL, GameLaunchError>
+    /// Root of the installed native-mode DXMT package (see ``DXMTManager``).
+    func dxmtPackage() -> URL?
 }
 
 extension RuntimeResolving {
@@ -150,6 +156,11 @@ final class GameLauncher: ObservableObject {
             case .sikarugir11: try? deps.sikarugir11Manager.wineserverBinary()
             case .off, .dxmt, .dxvk: nil
             }
+        }
+
+        func dxmtPackage() -> URL? {
+            DXMTManager.packageRoot(installedIn: deps.componentManager.installedVersions(for: DXMTManager.componentID)
+                .compactMap { deps.componentManager.installedDirectory(for: DXMTManager.componentID, version: $0) })
         }
     }
 
@@ -327,8 +338,11 @@ final class GameLauncher: ObservableObject {
             // Frame-rate cap rides on DXMT's config when the backend is DXMT.
             var dxmtConfig = bottle.dxmtConfig
             dxmtConfig.maxFrameRate = bottle.performance.frameRateCap
+            let dxmtPackage = runtime.dxmtPackage()
+            if effectiveBackend == .dxmt && dxmtPackage == nil { throw GameLaunchError.dxmtNotInstalled }
             environment.merge(DXMTManager.launchEnvironment(
                 enabled: effectiveBackend == .dxmt,
+                package: dxmtPackage,
                 config: dxmtConfig,
                 baseOverrides: baseOverrides,
                 logFile: logFile
@@ -412,6 +426,12 @@ final class GameLauncher: ObservableObject {
                 logFile: AppPaths.logs.appending(path: GameInstaller.logName(bottle.name, game.name)),
                 runtime: ManagerRuntimeResolver(deps: deps)
             )
+            // DXMT's DLLs go into the bottle at every launch (only changed
+            // files are copied), so an updated package reaches every bottle.
+            if game.graphicsBackend ?? bottle.graphicsBackend == .dxmt,
+               let package = ManagerRuntimeResolver(deps: deps).dxmtPackage() {
+                try DXMTManager.stage(package: package, driveC: deps.bottleManager.driveCDirectory(for: bottle))
+            }
             let versions = resolvedEngineVersions(for: game.graphicsBackend ?? bottle.graphicsBackend)
             plan.engineVersions = versions
             plan.enginesPinned = !bottle.enginePins.isEmpty

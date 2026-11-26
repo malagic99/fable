@@ -20,9 +20,9 @@
         },
         "dxmt": {
             "name": "DXMT",
-            "version": "0.80",
-            "url": "https://github.com/3Shain/dxmt/releases/download/v0.80/dxmt-v0.80-builtin.tar.gz",
-            "sha256": "8f260e36b5739e68f3bad613381441385c4dc7b85b78ba8de653d5a6a264529d"
+            "version": "0.80-fable.1",
+            "url": "https://github.com/malagic99/fable/releases/download/dxmt-0.80-fable.1/dxmt-0.80-fable.1-native.tar.gz",
+            "sha256": "454704be881a1596782365474f2b574e89ad88ef9540ac01f12bfa0a7677db59"
         },
         "sikarugir": {
             "name": "Sikarugir Wine 10 engine",
