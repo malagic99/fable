@@ -35,7 +35,7 @@ enum GameLaunchError: LocalizedError {
         case .steamGameNeedsBottleRuntime(let game, let backend):
             "“\(game)” is set to \(backend), but Steam games restart through the Steam in their bottle and run on its Wine. Set the whole bottle to \(backend) instead (Bottle → Graphics), then start Steam and the game again."
         case .dxmtNotInstalled:
-            "DXMT needs to be installed again for this version of Fable. Open the bottle's Graphics settings and choose DXMT once more."
+            "This version of Fable uses its own DXMT build, which isn't downloaded yet. Press Play in Fable to download it."
         }
     }
 }
@@ -122,6 +122,7 @@ final class GameLauncher: ObservableObject {
         let crossOverManager: CrossOverManager
         let sikarugirManager: SikarugirManager
         let sikarugir11Manager: Sikarugir11Manager
+        let dxmtManager: DXMTManager
         let triggerController: DualSenseTriggerController
         let activityMonitor: ActivityMonitor
         let toastCenter: ToastCenter
@@ -766,6 +767,17 @@ final class GameLauncher: ObservableObject {
             return
         }
         let resolver = ManagerRuntimeResolver(deps: deps)
+        // A DXMT bottle from before Fable built its own DXMT has upstream's
+        // package (or none): fetch the current one, as for a missing engine.
+        if backend == .dxmt && resolver.dxmtPackage() == nil {
+            deps.toastCenter.success(L10n.string("launch.engine_downloading", backend.shortName, game.name))
+            do {
+                try await deps.dxmtManager.ensureInstalled()
+            } catch {
+                deps.toastCenter.error(L10n.string("launch.engine_failed", backend.shortName, error.localizedDescription))
+                throw error
+            }
+        }
         let available = EnginePins.$current.withValue(bottle.enginePins) {
             (try? resolver.wineBinary(for: backend)) != nil
         }

@@ -1,5 +1,27 @@
 # Changelog
 
+## v1.3.11 — 2026-11-26
+
+**DXMT now actually runs.**
+
+- **The DXMT backend loads DXMT.** Until now it never did on Fable's Wine
+  11.10 engine. Upstream's release is built as Wine "builtin" DLLs, which Wine
+  refuses under the native override Fable set, so games either failed to
+  find `d3d11.dll` or quietly got Wine's own Direct3D instead. Fable now
+  ships its own DXMT build in DXMT's native mode, and it loads per bottle.
+- **Fixes on top of DXMT 0.80.** The build is upstream DXMT from after v0.80
+  plus 23 fixes from the SteaMac project. One of them fixes a crash when a
+  game uploads data into a staging texture, which stock v0.80 hit in
+  Fable's tests.
+- **The Wine engine is left alone.** Enabling DXMT used to copy a file into
+  the shared Wine engine. DXMT now lives entirely in the bottle and in its
+  own component folder, and the file older versions copied in is removed.
+- **DXMT bottles pick up the new build at their next launch.** If it isn't
+  installed yet, the launch downloads it first (about 19 MB, once) and copies
+  it into the bottle.
+- **No more upstream DXMT update offers.** Upstream's releases don't work the
+  way Fable loads DXMT, so DXMT updates now come with Fable.
+
 ## v1.3.10 — 2026-11-24
 
 - **The settings file is made private at launch.** v1.3.9 restricted it only

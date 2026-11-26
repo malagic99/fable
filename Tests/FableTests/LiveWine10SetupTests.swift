@@ -32,6 +32,7 @@ struct LiveWine10SetupTests {
             gptkManager: GPTKManager(componentManager: components, catalog: catalog),
             crossOverManager: CrossOverManager(), sikarugirManager: sikarugir,
             sikarugir11Manager: Sikarugir11Manager(componentManager: components, catalog: catalog),
+            dxmtManager: DXMTManager(componentManager: components, catalog: catalog),
             triggerController: DualSenseTriggerController(), activityMonitor: ActivityMonitor(),
             toastCenter: ToastCenter()))
         let canary = await launcher.runCanary(backend: .sikarugir, pins: [:])

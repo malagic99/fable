@@ -25,6 +25,7 @@ struct LiveEngineProbeTests {
             crossOverManager: CrossOverManager(),
             sikarugirManager: SikarugirManager(componentManager: components, catalog: catalog),
             sikarugir11Manager: Sikarugir11Manager(componentManager: components, catalog: catalog),
+            dxmtManager: DXMTManager(componentManager: components, catalog: catalog),
             triggerController: DualSenseTriggerController(),
             activityMonitor: ActivityMonitor(),
             toastCenter: ToastCenter()))
