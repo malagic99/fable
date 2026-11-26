@@ -4,23 +4,25 @@ import Testing
 
 @MainActor
 @Suite struct DXMTManagerTests {
-    /// Builds a fake installed DXMT component (mirroring the real tarball
-    /// layout), a fake Wine install, and a bottle with a prefix skeleton.
+    /// Builds a fake installed DXMT component (the native-mode package
+    /// layout, nested in its v<version>/ folder), a fake Wine install, and a
+    /// bottle with a prefix skeleton.
     private func makeFixture() throws -> (DXMTManager, WineManager, BottleManager, Bottle, URL) {
         let fm = FileManager.default
         let root = fm.temporaryDirectory
             .appending(path: "DXMTTests-\(UUID().uuidString)", directoryHint: .isDirectory)
 
-        // Installed DXMT component with the nested v0.80/ folder.
-        let dxmtDir = root.appending(path: "Components/dxmt/0.80/v0.80")
+        let dxmtDir = root.appending(path: "Components/dxmt/0.80-fable.1/v0.80-fable.1")
         for (dir, file) in [
-            ("x86_64-windows", "d3d11.dll"), ("x86_64-windows", "dxgi.dll"),
-            ("x86_64-windows", "d3d10core.dll"), ("x86_64-windows", "winemetal.dll"),
-            ("i386-windows", "d3d11.dll"), ("x86_64-unix", "winemetal.so"),
+            ("system32", "d3d11.dll"), ("system32", "dxgi.dll"),
+            ("system32", "d3d10core.dll"), ("system32", "nvapi64.dll"),
+            ("syswow64", "d3d11.dll"), ("syswow64", "dxgi.dll"),
+            ("x86_64-windows", "winemetal.dll"), ("x86_64-windows", "nvngx.dll"),
+            ("i386-windows", "winemetal.dll"), ("x86_64-unix", "winemetal.so"),
         ] {
             let d = dxmtDir.appending(path: dir)
             try fm.createDirectory(at: d, withIntermediateDirectories: true)
-            try Data(file.utf8).write(to: d.appending(path: file))
+            try Data("\(dir)/\(file)".utf8).write(to: d.appending(path: file))
         }
 
         // Fake Wine: bin/wine + lib/wine/x86_64-unix.
@@ -55,50 +57,102 @@ import Testing
     }
 
     @Test
-    func enableCopiesDLLsAndUnixBridge() throws {
+    func enableStagesNativeAndBuiltinDLLsWithoutTouchingTheEngine() throws {
         let (dxmt, wine, bottles, bottle, root) = try makeFixture()
         defer { try? FileManager.default.removeItem(at: root) }
+        let fm = FileManager.default
 
+        // A winemetal.so an older Fable copied into the engine is removed.
+        let legacy = root.appending(path: "Components/wine/11.0_1/wine/lib/wine/x86_64-unix/winemetal.so")
+        try Data("old".utf8).write(to: legacy)
+
+        #expect(dxmt.packageRoot()?.lastPathComponent == "v0.80-fable.1")
         #expect(!dxmt.isEnabled(in: bottle, bottleManager: bottles))
         try dxmt.enable(in: bottle, bottleManager: bottles, wineManager: wine)
 
         let windows = bottles.driveCDirectory(for: bottle).appending(path: "windows")
-        for dll in ["d3d11.dll", "dxgi.dll", "d3d10core.dll", "winemetal.dll"] {
-            #expect(FileManager.default.fileExists(
-                atPath: windows.appending(path: "system32/\(dll)").path), "missing \(dll)")
+        for dll in ["system32/d3d11.dll", "system32/dxgi.dll", "system32/d3d10core.dll",
+                    "system32/nvapi64.dll", "system32/winemetal.dll", "system32/nvngx.dll",
+                    "syswow64/d3d11.dll", "syswow64/dxgi.dll", "syswow64/winemetal.dll"] {
+            #expect(fm.fileExists(atPath: windows.appending(path: dll).path), "missing \(dll)")
         }
-        #expect(FileManager.default.fileExists(
-            atPath: windows.appending(path: "syswow64/d3d11.dll").path))
-
-        let bridge = root.appending(
-            path: "Components/wine/11.0_1/wine/lib/wine/x86_64-unix/winemetal.so")
-        #expect(FileManager.default.fileExists(atPath: bridge.path))
-
+        // The 32-bit winemetal is the i386 one, not the 64-bit one.
+        #expect(try String(contentsOf: windows.appending(path: "syswow64/winemetal.dll"), encoding: .utf8)
+                == "i386-windows/winemetal.dll")
+        #expect(!fm.fileExists(atPath: legacy.path))
         #expect(dxmt.isEnabled(in: bottle, bottleManager: bottles))
         // Idempotent.
         try dxmt.enable(in: bottle, bottleManager: bottles, wineManager: wine)
     }
 
     @Test
+    func stageReplacesChangedFilesAndSkipsAMissingSyswow64() throws {
+        let (dxmt, _, bottles, bottle, root) = try makeFixture()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let fm = FileManager.default
+        let package = try #require(dxmt.packageRoot())
+        let driveC = bottles.driveCDirectory(for: bottle)
+        let syswow64 = driveC.appending(path: "windows/syswow64")
+        try fm.removeItem(at: syswow64)
+
+        let d3d11 = driveC.appending(path: "windows/system32/d3d11.dll")
+        try DXMTManager.stage(package: package, driveC: driveC)
+        try Data("stale".utf8).write(to: d3d11)
+        try DXMTManager.stage(package: package, driveC: driveC)
+
+        #expect(try String(contentsOf: d3d11, encoding: .utf8) == "system32/d3d11.dll")
+        #expect(!fm.fileExists(atPath: syswow64.path))
+    }
+
+    @Test
+    func upstreamBuiltinLayoutIsNotAPackage() throws {
+        let fm = FileManager.default
+        let root = fm.temporaryDirectory.appending(path: "DXMTOld-\(UUID().uuidString)")
+        defer { try? fm.removeItem(at: root) }
+        // Upstream v0.80's tarball: no system32/, everything under the
+        // Wine-style folders.
+        let old = root.appending(path: "0.80")
+        for path in ["v0.80/x86_64-windows/d3d11.dll", "v0.80/x86_64-unix/winemetal.so"] {
+            let file = old.appending(path: path)
+            try fm.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try Data().write(to: file)
+        }
+        #expect(DXMTManager.packageRoot(installedIn: [old]) == nil)
+
+        let new = root.appending(path: "0.80-fable.1")
+        for path in ["v0.80-fable.1/system32/d3d11.dll", "v0.80-fable.1/x86_64-unix/winemetal.so"] {
+            let file = new.appending(path: path)
+            try fm.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try Data().write(to: file)
+        }
+        #expect(DXMTManager.packageRoot(installedIn: [old, new])?.lastPathComponent == "v0.80-fable.1")
+    }
+
+    @Test
     func launchEnvironmentRoutesOverridesByEnabledState() {
+        let package = URL(filePath: "/c/dxmt/0.80-fable.1/v0.80-fable.1", directoryHint: .isDirectory)
         let enabled = DXMTManager.launchEnvironment(
             enabled: true,
+            package: package,
             config: DXMTConfig(maxFrameRate: 60),
             baseOverrides: "mscoree,mshtml=",
             logFile: URL(filePath: "/tmp/logs/game.log")
         )
         #expect(enabled["WINEDLLOVERRIDES"] == "mscoree,mshtml=;d3d10core,d3d11,dxgi,nvapi64=n")
+        #expect(enabled["WINEDLLPATH"] == "/c/dxmt/0.80-fable.1/v0.80-fable.1")
         #expect(enabled["DXMT_CONFIG"] == "dxgi.maxFrameRate=60;")
         #expect(enabled["DXMT_LOG_LEVEL"] == "error")
         #expect(enabled["DXMT_LOG_PATH"] == "/tmp/logs")
 
         let disabled = DXMTManager.launchEnvironment(
             enabled: false,
+            package: package,
             config: DXMTConfig(),
             baseOverrides: "mscoree,mshtml=",
             logFile: nil
         )
         #expect(disabled["WINEDLLOVERRIDES"] == "mscoree,mshtml=;d3d10core,d3d11,dxgi,nvapi64=b")
+        #expect(disabled["WINEDLLPATH"] == nil)
         #expect(disabled["DXMT_CONFIG"] == nil)
         #expect(disabled["DXMT_LOG_LEVEL"] == nil)
     }

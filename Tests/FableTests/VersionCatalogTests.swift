@@ -12,7 +12,7 @@ import Testing
         #expect(!wine.sha256.isEmpty, "Wine checksum must be pinned")
 
         let dxmt = try #require(catalog.dxmt)
-        #expect(dxmt.version == "0.80")
+        #expect(dxmt.version == "0.80-fable.1")
         #expect(!dxmt.sha256.isEmpty, "DXMT checksum must be pinned")
     }
 

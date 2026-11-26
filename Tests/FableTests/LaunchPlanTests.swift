@@ -33,6 +33,8 @@ import Testing
         /// Explicit, so no test depends on this Mac's real bridge folder.
         var bridge: Result<URL, GameLaunchError> = .failure(.steamBridgeNotReady("not built"))
         func steamBridge() -> Result<URL, GameLaunchError> { bridge }
+        var dxmt: URL? = URL(filePath: "/stub/dxmt/v0.80-fable.1", directoryHint: .isDirectory)
+        func dxmtPackage() -> URL? { dxmt }
     }
 
     /// Temp prefix with a drive_c and a fake game exe.
@@ -485,6 +487,8 @@ import Testing
                                 bottle: bottle, prefix: prefix, driveC: driveC)
         #expect(dxmtPlan.environment["DXMT_CONFIG"]?.contains("dxgi.maxFrameRate=90") == true)
         #expect(dxmtPlan.environment["WINEDLLOVERRIDES"]?.hasSuffix("=n") == true)
+        // The builtin half (winemetal) is found through the package root.
+        #expect(dxmtPlan.environment["WINEDLLPATH"] == "/stub/dxmt/v0.80-fable.1")
 
         // .off keeps the same wine but routes the DLLs back to builtin.
         var offBottle = bottle
@@ -493,6 +497,23 @@ import Testing
                                bottle: offBottle, prefix: prefix, driveC: driveC)
         #expect(offPlan.environment["DXMT_CONFIG"] == nil)
         #expect(offPlan.environment["WINEDLLOVERRIDES"]?.hasSuffix("=b") == true)
+        #expect(offPlan.environment["WINEDLLPATH"] == nil)
+    }
+
+    @Test
+    func dxmtWithoutItsPackageRefusesToLaunch() throws {
+        let (prefix, driveC) = try makePrefix()
+        defer { try? fm.removeItem(at: prefix) }
+        var runtime = StubRuntime()
+        runtime.dxmt = nil
+        let game = Game(name: "D", executablePath: "Games/Demo/demo.exe")
+        #expect(throws: GameLaunchError.self) {
+            try plan(game: game, bottle: Bottle(name: "B", graphicsBackend: .dxmt),
+                     prefix: prefix, driveC: driveC, runtime: runtime)
+        }
+        // .off doesn't need it.
+        _ = try plan(game: game, bottle: Bottle(name: "B", graphicsBackend: .off),
+                     prefix: prefix, driveC: driveC, runtime: runtime)
     }
 
     @Test

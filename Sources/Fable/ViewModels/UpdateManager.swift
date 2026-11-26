@@ -16,12 +16,16 @@ enum UpdateError: LocalizedError {
 /// verified even though they're newer than the pinned versions.json.
 ///
 /// That digest proves the download arrived intact, not who published it:
-/// it comes from the same release as the file. Wine and DXMT publish no
+/// it comes from the same release as the file. Wine publishes no
 /// signatures, so there is no second source to check against. What Fable
 /// can do instead: offer only full releases (no pre-releases or drafts),
 /// only files hosted by that project's own releases, and only once a
 /// release has been public for ``minimumReleaseAge`` — long enough for a
 /// bad release from a hijacked account to be noticed and pulled first.
+///
+/// DXMT isn't checked: Fable ships its own patched native-mode build
+/// (scripts/build-dxmt.sh), and upstream's builtin release doesn't work the
+/// way Fable loads DXMT. It moves with versions.json instead.
 @MainActor
 final class UpdateManager: ObservableObject {
     /// Newer-than-installed components found by the last check.
@@ -63,19 +67,10 @@ final class UpdateManager: ObservableObject {
                 assetSuffix: "-osx64.tar.xz",
                 displayName: "Wine Stable"
             )
-            async let dxmt = Self.latestRelease(
-                repo: "3Shain/dxmt",
-                assetPrefix: "dxmt-v",
-                assetSuffix: "-builtin.tar.gz",
-                displayName: "DXMT"
-            )
 
             var found: [String: VersionCatalog.Component] = [:]
             if let wine = try await wine, isUpdate(wine, for: WineManager.componentID) {
                 found[WineManager.componentID] = wine
-            }
-            if let dxmt = try await dxmt, isUpdate(dxmt, for: DXMTManager.componentID) {
-                found[DXMTManager.componentID] = dxmt
             }
             available = found
         } catch {
